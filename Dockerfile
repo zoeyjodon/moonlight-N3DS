@@ -8,7 +8,9 @@ SHELL ["/bin/bash", "-c"]
 ENV TZ=Asia/Dubai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-RUN apt-get update && apt-get install -y build-essential \
+# Install common build dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
     curl \
     gdb \
     lsb-release \
@@ -17,6 +19,22 @@ RUN apt-get update && apt-get install -y build-essential \
     wget \
     unzip \
     libc6
+
+# Install moonlight dependencies
+RUN apt-get install -y \
+    libssl-dev \
+    libopus-dev \
+    libasound2-dev \
+    libudev-dev \
+    libavahi-client-dev \
+    libcurl4-openssl-dev \
+    libevdev-dev \
+    libexpat1-dev \
+    libpulse-dev \
+    uuid-dev \
+    cmake \
+    gcc \
+    g++
 
 # Install devkitPro for 3DS
 RUN wget https://apt.devkitpro.org/install-devkitpro-pacman && \
