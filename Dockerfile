@@ -44,6 +44,13 @@ RUN dkp-pacman -S 3ds-dev --noconfirm && \
     dkp-pacman -Syu 3ds-curl --noconfirm && \
     dkp-pacman -Syu 3ds-libarchive 3ds-jansson 3ds-libjpeg-turbo 3ds-libpng --noconfirm
 
+# Install bannertool
+RUN wget https://github.com/Steveice10/bannertool/releases/download/1.2.0/bannertool.zip && \
+    unzip bannertool.zip -d /bannertool && \
+    cp /bannertool/linux-x86_64/bannertool /usr/local/bin && \
+    chmod +x /usr/local/bin/bannertool && \
+    rm -r /bannertool
+
 # Install MakeROM for CIA packaging
 RUN wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.4/makerom-v0.18.4-ubuntu_x86_64.zip && \
     unzip makerom-v0.18.4-ubuntu_x86_64.zip -d /usr/local/bin && \
