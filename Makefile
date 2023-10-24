@@ -3,7 +3,7 @@
 #---------------------------------------------------------------------------------
 
 ifeq ($(strip $(DEVKITARM)),)
-$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
+$(error "Please set DEVKITARM in your environment. `source /etc/profile.d/devkit-env.sh`")
 endif
 
 TOPDIR ?= $(CURDIR)
@@ -29,9 +29,22 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	moonlight
 BUILD		:=	build
-SOURCES		:=	src libgamestream third_party/h264bitstream third_party/ilclient third_party/libcec third_party/moonlight-common-c/enet/include/enet third_party/moonlight-common-c/reedsolomon third_party/moonlight-common-c/src
+SOURCES		:=	src \
+				3ds/src \
+				libgamestream \
+				third_party/h264bitstream \
+				third_party/libuuid \
+				third_party/moonlight-common-c/enet/include/enet \
+				third_party/moonlight-common-c/reedsolomon \
+				third_party/moonlight-common-c/src
 DATA		:=	data
-INCLUDES	:=	$(SOURCES)
+INCLUDES	:=	3ds/src \
+				libgamestream \
+				third_party/h264bitstream \
+				third_party/libuuid \
+				third_party/moonlight-common-c/enet/include/enet \
+				third_party/moonlight-common-c/reedsolomon \
+				third_party/moonlight-common-c/src
 ROMFS		:=	romfs
 
 
@@ -71,7 +84,7 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=	`curl-config --libs` -lavformat -lavcodec -lavutil -lswscale -lswresample -lconfig -ljansson -lturbojpeg -ljpeg -lpng -larchive -lbz2 -llzma -lcitro2d -lcitro3d -lctru -lm -lz
+LIBS	:=	-lfreetype -lpng -lbz2 -lcurl -lSDL -lopus -lz -lm # Missing: -lssl -lcrypto -lexpat
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing

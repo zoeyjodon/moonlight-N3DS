@@ -1,4 +1,4 @@
-# docker build --network=host -t moonlight-n3ds
+# docker build --network=host -t moonlight-n3ds .
 FROM ubuntu:22.04
 
 # Use bash instead of sh
@@ -42,7 +42,20 @@ RUN wget https://apt.devkitpro.org/install-devkitpro-pacman && \
     echo "y" | ./install-devkitpro-pacman
 RUN dkp-pacman -S 3ds-dev --noconfirm && \
     dkp-pacman -Syu 3ds-curl --noconfirm && \
-    dkp-pacman -Syu 3ds-libarchive 3ds-jansson 3ds-libjpeg-turbo 3ds-libpng --noconfirm
+    dkp-pacman -Syu 3ds-libarchive \
+                    3ds-jansson \
+                    3ds-libjpeg-turbo \
+                    3ds-libpng \
+                    3ds-sdl \
+                    3ds-sdl_gfx \
+                    3ds-sdl_image \
+                    3ds-sdl_mixer \
+                    3ds-sdl_ttf \
+                    3ds-tinyxml2 \
+                    3ds-freetype \
+                    3ds-curl \
+                    3ds-libopus \
+                    --noconfirm
 
 # Install bannertool
 RUN wget https://github.com/Steveice10/bannertool/releases/download/1.2.0/bannertool.zip && \
