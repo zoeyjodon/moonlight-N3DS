@@ -29,11 +29,19 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifndef __3DS__
 #include <dlfcn.h>
+#else
+#include "3ds.h"
+#endif
 
 typedef bool(*ImxInit)();
 
 enum platform platform_check(char* name) {
+  #ifdef __3DS__
+    return N3DS;
+  #endif
+
   bool std = strcmp(name, "auto") == 0;
   #ifdef HAVE_IMX
   if (std || strcmp(name, "imx") == 0) {
@@ -119,6 +127,8 @@ void platform_start(enum platform system) {
     write_bool("/sys/class/graphics/fb0/blank", true);
     break;
   #endif
+  default:
+    break;
   }
 }
 
@@ -135,11 +145,17 @@ void platform_stop(enum platform system) {
     write_bool("/sys/class/graphics/fb0/blank", false);
     break;
   #endif
+  default:
+    break;
   }
 }
 
 DECODER_RENDERER_CALLBACKS* platform_get_video(enum platform system) {
   switch (system) {
+  #ifdef __3DS__
+  case N3DS:
+    return &decoder_callbacks_n3ds;
+  #endif
   #ifdef HAVE_X11
   case X11:
     return &decoder_callbacks_x11;
@@ -176,12 +192,18 @@ DECODER_RENDERER_CALLBACKS* platform_get_video(enum platform system) {
   case RK:
     return (PDECODER_RENDERER_CALLBACKS) dlsym(RTLD_DEFAULT, "decoder_callbacks_rk");
   #endif
+  default:
+    break;
   }
   return NULL;
 }
 
 AUDIO_RENDERER_CALLBACKS* platform_get_audio(enum platform system, char* audio_device) {
   switch (system) {
+  #ifdef __3DS__
+  case N3DS:
+    return &audio_callbacks_n3ds;
+  #endif
   case FAKE:
       return NULL;
   #ifdef HAVE_SDL
@@ -202,6 +224,7 @@ AUDIO_RENDERER_CALLBACKS* platform_get_audio(enum platform system, char* audio_d
     #ifdef HAVE_ALSA
     return &audio_callbacks_alsa;
     #endif
+    break;
   }
   return NULL;
 }
@@ -222,12 +245,16 @@ bool platform_prefers_codec(enum platform system, enum codecs codec) {
     return false;
   case CODEC_AV1:
     return false;
+  default:
+    break;
   }
   return false;
 }
 
 char* platform_name(enum platform system) {
   switch(system) {
+  case N3DS:
+    return "Nintendo *New* 3DS";
   case PI:
     return "Raspberry Pi (Broadcom)";
   case MMAL:

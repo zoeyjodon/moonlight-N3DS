@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include "loop.h"
 
 #include "connection.h"
@@ -114,3 +116,5 @@ void loop_main() {
     }
   }
 }
+
+#endif

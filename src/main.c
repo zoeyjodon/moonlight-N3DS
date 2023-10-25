@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include "loop.h"
 #include "connection.h"
 #include "configuration.h"
@@ -419,3 +421,5 @@ int main(int argc, char* argv[]) {
   } else
     fprintf(stderr, "%s is not a valid action\n", config.action);
 }
+
+#endif
