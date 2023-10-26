@@ -248,7 +248,9 @@ clean:
 	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(GFXBUILD)
 
 #---------------------------------------------------------------------------------
-$(OPENSSL_DIR)openssl-3ds.patch:
+OPENSSL_PATCH_BUILD := $(OPENSSL_DIR)/$(OPENSSL_PATCH)
+
+$(OPENSSL_PATCH_BUILD):
 	@echo patching openssl ...
 	@cp 3ds/$(OPENSSL_PATCH) $(OPENSSL_DIR)/$(OPENSSL_PATCH)
 	@cd $(OPENSSL_DIR) && git apply $(OPENSSL_PATCH) && cd -
@@ -260,11 +262,11 @@ $(OPENSSL_DIR)openssl-3ds.patch:
 	@make -C third_party/openssl build_generated
 
 #---------------------------------------------------------------------------------
-$(LIBSSL_3DS): $(OPENSSL_DIR)openssl-3ds.patch
+$(LIBSSL_3DS): $(OPENSSL_PATCH_BUILD)
 	@make -C third_party/openssl libssl.a -j$(nproc)
 
 #---------------------------------------------------------------------------------
-$(LIBCRYPTO_3DS): $(OPENSSL_DIR)openssl-3ds.patch
+$(LIBCRYPTO_3DS): $(OPENSSL_PATCH_BUILD)
 	@make -C third_party/openssl libcrypto.a -j$(nproc)
 
 #---------------------------------------------------------------------------------
