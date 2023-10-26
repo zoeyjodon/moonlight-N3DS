@@ -18,7 +18,8 @@ RUN apt-get update && apt-get install -y \
     software-properties-common \
     wget \
     unzip \
-    libc6
+    libc6 \
+    git
 
 # Install moonlight dependencies
 RUN apt-get install -y \

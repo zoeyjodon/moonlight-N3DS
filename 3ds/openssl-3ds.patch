@@ -1,0 +1,202 @@
+diff --git a/Configurations/10-main.conf b/Configurations/10-main.conf
+index aedfa370ca..40313e5a4c 100644
+--- a/Configurations/10-main.conf
++++ b/Configurations/10-main.conf
+@@ -735,6 +735,26 @@ my %targets = (
+         perlasm_scheme   => "linux64le",
+     },
+
++    ### 3DS target
++    "3ds" => {
++        inherit_from     => [ "BASE_unix" ],
++        CC               => "$ENV{DEVKITARM}/bin/arm-none-eabi-gcc",
++        CXX              => "$ENV{DEVKITARM}/bin/arm-none-eabi-g++",
++        AR               => "$ENV{DEVKITARM}/bin/arm-none-eabi-ar",
++        CFLAGS           => picker(default => "-Wall",
++                                   debug   => "-O0 -g",
++                                   release => "-O3"),
++        CXXFLAGS         => picker(default => "-Wall",
++                                   debug   => "-O0 -g",
++                                   release => "-O3"),
++        cflags           => add("-march=armv6k -mtune=mpcore -mfloat-abi=hard -mtp=soft -mword-relocations -Wno-psabi -fomit-frame-pointer -ffunction-sections"),
++        cxxflags         => add("-fno-rtti -fno-exceptions -std=gnu++17"),
++        lib_cppflags     => "-DOPENSSL_USE_NODELETE -DNO_SYS_UN_H -DNO_SYSLOG -D__3DS__ -I$ENV{DEVKITPRO}/portlibs/3ds/include -I$ENV{DEVKITPRO}/libctru/include",
++        ex_libs          => add("-lctru -lm"),
++        bn_ops           => "BN_LLONG RC4_CHAR",
++        asm_arch         => 'armv4',
++    },
++
+     "linux-armv4" => {
+         ################################################################
+         # Note that -march is not among compiler options in linux-armv4
+diff --git a/crypto/bio/bio_addr.c b/crypto/bio/bio_addr.c
+index 20c2895b50..3433f1f080 100644
+--- a/crypto/bio/bio_addr.c
++++ b/crypto/bio/bio_addr.c
+@@ -31,6 +31,9 @@
+ #include <openssl/err.h>
+ #include <openssl/buffer.h>
+ #include "internal/thread_once.h"
++#if defined(__3DS__)
++#include "3ds/netdb.h"
++#endif
+
+ CRYPTO_RWLOCK *bio_lookup_lock;
+ static CRYPTO_ONCE bio_lookup_init = CRYPTO_ONCE_STATIC_INIT;
+diff --git a/crypto/bio/bio_sock2.c b/crypto/bio/bio_sock2.c
+index b746e40ba0..6ef62aeec0 100644
+--- a/crypto/bio/bio_sock2.c
++++ b/crypto/bio/bio_sock2.c
+@@ -15,6 +15,9 @@
+ #include "internal/ktls.h"
+
+ #include <openssl/err.h>
++#if defined(__3DS__)
++#include "3ds/socket.h"
++#endif
+
+ #ifndef OPENSSL_NO_SOCK
+ # ifdef SO_MAXCONN
+diff --git a/crypto/uid.c b/crypto/uid.c
+index 698127779f..6cc668ff26 100644
+--- a/crypto/uid.c
++++ b/crypto/uid.c
+@@ -10,7 +10,7 @@
+ #include <openssl/crypto.h>
+ #include <openssl/opensslconf.h>
+
+-#if defined(OPENSSL_SYS_WIN32) || defined(OPENSSL_SYS_VXWORKS) || defined(OPENSSL_SYS_UEFI)
++#if defined(OPENSSL_SYS_WIN32) || defined(OPENSSL_SYS_VXWORKS) || defined(OPENSSL_SYS_UEFI) || defined(__N3DS__)
+
+ int OPENSSL_issetugid(void)
+ {
+diff --git a/include/3ds/netdb.h b/include/3ds/netdb.h
+new file mode 100644
+index 0000000000..52a1b052a2
+--- /dev/null
++++ b/include/3ds/netdb.h
+@@ -0,0 +1,16 @@
++#pragma once
++
++#include <netdb.h>
++
++#if defined(__3DS__)
++
++// netdb 3DS doesn't define this struct
++struct servent
++{
++    char *s_name;
++    char **s_aliases;
++    uint16_t s_port;
++    char *s_proto;
++};
++
++#endif
+diff --git a/include/3ds/socket.h b/include/3ds/socket.h
+new file mode 100644
+index 0000000000..2609a594ac
+--- /dev/null
++++ b/include/3ds/socket.h
+@@ -0,0 +1,10 @@
++#pragma once
++
++# include <sys/socket.h>
++
++#if defined(__3DS__)
++
++// Suppliment missing definitions
++#define SO_KEEPALIVE 0x0008
++
++#endif
+diff --git a/include/internal/e_os.h b/include/internal/e_os.h
+index 7fdc389982..9550571cfb 100644
+--- a/include/internal/e_os.h
++++ b/include/internal/e_os.h
+@@ -339,6 +339,9 @@ static ossl_inline void ossl_sleep(unsigned long millis)
+ # if defined(__TANDEM) && defined(_GUARDIAN_TARGET)
+ #  include <strings.h>
+ #  include <netdb.h>
++#  if defined(__3DS__)
++#   include "3ds/netdb.h"
++#  endif
+ #  define getservbyname(name,proto)          getservbyname((char*)name,proto)
+ #  define gethostbyname(name)                gethostbyname((char*)name)
+ #  define ioctlsocket(a,b,c)	ioctl(a,b,c)
+diff --git a/include/internal/sockets.h b/include/internal/sockets.h
+index 1f5fefccff..ee5c44d125 100644
+--- a/include/internal/sockets.h
++++ b/include/internal/sockets.h
+@@ -34,6 +34,9 @@
+ #   include <sys/un.h>
+ #   include <tcp.h>
+ #   include <netdb.h>
++#   if defined(__3DS__)
++#    include "3ds/netdb.h"
++#   endif
+ #   include <arpa/inet.h>
+ #   include <netinet/tcp.h>
+ #  elif defined(_WIN32_WCE) && _WIN32_WCE<410
+@@ -71,6 +74,9 @@ struct servent *PASCAL getservbyname(const char *, const char *);
+ #  endif
+
+ #  include <netdb.h>
++#  if defined(__3DS__)
++#   include "3ds/netdb.h"
++#  endif
+ #  if defined(OPENSSL_SYS_VMS_NODECC)
+ #   include <socket.h>
+ #   include <in.h>
+@@ -118,7 +124,7 @@ struct servent *PASCAL getservbyname(const char *, const char *);
+  * bad versions.
+  */
+ # if !defined(OPENSSL_USE_IPV6)
+-#  if defined(AF_INET6)
++#  if defined(AF_INET6) && !(defined(__3DS__))
+ #   define OPENSSL_USE_IPV6 1
+ #  else
+ #   define OPENSSL_USE_IPV6 0
+diff --git a/providers/implementations/rands/seeding/rand_unix.c b/providers/implementations/rands/seeding/rand_unix.c
+index cd02a0236d..6c36bfd50a 100644
+--- a/providers/implementations/rands/seeding/rand_unix.c
++++ b/providers/implementations/rands/seeding/rand_unix.c
+@@ -188,6 +188,40 @@ void ossl_rand_pool_keep_random_devices_open(int keep)
+ {
+ }
+
++# elif defined __3DS__
++#include <time.h>
++
++size_t rand_pool_acquire_entropy(RAND_POOL *pool)
++{
++    int i;
++    size_t bytes_needed;
++    unsigned char v;
++
++    bytes_needed = rand_pool_bytes_needed(pool, 4 /*entropy_factor*/);
++
++    for (i = 0; i < bytes_needed; i++) {
++        srand(time(NULL));
++        v = rand() & 0xff;
++
++        rand_pool_add(pool, &v, sizeof(v), 2);
++    }
++
++    return rand_pool_entropy_available(pool);
++}
++
++int rand_pool_init(void)
++{
++    return 1;
++}
++
++void rand_pool_cleanup(void)
++{
++}
++
++void rand_pool_keep_random_devices_open(int keep)
++{
++}
++
+ # else
+
+ #  if defined(OPENSSL_RAND_SEED_EGD) && \
