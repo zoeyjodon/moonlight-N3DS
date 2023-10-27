@@ -56,14 +56,18 @@ static void connection_terminated(int errorCode) {
     break;
   }
 
-  #ifdef HAVE_SDL
-      SDL_Event event;
-      event.type = SDL_QUIT;
-      SDL_PushEvent(&event);
-  #endif
+  #ifndef __3DS__
+    #ifdef HAVE_SDL
+        SDL_Event event;
+        event.type = SDL_QUIT;
+        SDL_PushEvent(&event);
+    #endif
 
-  if (main_thread_id != 0)
-    pthread_kill(main_thread_id, SIGTERM);
+    if (main_thread_id != 0)
+      pthread_kill(main_thread_id, SIGTERM);
+  #else
+    state = STATE_STOP_STREAM;
+  #endif
 }
 
 static void connection_log_message(const char* format, ...) {

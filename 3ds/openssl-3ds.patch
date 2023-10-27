@@ -44,19 +44,41 @@ index 20c2895b50..3433f1f080 100644
  CRYPTO_RWLOCK *bio_lookup_lock;
  static CRYPTO_ONCE bio_lookup_init = CRYPTO_ONCE_STATIC_INIT;
 diff --git a/crypto/bio/bio_sock2.c b/crypto/bio/bio_sock2.c
-index b746e40ba0..6ef62aeec0 100644
+index b746e40ba0..5c75aca11b 100644
 --- a/crypto/bio/bio_sock2.c
 +++ b/crypto/bio/bio_sock2.c
-@@ -15,6 +15,9 @@
- #include "internal/ktls.h"
+@@ -88,6 +88,7 @@ int BIO_connect(int sock, const BIO_ADDR *addr, int options)
+     if (!BIO_socket_nbio(sock, (options & BIO_SOCK_NONBLOCK) != 0))
+         return 0;
 
- #include <openssl/err.h>
-+#if defined(__3DS__)
-+#include "3ds/socket.h"
++#if !defined(__3DS__)
+     if (options & BIO_SOCK_KEEPALIVE) {
+         if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
+                        (const void *)&on, sizeof(on)) != 0) {
+@@ -97,6 +98,7 @@ int BIO_connect(int sock, const BIO_ADDR *addr, int options)
+             return 0;
+         }
+     }
 +#endif
 
- #ifndef OPENSSL_NO_SOCK
- # ifdef SO_MAXCONN
+     if (options & BIO_SOCK_NODELAY) {
+         if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
+@@ -242,6 +244,7 @@ int BIO_listen(int sock, const BIO_ADDR *addr, int options)
+     if (!BIO_socket_nbio(sock, (options & BIO_SOCK_NONBLOCK) != 0))
+         return 0;
+
++#if !defined(__3DS__)
+     if (options & BIO_SOCK_KEEPALIVE) {
+         if (setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE,
+                        (const void *)&on, sizeof(on)) != 0) {
+@@ -251,6 +254,7 @@ int BIO_listen(int sock, const BIO_ADDR *addr, int options)
+             return 0;
+         }
+     }
++#endif
+
+     if (options & BIO_SOCK_NODELAY) {
+         if (setsockopt(sock, IPPROTO_TCP, TCP_NODELAY,
 diff --git a/crypto/uid.c b/crypto/uid.c
 index 698127779f..6cc668ff26 100644
 --- a/crypto/uid.c
@@ -90,22 +112,6 @@ index 0000000000..748e9ddabf
 +    uint16_t s_port;
 +    char *s_proto;
 +};
-+
-+#endif
-diff --git a/include/3ds/socket.h b/include/3ds/socket.h
-new file mode 100644
-index 0000000000..00ac2a5ae8
---- /dev/null
-+++ b/include/3ds/socket.h
-@@ -0,0 +1,10 @@
-+#pragma once
-+
-+# include <sys/socket.h>
-+
-+#if defined(__3DS__)
-+
-+// Suppliment missing definitions
-+#define SO_KEEPALIVE 0x0008
 +
 +#endif
 diff --git a/include/internal/e_os.h b/include/internal/e_os.h

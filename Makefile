@@ -259,15 +259,15 @@ $(OPENSSL_PATCH_BUILD):
 			no-threads no-shared no-asm no-ui-console no-unit-test no-tests no-buildtest-c++ no-external-tests no-autoload-config \
 			--with-rand-seed=os -static &&\
 		cd -
-	@make -C third_party/openssl build_generated
+	@make -C $(OPENSSL_DIR) build_generated
 
 #---------------------------------------------------------------------------------
 $(LIBSSL_3DS): $(OPENSSL_PATCH_BUILD)
-	@make -C third_party/openssl libssl.a -j$(nproc)
+	@make -C $(OPENSSL_DIR) libssl.a -j$(nproc)
 
 #---------------------------------------------------------------------------------
 $(LIBCRYPTO_3DS): $(OPENSSL_PATCH_BUILD)
-	@make -C third_party/openssl libcrypto.a -j$(nproc)
+	@make -C $(OPENSSL_DIR) libcrypto.a -j$(nproc)
 
 #---------------------------------------------------------------------------------
 $(GFXBUILD)/%.t3x	$(BUILD)/%.h	:	%.t3s
