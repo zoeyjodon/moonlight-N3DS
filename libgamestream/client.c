@@ -31,7 +31,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
+#ifdef __3DS__
+#include "uuid.h"
+#else
 #include <uuid/uuid.h>
+#endif
 #include <openssl/sha.h>
 #include <openssl/aes.h>
 #include <openssl/rand.h>
