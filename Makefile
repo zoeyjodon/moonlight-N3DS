@@ -42,7 +42,7 @@ SOURCES		:=	src \
 				libgamestream \
 				third_party/h264bitstream \
 				third_party/libuuid \
-				third_party/moonlight-common-c/enet/include/enet \
+				third_party/moonlight-common-c/enet \
 				third_party/moonlight-common-c/reedsolomon \
 				third_party/moonlight-common-c/src
 DATA		:=	data
@@ -52,7 +52,7 @@ INCLUDES	:=	3ds/src \
 				third_party/libuuid \
 				third_party/libexpat/expat/lib \
 				$(OPENSSL_DIR)/include \
-				third_party/moonlight-common-c/enet/include/enet \
+				third_party/moonlight-common-c/enet/include \
 				third_party/moonlight-common-c/reedsolomon \
 				third_party/moonlight-common-c/src
 ROMFS		:=	romfs
