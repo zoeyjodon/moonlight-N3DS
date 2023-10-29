@@ -12,10 +12,17 @@ include $(DEVKITARM)/3ds_rules
 #---------------------------------------------------------------------------------
 # Local library build info
 #---------------------------------------------------------------------------------
-OPENSSL_DIR		:=	third_party/openssl/
-OPENSSL_PATCH	:=	openssl-3ds.patch
-LIBSSL_3DS		:=	$(OPENSSL_DIR)libssl.a
-LIBCRYPTO_3DS	:=	$(OPENSSL_DIR)libcrypto.a
+ROOT_DIR	    :=  $(shell dirname $(realpath $(firstword $(MAKEFILE_LIST))))
+OPENSSL_DIR		:=	$(ROOT_DIR)/third_party/openssl
+LIBSSL_3DS		:=	$(OPENSSL_DIR)/libssl.a
+LIBCRYPTO_3DS	:=	$(OPENSSL_DIR)/libcrypto.a
+
+OPENSSL_ERR := openssl must be built before moonlight. `./3ds/build-openssl.sh`
+ifeq ("$(wildcard $(LIBSSL_3DS))","")
+$(error "$(OPENSSL_ERR)")
+else ifeq ("$(wildcard $(LIBCRYPTO_3DS))","")
+$(error "$(OPENSSL_ERR)")
+endif
 
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output
@@ -223,7 +230,7 @@ else
 endif
 
 #---------------------------------------------------------------------------------
-all: $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES) $(LIBSSL_3DS) $(LIBCRYPTO_3DS)
+all: $(BUILD) $(GFXBUILD) $(DEPSDIR) $(ROMFS_T3XFILES) $(T3XHFILES)
 	@$(MAKE) --no-print-directory -C $(BUILD) -f $(CURDIR)/Makefile
 	@$(BANNERTOOL) makebanner $(BANNER_IMAGE_ARG) "$(BANNER_IMAGE)" $(BANNER_AUDIO_ARG) "$(BANNER_AUDIO)" -o "$(BUILD)/banner.bnr"
 	@$(BANNERTOOL) makesmdh -s "$(APP_TITLE)" -l "$(APP_DESCRIPTION)" -p "$(APP_AUTHOR)" -i "$(APP_ICON)" -f "$(ICON_FLAGS)" -o "$(BUILD)/icon.icn"
@@ -246,28 +253,6 @@ endif
 clean:
 	@echo clean ...
 	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(GFXBUILD)
-
-#---------------------------------------------------------------------------------
-OPENSSL_PATCH_BUILD := $(OPENSSL_DIR)/$(OPENSSL_PATCH)
-
-$(OPENSSL_PATCH_BUILD):
-	@echo patching openssl ...
-	@cp 3ds/$(OPENSSL_PATCH) $(OPENSSL_DIR)/$(OPENSSL_PATCH)
-	@cd $(OPENSSL_DIR) && git apply $(OPENSSL_PATCH) && cd -
-	@cd $(OPENSSL_DIR) && \
-		./Configure 3ds \
-			no-threads no-shared no-asm no-ui-console no-unit-test no-tests no-buildtest-c++ no-external-tests no-autoload-config \
-			--with-rand-seed=os -static &&\
-		cd -
-	@make -C $(OPENSSL_DIR) build_generated
-
-#---------------------------------------------------------------------------------
-$(LIBSSL_3DS): $(OPENSSL_PATCH_BUILD)
-	@make -C $(OPENSSL_DIR) libssl.a -j$(nproc)
-
-#---------------------------------------------------------------------------------
-$(LIBCRYPTO_3DS): $(OPENSSL_PATCH_BUILD)
-	@make -C $(OPENSSL_DIR) libcrypto.a -j$(nproc)
 
 #---------------------------------------------------------------------------------
 $(GFXBUILD)/%.t3x	$(BUILD)/%.h	:	%.t3s
