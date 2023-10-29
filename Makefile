@@ -58,7 +58,7 @@ INCLUDES	:=	3ds/include \
 				third_party/h264bitstream \
 				third_party/libuuid \
 				third_party/libexpat/expat/lib \
-				$(OPENSSL_DIR)/include \
+				third_party/openssl/include \
 				third_party/moonlight-common-c/enet/include \
 				third_party/moonlight-common-c/reedsolomon \
 				third_party/moonlight-common-c/src
