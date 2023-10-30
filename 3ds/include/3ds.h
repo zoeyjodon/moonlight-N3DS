@@ -56,11 +56,3 @@ uint32_t n3ds_input_num_controllers(void);
 uint32_t n3ds_input_buttons_triggered(void); // only really used for the menu
 void start_input_thread(void);
 void stop_input_thread(void);
-
-// proc
-void n3ds_proc_init(void);
-void n3ds_proc_shutdown(void);
-void n3ds_proc_register_home_callback(void);
-int n3ds_proc_running(void);
-void n3ds_proc_stop_running(void);
-void n3ds_proc_set_home_enabled(int enabled);

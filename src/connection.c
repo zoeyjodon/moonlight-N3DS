@@ -23,6 +23,9 @@
 #include <stdarg.h>
 #include <signal.h>
 
+#ifdef __3DS__
+#include "3ds.h"
+#endif
 #ifdef HAVE_SDL
 #include <SDL.h>
 #endif
