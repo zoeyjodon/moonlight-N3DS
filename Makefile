@@ -62,6 +62,8 @@ INCLUDES	:=	3ds/include \
 				third_party/moonlight-common-c/enet/include \
 				third_party/moonlight-common-c/reedsolomon \
 				third_party/moonlight-common-c/src
+GRAPHICS	:=	gfx
+GFXBUILD	:=	$(BUILD)
 ROMFS		:=	romfs
 
 

@@ -32,7 +32,7 @@
 #ifndef __3DS__
 #include <dlfcn.h>
 #else
-#include "3ds.h"
+#include "n3ds.h"
 #endif
 
 typedef bool(*ImxInit)();

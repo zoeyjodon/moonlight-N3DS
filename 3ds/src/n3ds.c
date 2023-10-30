@@ -1,35 +1,20 @@
-#include "3ds.h"
+#include "n3ds.h"
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <malloc.h>
 #include <stdarg.h>
 
-#include <whb/proc.h>
-#include <whb/gfx.h>
-#include <coreinit/fastmutex.h>
-#include <gx2/mem.h>
-#include <gx2/draw.h>
-#include <gx2/registers.h>
-
-#include "shaders/display.h"
-
-#define ATTRIB_SIZE (8 * 2 * sizeof(float))
-#define ATTRIB_STRIDE (4 * sizeof(float))
-
-static GX2Sampler screenSamp;
-static WHBGfxShaderGroup shaderGroup;
-
-static float* tvAttribs;
-static float* drcAttribs;
-
-static float tvScreenSize[2];
-static float drcScreenSize[2];
+#include <3ds.h>
+#include <citro3d.h>
 
 uint32_t currentFrame;
 uint32_t nextFrame;
+C3D_RenderTarget util_draw_screen_top;
+C3D_RenderTarget util_draw_screen_top_3d;
+C3D_RenderTarget util_draw_screen_bottom;
 
-static OSFastMutex queueMutex;
+static LightLock queueMutex;
 static yuv_texture_t* queueMessages[MAX_QUEUEMESSAGES];
 static uint32_t queueWriteIndex;
 static uint32_t queueReadIndex;
@@ -38,61 +23,42 @@ void n3ds_stream_init(uint32_t width, uint32_t height)
 {
   currentFrame = nextFrame = 0;
 
-  OSFastMutex_Init(&queueMutex, "");
+  LightLock_Init(&queueMutex);
   queueReadIndex = queueWriteIndex = 0;
 
-  if (!WHBGfxLoadGFDShaderGroup(&shaderGroup, 0, display_gsh)) {
-    printf("Cannot load shader\n");
-  }
+	gfxInitDefault();
+	gfxSet3D(false);
+	gfxSetWide(true);
 
-  WHBGfxInitShaderAttribute(&shaderGroup, "in_pos", 0, 0, GX2_ATTRIB_FORMAT_FLOAT_32_32);
-  WHBGfxInitShaderAttribute(&shaderGroup, "in_texCoord", 0, 8, GX2_ATTRIB_FORMAT_FLOAT_32_32);
+	if(!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE * 1.5))
+	{
+    printf("[Error] C3D_Init() failed.\n");
+    C2D_Fini();
+    C3D_Fini();
+	}
 
-  if (!WHBGfxInitFetchShader(&shaderGroup)) {
-    printf("cannot init shader\n");
-  }
+	if(!C2D_Init(C2D_DEFAULT_MAX_OBJECTS * 1.5))
+	{
+		printf("[Error] C2D_Init() failed.\n");
+    C2D_Fini();
+    C3D_Fini();
+	}
 
-  GX2InitSampler(&screenSamp, GX2_TEX_CLAMP_MODE_WRAP, GX2_TEX_XY_FILTER_MODE_POINT);
+	C2D_Prepare();
+	util_draw_screen_top = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
+	util_draw_screen_bottom = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
+	util_draw_screen_top_3d = C2D_CreateScreenTarget(GFX_TOP, GFX_RIGHT);
+	if(!util_draw_screen_top || !util_draw_screen_bottom
+	|| !util_draw_screen_top_3d)
+	{
+		printf("[Error] C2D_CreateScreenTarget() failed.\n");
+    C2D_Fini();
+    C3D_Fini();
+	}
 
-  GX2ColorBuffer* cb = WHBGfxGetTVColourBuffer();
-  tvScreenSize[0] = 1.0f / (float) cb->surface.width;
-  tvScreenSize[1] = 1.0f / (float) cb->surface.height;
-
-  tvAttribs = memalign(GX2_VERTEX_BUFFER_ALIGNMENT, ATTRIB_SIZE);
-  int i = 0;
-
-  tvAttribs[i++] = 0.0f;                      tvAttribs[i++] = 0.0f;
-  tvAttribs[i++] = 0.0f;                      tvAttribs[i++] = 0.0f;
-
-  tvAttribs[i++] = (float) cb->surface.width; tvAttribs[i++] = 0.0f;
-  tvAttribs[i++] = 1.0f;                      tvAttribs[i++] = 0.0f;
-
-  tvAttribs[i++] = (float) cb->surface.width; tvAttribs[i++] = (float) cb->surface.height;
-  tvAttribs[i++] = 1.0f;                      tvAttribs[i++] = 1.0f;
-
-  tvAttribs[i++] = 0.0f;                      tvAttribs[i++] = (float) cb->surface.height;
-  tvAttribs[i++] = 0.0f;                      tvAttribs[i++] = 1.0f;
-  GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, tvAttribs, ATTRIB_SIZE);
-
-  cb = WHBGfxGetDRCColourBuffer();
-  drcScreenSize[0] = 1.0f / (float) cb->surface.width;
-  drcScreenSize[1] = 1.0f / (float) cb->surface.height;
-
-  drcAttribs = memalign(GX2_VERTEX_BUFFER_ALIGNMENT, ATTRIB_SIZE);
-  i = 0;
-
-  drcAttribs[i++] = 0.0f;                      drcAttribs[i++] = 0.0f;
-  drcAttribs[i++] = 0.0f;                      drcAttribs[i++] = 0.0f;
-
-  drcAttribs[i++] = (float) cb->surface.width; drcAttribs[i++] = 0.0f;
-  drcAttribs[i++] = 1.0f;                      drcAttribs[i++] = 0.0f;
-
-  drcAttribs[i++] = (float) cb->surface.width; drcAttribs[i++] = (float) cb->surface.height;
-  drcAttribs[i++] = 1.0f;                      drcAttribs[i++] = 1.0f;
-
-  drcAttribs[i++] = 0.0f;                      drcAttribs[i++] = (float) cb->surface.height;
-  drcAttribs[i++] = 0.0f;                      drcAttribs[i++] = 1.0f;
-  GX2Invalidate(GX2_INVALIDATE_MODE_CPU_ATTRIBUTE_BUFFER, drcAttribs, ATTRIB_SIZE);
+	C2D_TargetClear(util_draw_screen_top, C2D_Color32f(0, 0, 0, 0));
+	C2D_TargetClear(util_draw_screen_bottom, C2D_Color32f(0, 0, 0, 0));
+	C2D_TargetClear(util_draw_screen_top_3d, C2D_Color32f(0, 0, 0, 0));
 }
 
 void n3ds_stream_draw(void)
@@ -158,35 +124,35 @@ void n3ds_stream_fini(void)
 
 void* get_frame(void)
 {
-  OSFastMutex_Lock(&queueMutex);
+  LightLock_Lock(&queueMutex);
 
   uint32_t elements_in = queueWriteIndex - queueReadIndex;
   if(elements_in == 0) {
-    OSFastMutex_Unlock(&queueMutex);
+    LightLock_Unlock(&queueMutex);
     return NULL; // framequeue is empty
   }
 
   uint32_t i = (queueReadIndex)++ & (MAX_QUEUEMESSAGES - 1);
   yuv_texture_t* message = queueMessages[i];
 
-  OSFastMutex_Unlock(&queueMutex);
+  LightLock_Unlock(&queueMutex);
   return message;
 }
 
 void add_frame(yuv_texture_t* msg)
 {
-  OSFastMutex_Lock(&queueMutex);
+  LightLock_Lock(&queueMutex);
 
   uint32_t elements_in = queueWriteIndex - queueReadIndex;
   if (elements_in == MAX_QUEUEMESSAGES) {
-    OSFastMutex_Unlock(&queueMutex);
+    LightLock_Unlock(&queueMutex);
     return; // framequeue is full
   }
 
   uint32_t i = (queueWriteIndex)++ & (MAX_QUEUEMESSAGES - 1);
   queueMessages[i] = msg;
 
-  OSFastMutex_Unlock(&queueMutex);
+  LightLock_Unlock(&queueMutex);
 }
 
 void n3ds_setup_renderstate(void)

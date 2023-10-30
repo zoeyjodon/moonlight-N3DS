@@ -24,7 +24,7 @@
 #include <signal.h>
 
 #ifdef __3DS__
-#include "3ds.h"
+#include "n3ds.h"
 #endif
 #ifdef HAVE_SDL
 #include <SDL.h>

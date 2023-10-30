@@ -1,4 +1,4 @@
-#include "3ds.h"
+#include "n3ds.h"
 
 #include <malloc.h>
 

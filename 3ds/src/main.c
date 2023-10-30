@@ -39,7 +39,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 
-#include "3ds.h"
+#include "n3ds.h"
 #include <whb/gfx.h>
 #include <vpad/input.h>
 
