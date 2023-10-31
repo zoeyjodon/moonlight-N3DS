@@ -17,11 +17,15 @@ OPENSSL_DIR		:=	$(ROOT_DIR)/third_party/openssl
 LIBSSL_3DS		:=	$(OPENSSL_DIR)/libssl.a
 LIBCRYPTO_3DS	:=	$(OPENSSL_DIR)/libcrypto.a
 
-OPENSSL_ERR := openssl must be built before moonlight. `./3ds/build-openssl.sh`
-ifeq ("$(wildcard $(LIBSSL_3DS))","")
-$(error "$(OPENSSL_ERR)")
-else ifeq ("$(wildcard $(LIBCRYPTO_3DS))","")
-$(error "$(OPENSSL_ERR)")
+ifeq ("$(wildcard $(LIBCRYPTO_3DS))","")
+$(error "openssl must be built before moonlight. `./3ds/build-openssl.sh")
+endif
+
+SDL2_DIR			:=	$(ROOT_DIR)/third_party/SDL
+LIBSDL2_3DS			:=	$(SDL2_DIR)/build/libSDL2.a
+LIBSDL2_MAIN_3DS	:=	$(SDL2_DIR)/build/libSDL2main.a
+ifeq ("$(wildcard $(LIBSDL2_3DS))","")
+$(error "SDL must be built before moonlight. `./3ds/build-sdl2.sh")
 endif
 
 #---------------------------------------------------------------------------------
@@ -45,7 +49,6 @@ endif
 TARGET		:=	moonlight
 BUILD		:=	build
 SOURCES		:=	src \
-				3ds/src \
 				libgamestream \
 				third_party/h264bitstream \
 				third_party/libuuid \
@@ -53,12 +56,14 @@ SOURCES		:=	src \
 				third_party/moonlight-common-c/reedsolomon \
 				third_party/moonlight-common-c/src
 DATA		:=	data
-INCLUDES	:=	3ds/include \
+INCLUDES	:=	src \
 				libgamestream \
 				third_party/h264bitstream \
 				third_party/libuuid \
 				third_party/libexpat/expat/lib \
 				third_party/openssl/include \
+				third_party/SDL/include \
+				third_party/SDL/build/include \
 				third_party/moonlight-common-c/enet/include \
 				third_party/moonlight-common-c/reedsolomon \
 				third_party/moonlight-common-c/src
@@ -96,20 +101,20 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations -Wno-psabi \
 			-DVERSION_MAJOR=$(VERSION_MAJOR) -DVERSION_MINOR=$(VERSION_MINOR) -DVERSION_MICRO=$(VERSION_MICRO) \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -D__3DS__
+CFLAGS	+=	$(INCLUDE) -D__3DS__ -DHAVE_SDL
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=	-lfreetype -lpng -lbz2 -lcurl -lSDL -lopus -lcitro2d -lcitro3d -lctru -lz -lm
+LIBS	:=	-lfreetype -lpng -lbz2 -lcurl -lopus -lcitro2d -lcitro3d -lctru -lz -lm
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:= $(PORTLIBS) $(CTRULIB)
+LIBDIRS	:= $(PORTLIBS) $(CTRULIB) $(DEVKITPRO)/extra_lib
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional
@@ -178,7 +183,7 @@ export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
 			-I$(CURDIR)/$(BUILD)
 
-export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) -L$(LIBSSL_3DS) -L$(LIBCRYPTO_3DS)
+export LIBPATHS	:=	$(foreach dir,$(LIBDIRS),-L$(dir)/lib) -L$(LIBSSL_3DS) -L$(LIBCRYPTO_3DS) -L$(LIBSDL2_3DS) -L$(LIBSDL2_MAIN_3DS)
 
 export _3DSXDEPS	:=	$(if $(NO_SMDH),,$(OUTPUT).smdh)
 

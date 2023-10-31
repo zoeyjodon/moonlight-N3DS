@@ -23,11 +23,12 @@
 #include <stdarg.h>
 #include <signal.h>
 
-#ifdef __3DS__
-#include "n3ds.h"
-#endif
 #ifdef HAVE_SDL
+#ifdef __3DS__
+#include <SDL2/SDL.h>
+#else
 #include <SDL.h>
+#endif
 #endif
 
 pthread_t main_thread_id = 0;
@@ -59,18 +60,14 @@ static void connection_terminated(int errorCode) {
     break;
   }
 
-  #ifndef __3DS__
-    #ifdef HAVE_SDL
-        SDL_Event event;
-        event.type = SDL_QUIT;
-        SDL_PushEvent(&event);
-    #endif
-
-    if (main_thread_id != 0)
-      pthread_kill(main_thread_id, SIGTERM);
-  #else
-    state = STATE_STOP_STREAM;
+  #ifdef HAVE_SDL
+      SDL_Event event;
+      event.type = SDL_QUIT;
+      SDL_PushEvent(&event);
   #endif
+
+  if (main_thread_id != 0)
+    pthread_kill(main_thread_id, SIGTERM);
 }
 
 static void connection_log_message(const char* format, ...) {

@@ -47,11 +47,6 @@ RUN dkp-pacman -S 3ds-dev --noconfirm && \
                     3ds-jansson \
                     3ds-libjpeg-turbo \
                     3ds-libpng \
-                    3ds-sdl \
-                    3ds-sdl_gfx \
-                    3ds-sdl_image \
-                    3ds-sdl_mixer \
-                    3ds-sdl_ttf \
                     3ds-tinyxml2 \
                     3ds-freetype \
                     3ds-curl \

@@ -39,14 +39,14 @@ void sdl_init(int width, int height, bool fullscreen) {
   sdlCurrentFrame = sdlNextFrame = 0;
 
   if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-    fprintf(stderr, "Could not initialize SDL - %s\n", SDL_GetError());
+    printf("Could not initialize SDL - %s\n", SDL_GetError());
     exit(1);
   }
 
   fullscreen_flags = fullscreen?SDL_WINDOW_FULLSCREEN:0;
   window = SDL_CreateWindow("Moonlight", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | fullscreen_flags);
   if(!window) {
-    fprintf(stderr, "SDL: could not create window - exiting\n");
+    printf("SDL: could not create window - exiting\n");
     exit(1);
   }
 
@@ -58,13 +58,13 @@ void sdl_init(int width, int height, bool fullscreen) {
 
   bmp = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STREAMING, width, height);
   if (!bmp) {
-    fprintf(stderr, "SDL: could not create texture - exiting\n");
+    printf("SDL: could not create texture - exiting\n");
     exit(1);
   }
 
   mutex = SDL_CreateMutex();
   if (!mutex) {
-    fprintf(stderr, "Couldn't create mutex\n");
+    printf("Couldn't create mutex\n");
     exit(1);
   }
 }
@@ -107,7 +107,7 @@ void sdl_loop() {
             SDL_RenderCopy(renderer, bmp, NULL, NULL);
             SDL_RenderPresent(renderer);
           } else
-            fprintf(stderr, "Couldn't lock mutex\n");
+            printf("Couldn't lock mutex\n");
         }
       }
     }

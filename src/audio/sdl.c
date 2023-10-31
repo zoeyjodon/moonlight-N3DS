@@ -19,8 +19,13 @@
 
 #include "audio.h"
 
+#ifdef __3DS__
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
+#else
 #include <SDL.h>
 #include <SDL_audio.h>
+#endif
 
 #include <stdio.h>
 #include <opus_multistream.h>
