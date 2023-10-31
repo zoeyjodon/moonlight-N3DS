@@ -17,11 +17,11 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __3DS__
-
 #include "loop.h"
 #include "connection.h"
+#ifndef __3DS__
 #include "configuration.h"
+#endif
 #include "platform.h"
 #include "config.h"
 #include "sdl.h"
@@ -173,8 +173,10 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
 static void help() {
   #ifdef GIT_BRANCH
   printf("Moonlight Embedded %d.%d.%d-%s-%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, GIT_BRANCH, GIT_COMMIT_HASH);
-  #else
+  #elif !defined(__3DS__)
   printf("Moonlight Embedded %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
+  #else
+  printf("Moonlight Embedded 3DS\n");
   #endif
   printf("Usage: moonlight [action] (options) [host]\n");
   printf("       moonlight [configfile]\n");
@@ -244,8 +246,10 @@ int main(int argc, char* argv[]) {
   if (config.action == NULL || strcmp("help", config.action) == 0)
     help();
 
+#ifndef __3DS__
   if (config.debug_level > 0)
     printf("Moonlight Embedded %d.%d.%d (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, COMPILE_OPTIONS);
+#endif
 
   if (strcmp("map", config.action) == 0) {
     if (config.inputsCount != 1) {
@@ -420,6 +424,6 @@ int main(int argc, char* argv[]) {
     gs_quit_app(&server);
   } else
     fprintf(stderr, "%s is not a valid action\n", config.action);
-}
 
-#endif
+  return 0;
+}
