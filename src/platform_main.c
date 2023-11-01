@@ -19,7 +19,7 @@
 
 #define _GNU_SOURCE
 
-#include "platform.h"
+#include "platform_main.h"
 
 #include "util.h"
 
@@ -37,7 +37,7 @@ typedef bool(*ImxInit)();
 
 enum platform platform_check(char* name) {
   #ifdef __3DS__
-    return N3DS;
+    return SDL;
   #endif
 
   bool std = strcmp(name, "auto") == 0;
@@ -150,10 +150,6 @@ void platform_stop(enum platform system) {
 
 DECODER_RENDERER_CALLBACKS* platform_get_video(enum platform system) {
   switch (system) {
-  #ifdef __3DS__
-  case N3DS:
-    return &decoder_callbacks_sdl;
-  #endif
   #ifdef HAVE_X11
   case X11:
     return &decoder_callbacks_x11;
@@ -198,10 +194,6 @@ DECODER_RENDERER_CALLBACKS* platform_get_video(enum platform system) {
 
 AUDIO_RENDERER_CALLBACKS* platform_get_audio(enum platform system, char* audio_device) {
   switch (system) {
-  #ifdef __3DS__
-  case N3DS:
-    return &audio_callbacks_sdl;
-  #endif
   case FAKE:
       return NULL;
   #ifdef HAVE_SDL
@@ -251,8 +243,6 @@ bool platform_prefers_codec(enum platform system, enum codecs codec) {
 
 char* platform_name(enum platform system) {
   switch(system) {
-  case N3DS:
-    return "Nintendo *New* 3DS";
   case PI:
     return "Raspberry Pi (Broadcom)";
   case MMAL:

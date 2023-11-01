@@ -19,7 +19,7 @@
 
 #ifdef HAVE_SDL
 
-#include "sdl.h"
+#include "sdl_main.h"
 #include "input/sdl.h"
 
 #include <Limelight.h>

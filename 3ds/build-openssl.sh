@@ -24,4 +24,10 @@ fi
 
 make libssl.a libcrypto.a
 
+# Install the library files
+cp libssl.a $DEVKITPRO/portlibs/3ds/lib/
+cp libcrypto.a $DEVKITPRO/portlibs/3ds/lib/
+cp -r include/openssl $DEVKITPRO/portlibs/3ds/include/openssl/
+cp -r include/crypto $DEVKITPRO/portlibs/3ds/include/crypto/
+
 cd -

@@ -21,7 +21,7 @@
 
 #include "loop.h"
 
-#include "connection.h"
+#include "connection_main.h"
 
 #include <sys/stat.h>
 #include <sys/signalfd.h>

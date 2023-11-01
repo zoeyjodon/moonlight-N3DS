@@ -17,7 +17,7 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "sdl.h"
+#include "sdl_main.h"
 #include "../sdl.h"
 
 #include <Limelight.h>

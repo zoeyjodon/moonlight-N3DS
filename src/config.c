@@ -17,7 +17,7 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "platform.h"
+#include "platform_main.h"
 #include "config.h"
 #include "util.h"
 

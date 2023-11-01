@@ -18,13 +18,13 @@
  */
 
 #include "loop.h"
-#include "connection.h"
+#include "connection_main.h"
 #ifndef __3DS__
 #include "configuration.h"
 #endif
-#include "platform.h"
+#include "platform_main.h"
 #include "config.h"
-#include "sdl.h"
+#include "sdl_main.h"
 
 #include "audio/audio.h"
 #include "video/video.h"
