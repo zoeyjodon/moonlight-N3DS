@@ -94,13 +94,13 @@ CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lSDL2main -lSDL2 -lfreetype -lpng -lbz2 -lopus -lexpat -lm -lcurl -lssl -lcrypto -lmbedtls -lmbedx509 -lmbedcrypto -lz -lctru
+LIBS	:= -lswresample -lavformat -lswscale -lavcodec -lavutil -lcitro2d -lcitro3d -lSDL2main -lSDL2 -lfreetype -lpng -lbz2 -lopus -lexpat -lm -lcurl -lssl -lcrypto -lmbedtls -lmbedx509 -lmbedcrypto -lz -lctru
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
 # include and lib
 #---------------------------------------------------------------------------------
-LIBDIRS	:= $(PORTLIBS) $(CTRULIB)
+LIBDIRS	:= $(PORTLIBS) $(CTRULIB) $(DEVKITPRO)/extra_lib
 
 #---------------------------------------------------------------------------------
 # no real need to edit anything past this point unless you need to add additional

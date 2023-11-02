@@ -73,6 +73,7 @@ COPY . /moonlight-N3DS
 RUN source /etc/profile.d/devkit-env.sh && /moonlight-N3DS/3ds/build-expat.sh
 RUN source /etc/profile.d/devkit-env.sh && /moonlight-N3DS/3ds/build-openssl.sh
 RUN source /etc/profile.d/devkit-env.sh && /moonlight-N3DS/3ds/build-sdl2.sh
+RUN source /etc/profile.d/devkit-env.sh && /moonlight-N3DS/3ds/build-ffmpeg.sh
 RUN rm -rf /moonlight-N3DS
 
 CMD ["/bin/bash"]
