@@ -67,4 +67,12 @@ RUN wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.4
     unzip makerom-v0.18.4-ubuntu_x86_64.zip -d /usr/local/bin && \
     chmod +x /usr/local/bin/makerom
 
+# Install custom third party libraries
+COPY . /moonlight-N3DS
+
+RUN source /etc/profile.d/devkit-env.sh && /moonlight-N3DS/3ds/build-expat.sh
+RUN source /etc/profile.d/devkit-env.sh && /moonlight-N3DS/3ds/build-openssl.sh
+RUN source /etc/profile.d/devkit-env.sh && /moonlight-N3DS/3ds/build-sdl2.sh
+RUN rm -rf /moonlight-N3DS
+
 CMD ["/bin/bash"]
