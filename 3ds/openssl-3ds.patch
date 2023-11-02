@@ -206,34 +206,34 @@ index cd02a0236d..6c36bfd50a 100644
 +# elif defined __3DS__
 +#include <time.h>
 +
-+size_t rand_pool_acquire_entropy(RAND_POOL *pool)
++size_t ossl_pool_acquire_entropy(RAND_POOL *pool)
 +{
 +    int i;
 +    size_t bytes_needed;
 +    unsigned char v;
 +
-+    bytes_needed = rand_pool_bytes_needed(pool, 4 /*entropy_factor*/);
++    bytes_needed = ossl_rand_pool_bytes_needed(pool, 4 /*entropy_factor*/);
 +
 +    for (i = 0; i < bytes_needed; i++) {
 +        srand(time(NULL));
 +        v = rand() & 0xff;
 +
-+        rand_pool_add(pool, &v, sizeof(v), 2);
++        ossl_rand_pool_add(pool, &v, sizeof(v), 2);
 +    }
 +
-+    return rand_pool_entropy_available(pool);
++    return ossl_rand_pool_entropy_available(pool);
 +}
 +
-+int rand_pool_init(void)
++int ossl_rand_pool_init(void)
 +{
 +    return 1;
 +}
 +
-+void rand_pool_cleanup(void)
++void ossl_rand_pool_cleanup(void)
 +{
 +}
 +
-+void rand_pool_keep_random_devices_open(int keep)
++void ossl_rand_pool_keep_random_devices_open(int keep)
 +{
 +}
 +
