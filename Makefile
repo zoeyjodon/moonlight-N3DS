@@ -55,7 +55,7 @@ INCLUDES	:=	src \
 				third_party/moonlight-common-c/src
 GRAPHICS	:=	gfx
 GFXBUILD	:=	$(BUILD)
-ROMFS		:=	romfs
+# ROMFS		:=	romfs
 
 
 # 3dsx
@@ -68,7 +68,7 @@ ICON		:=	3ds/res/ic_moonlight.png
 BANNER_AUDIO	:=	3ds/res/banner.wav
 BANNER_IMAGE	:=	3ds/res/banner.png
 RSF_PATH		:=	3ds/res/app.rsf
-UNIQUE_ID		:=	0x4000009C03600
+UNIQUE_ID		:=	0x3600
 PRODUCT_CODE	:=	CTR-P-MOONLIGHT
 ICON_FLAGS		:=	nosavebackups,visible
 
