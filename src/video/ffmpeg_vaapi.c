@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include <va/va.h>
 #include <va/va_x11.h>
 #include <libavcodec/avcodec.h>
@@ -74,3 +76,5 @@ void vaapi_queue(AVFrame* dec_frame, Window win, int width, int height) {
   AVVAAPIDeviceContext *va_ctx = device->hwctx;
   vaPutSurface(va_ctx->display, surface, win, 0, 0, dec_frame->width, dec_frame->height, 0, 0, width, height, NULL, 0, 0);
 }
+
+#endif

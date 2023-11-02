@@ -18,6 +18,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include <Limelight.h>
 
 #include <sys/utsname.h>
@@ -217,3 +219,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_aml = {
   // We may delay in aml_submit_decode_unit() for a while, so we can't set CAPABILITY_DIRECT_SUBMIT
   .capabilities = CAPABILITY_REFERENCE_FRAME_INVALIDATION_HEVC,
 };
+
+#endif

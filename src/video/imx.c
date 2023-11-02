@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include "imx_vpu.h"
 
 #include "../loop.h"
@@ -270,3 +272,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_imx = {
   .submitDecodeUnit = decoder_renderer_submit_decode_unit,
   .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_SLICES_PER_FRAME(2),
 };
+
+#endif

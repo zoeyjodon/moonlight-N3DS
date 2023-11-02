@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include "x11.h"
 #include "keyboard.h"
 
@@ -169,3 +171,5 @@ void x11_input_init(Display* x11_display, Window x11_window) {
 
   loop_add_fd(ConnectionNumber(display), x11_handler, POLLIN | POLLERR | POLLHUP);
 }
+
+#endif

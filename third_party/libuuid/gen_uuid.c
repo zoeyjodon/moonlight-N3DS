@@ -167,6 +167,30 @@ static int getuid (void)
 }
 #endif
 
+#ifdef __3DS__
+
+uid_t getuid(void)
+{
+	return 0;
+}
+
+gid_t getegid(void)
+{
+	return 0;
+}
+
+uid_t geteuid(void)
+{
+	return 0;
+}
+
+gid_t getgid(void)
+{
+	return 0;
+}
+
+#endif
+
 /*
  * Get the ethernet hardware address, if we can find it...
  *

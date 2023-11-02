@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include "evdev.h"
 
 #include "keyboard.h"
@@ -1112,3 +1114,5 @@ void evdev_rumble(unsigned short controller_id, unsigned short low_freq_motor, u
   write(device->fd, (const void*) &event, sizeof(event));
   device->haptic_effect_id = effect.id;
 }
+
+#endif

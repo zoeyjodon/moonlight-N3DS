@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include "audio.h"
 
 #include <stdio.h>
@@ -136,3 +138,5 @@ AUDIO_RENDERER_CALLBACKS audio_callbacks_alsa = {
   .decodeAndPlaySample = alsa_renderer_decode_and_play_sample,
   .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_SUPPORTS_ARBITRARY_AUDIO_DURATION,
 };
+
+#endif

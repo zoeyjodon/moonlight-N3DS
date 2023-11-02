@@ -20,7 +20,7 @@
 #include "video.h"
 #include "ffmpeg.h"
 
-#include "../sdl.h"
+#include "../sdl_main.h"
 #include "../util.h"
 
 #ifdef __3DS__

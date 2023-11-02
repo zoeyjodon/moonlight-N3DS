@@ -93,7 +93,9 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
   }
 
   int gamepads = 0;
+#ifndef __3DS__
   gamepads += evdev_gamepads;
+#endif
   #ifdef HAVE_SDL
   gamepads += sdl_gamepads;
   #endif
@@ -141,12 +143,17 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
     connection_debug = true;
   }
 
+#ifndef __3DS__
   if (IS_EMBEDDED(system))
     loop_init();
+#endif
 
   platform_start(system);
   LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, platform_get_video(system), platform_get_audio(system, config->audio_device), NULL, drFlags, config->audio_device, 0);
 
+#ifdef __3DS__
+  sdl_loop();
+#else
   if (IS_EMBEDDED(system)) {
     if (!config->viewonly)
       evdev_start();
@@ -158,6 +165,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
   else if (system == SDL)
     sdl_loop();
   #endif
+#endif
 
   LiStopConnection();
 
@@ -249,7 +257,6 @@ int main(int argc, char* argv[]) {
 #ifndef __3DS__
   if (config.debug_level > 0)
     printf("Moonlight Embedded %d.%d.%d (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, COMPILE_OPTIONS);
-#endif
 
   if (strcmp("map", config.action) == 0) {
     if (config.inputsCount != 1) {
@@ -261,8 +268,12 @@ int main(int argc, char* argv[]) {
     evdev_map(config.inputs[0]);
     exit(0);
   }
+#endif
 
   if (config.address == NULL) {
+#ifdef __3DS__
+    printf("Specify an IP address in the configuration file.\n");
+#else
     config.address = malloc(MAX_ADDRESS_SIZE);
     if (config.address == NULL) {
       perror("Not enough memory");
@@ -275,6 +286,7 @@ int main(int argc, char* argv[]) {
       fprintf(stderr, "Autodiscovery failed. Specify an IP address next time.\n");
       exit(-1);
     }
+#endif
   }
 
   char host_config_file[128];
@@ -368,6 +380,7 @@ int main(int argc, char* argv[]) {
           mappings = map;
         }
 
+#ifndef __3DS__
         for (int i=0;i<config.inputsCount;i++) {
           if (config.debug_level > 0)
             printf("Adding input device %s...\n", config.inputs[i]);
@@ -378,6 +391,7 @@ int main(int argc, char* argv[]) {
         udev_init(!inputAdded, mappings, config.debug_level > 0, config.rotate);
         evdev_init(config.mouse_emulation);
         rumble_handler = evdev_rumble;
+#endif
         #ifdef HAVE_LIBCEC
         cec_init();
         #endif /* HAVE_LIBCEC */

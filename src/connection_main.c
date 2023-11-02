@@ -66,8 +66,10 @@ static void connection_terminated(int errorCode) {
       SDL_PushEvent(&event);
   #endif
 
+#ifndef __3DS__
   if (main_thread_id != 0)
     pthread_kill(main_thread_id, SIGTERM);
+#endif
 }
 
 static void connection_log_message(const char* format, ...) {

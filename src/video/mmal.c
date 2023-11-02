@@ -29,6 +29,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Video decode on Raspberry Pi using MMAL
 // Based upon example code from the Raspberry Pi
 
+#ifndef __3DS__
+
 #include "video.h"
 
 #include <Limelight.h>
@@ -291,3 +293,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_mmal = {
   .submitDecodeUnit = decoder_renderer_submit_decode_unit,
   .capabilities = CAPABILITY_DIRECT_SUBMIT,
 };
+
+#endif
