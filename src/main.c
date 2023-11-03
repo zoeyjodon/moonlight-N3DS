@@ -59,6 +59,11 @@
 #include <openssl/rand.h>
 
 #ifdef __3DS__
+#define SOC_ALIGN       0x1000
+#define SOC_BUFFERSIZE  0x100000
+
+static u32 *SOC_buffer = NULL;
+
 static void n3ds_exit_handler(void)
 {
   // Allow users to decide when to exit
@@ -75,18 +80,25 @@ static void n3ds_exit_handler(void)
 		if (kDown & KEY_START)
 			break;
 	}
+
+	irrstExit();
+	socExit();
+	free(SOC_buffer);
+	romfsExit();
+	aptExit();
 	gfxExit();
+	acExit();
 }
 
 char * prompt_for_action()
 {
   int action_idx = 0;
   const char* actions[5];
-  actions[0] = "pair  ";
+  actions[0] = "pair";
   actions[1] = "unpair";
   actions[2] = "stream";
-  actions[3] = "list  ";
-  actions[4] = "quit  ";
+  actions[3] = "list";
+  actions[4] = "quit";
   int last_action_idx = -1;
 	while (1)
 	{
@@ -326,9 +338,27 @@ static void pair_check(PSERVER_DATA server) {
 
 int main(int argc, char* argv[]) {
 #ifdef __3DS__
+	acInit();
 	gfxInitDefault();
-	consoleInit(GFX_TOP, NULL);
+	consoleInit(GFX_BOTTOM, NULL);
   atexit(n3ds_exit_handler);
+
+	aptSetSleepAllowed(true);
+	aptInit();
+	Result romfs_rc = romfsInit();
+	if (R_FAILED(romfs_rc))
+  {
+    printf("romfsInit: %08lX\n", romfs_rc);
+  }
+	else printf("romfs Init Successful!\n");
+
+	SOC_buffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
+	u32 soc_rc = socInit(SOC_buffer, SOC_BUFFERSIZE);
+	if (soc_rc != 0)
+	{
+    printf("socInit: %08lX\n", soc_rc);
+    exit(1);
+	}
 #endif
 
   CONFIGURATION config;
