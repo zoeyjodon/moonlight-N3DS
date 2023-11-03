@@ -21,6 +21,8 @@
 #include "connection_main.h"
 #ifndef __3DS__
 #include "configuration.h"
+#else
+#include <3ds.h>
 #endif
 #include "platform_main.h"
 #include "config.h"
@@ -55,6 +57,81 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <openssl/rand.h>
+
+#ifdef __3DS__
+static void n3ds_exit_handler(void)
+{
+  // Allow users to decide when to exit
+  printf("\nPress HOME or START to quit\n");
+	while (1)
+	{
+		gfxSwapBuffers();
+		gfxFlushBuffers();
+		gspWaitForVBlank();
+
+		hidScanInput();
+		u32 kDown = hidKeysDown();
+
+		if (kDown & KEY_START)
+			break;
+	}
+	gfxExit();
+}
+
+char * prompt_for_action()
+{
+  int action_idx = 0;
+  const char* actions[5];
+  actions[0] = "pair  ";
+  actions[1] = "unpair";
+  actions[2] = "stream";
+  actions[3] = "list  ";
+  actions[4] = "quit  ";
+  int last_action_idx = -1;
+	while (1)
+	{
+    if (action_idx != last_action_idx)
+    {
+      consoleClear();
+      printf("Press up/down to select an action\n");
+      printf("Press A to confirm\n");
+
+      for (int i = 0; i < 5; i++) {
+        if (i == action_idx) {
+          printf(">%.6s\n", actions[i]);
+        }
+        else {
+          printf("%.6s \n", actions[i]);
+        }
+      }
+      last_action_idx = action_idx;
+    }
+
+		gfxSwapBuffers();
+		gfxFlushBuffers();
+		gspWaitForVBlank();
+
+		hidScanInput();
+		u32 kDown = hidKeysDown();
+
+		if (kDown & KEY_A)
+			break;
+
+		if (kDown & KEY_DOWN) {
+			if (action_idx < 4) {
+				action_idx++;
+			}
+		} else if (kDown & KEY_UP) {
+			if (action_idx > 0) {
+				action_idx--;
+			}
+		}
+	}
+
+  consoleClear();
+  return actions[action_idx];
+}
+#endif
 
 static void applist(PSERVER_DATA server) {
   PAPP_LIST list = NULL;
@@ -248,11 +325,21 @@ static void pair_check(PSERVER_DATA server) {
 }
 
 int main(int argc, char* argv[]) {
+#ifdef __3DS__
+	gfxInitDefault();
+	consoleInit(GFX_TOP, NULL);
+  atexit(n3ds_exit_handler);
+#endif
+
   CONFIGURATION config;
   config_parse(argc, argv, &config);
 
+#ifndef __3DS__
   if (config.action == NULL || strcmp("help", config.action) == 0)
     help();
+#else
+    config.action = prompt_for_action();
+#endif
 
 #ifndef __3DS__
   if (config.debug_level > 0)
