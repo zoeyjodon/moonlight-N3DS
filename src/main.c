@@ -62,7 +62,7 @@
 static void n3ds_exit_handler(void)
 {
   // Allow users to decide when to exit
-  printf("\nPress HOME or START to quit\n");
+  printf("\nPress START to quit\n");
 	while (1)
 	{
 		gfxSwapBuffers();
