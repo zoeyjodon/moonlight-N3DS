@@ -64,6 +64,9 @@
 
 static u32 *SOC_buffer = NULL;
 
+PrintConsole topScreen;
+PrintConsole bottomScreen;
+
 static void n3ds_exit_handler(void)
 {
   // Allow users to decide when to exit
@@ -244,6 +247,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
   }
 
 #ifdef __3DS__
+	consoleSelect(&bottomScreen);
   sdl_loop();
 #else
   if (IS_EMBEDDED(system)) {
@@ -343,7 +347,9 @@ int main(int argc, char* argv[]) {
 #ifdef __3DS__
 	acInit();
 	gfxInitDefault();
-	consoleInit(GFX_TOP, NULL);
+	consoleInit(GFX_TOP, &topScreen);
+	consoleInit(GFX_BOTTOM, &bottomScreen);
+	consoleSelect(&topScreen);
   atexit(n3ds_exit_handler);
 
   osSetSpeedupEnable(true);
