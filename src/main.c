@@ -60,14 +60,14 @@
 
 #ifdef __3DS__
 #define SOC_ALIGN       0x1000
-#define SOC_BUFFERSIZE  0x100000
+#define SOC_BUFFERSIZE  0x1000000
 
 static u32 *SOC_buffer = NULL;
 
 static void n3ds_exit_handler(void)
 {
   // Allow users to decide when to exit
-  printf("\nPress START to quit\n");
+  printf("\nPress any button to quit\n");
 	while (1)
 	{
 		gfxSwapBuffers();
@@ -77,7 +77,7 @@ static void n3ds_exit_handler(void)
 		hidScanInput();
 		u32 kDown = hidKeysDown();
 
-		if (kDown & KEY_START)
+		if (kDown)
 			break;
 	}
 
@@ -110,10 +110,10 @@ char * prompt_for_action()
 
       for (int i = 0; i < 5; i++) {
         if (i == action_idx) {
-          printf(">%.6s\n", actions[i]);
+          printf(">%s\n", actions[i]);
         }
         else {
-          printf("%.6s \n", actions[i]);
+          printf("%s\n", actions[i]);
         }
       }
       last_action_idx = action_idx;
@@ -238,7 +238,10 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
 #endif
 
   platform_start(system);
-  LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, platform_get_video(system), platform_get_audio(system, config->audio_device), NULL, drFlags, config->audio_device, 0);
+  int status = LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, platform_get_video(system), platform_get_audio(system, config->audio_device), NULL, drFlags, config->audio_device, 0);
+  if (status != 0) {
+    exit(status);
+  }
 
 #ifdef __3DS__
   sdl_loop();
@@ -340,9 +343,10 @@ int main(int argc, char* argv[]) {
 #ifdef __3DS__
 	acInit();
 	gfxInitDefault();
-	consoleInit(GFX_BOTTOM, NULL);
+	consoleInit(GFX_TOP, NULL);
   atexit(n3ds_exit_handler);
 
+  osSetSpeedupEnable(true);
 	aptSetSleepAllowed(true);
 	aptInit();
 	Result romfs_rc = romfsInit();
@@ -358,6 +362,17 @@ int main(int argc, char* argv[]) {
 	{
     printf("socInit: %08lX\n", soc_rc);
     exit(1);
+	}
+
+	aptSetSleepAllowed (false);
+
+	Result res;
+	if (R_FAILED (res = NDMU_EnterExclusiveState (NDM_EXCLUSIVE_STATE_INFRASTRUCTURE)))
+		printf ("Failed to enter exclusive NDM state: 0x%lx\n", res);
+	else if (R_FAILED (res = NDMU_LockState ()))
+	{
+		printf ("Failed to lock NDM: 0x%lx\n", res);
+		NDMU_LeaveExclusiveState ();
 	}
 #endif
 
@@ -537,7 +552,7 @@ int main(int argc, char* argv[]) {
     } else {
       sprintf(pin, "%d%d%d%d", (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10);
     }
-    printf("Please enter the following PIN on the target PC: %s\n", pin);
+    printf("Please enter the following PIN on the target PC:\n%s\n", pin);
     fflush(stdout);
     if (gs_pair(&server, &pin[0]) != GS_OK) {
       fprintf(stderr, "Failed to pair to server: %s\n", gs_error);

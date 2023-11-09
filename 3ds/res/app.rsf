@@ -28,7 +28,7 @@ AccessControlInfo:
 
   # Minimum Required Kernel Version (below is for 4.5.0)
   ReleaseKernelMajor            : "02"
-  ReleaseKernelMinor            : "33"
+  ReleaseKernelMinor            : "44"
 
   # ExtData
   UseExtSaveData                : false # enables ExtData
@@ -90,7 +90,7 @@ AccessControlInfo:
 
   # New3DS Exclusive Process Settings
   SystemModeExt                 : 124MB # Legacy(Default)/124MB/178MB  Legacy:Use Old3DS SystemMode
-  CpuSpeed                      : 804MHz # 268MHz(Default)/804MHz
+  CpuSpeed                      : 804MHz # 256MHz(Default)/804MHz
   EnableL2Cache                 : true # false(default)/true
   CanAccessCore2                : true
 
@@ -233,8 +233,10 @@ AccessControlInfo:
    - ir:u
    - ir:USER
    - mic:u
+   - mcu::HWC
+   - mvd:STD
    - ndm:u
-   - news:s
+   - news:u
    - nwm::EXT
    - nwm::UDS
    - ptm:sysm
@@ -243,7 +245,6 @@ AccessControlInfo:
    - soc:U
    - ssl:C
    - y2r:u
-   - mvd:STD
 
 
 SystemControlInfo:
@@ -277,6 +278,7 @@ SystemControlInfo:
     ir: 0x0004013000003302
     mcu: 0x0004013000001f02
     mic: 0x0004013000002002
+    mvd: 0x0004013020004102
     ndm: 0x0004013000002b02
     news: 0x0004013000003502
     #nfc: 0x0004013000004002
@@ -290,4 +292,3 @@ SystemControlInfo:
     socket: 0x0004013000002e02
     spi: 0x0004013000002302
     ssl: 0x0004013000002f02
-    mvd: 0x0004013020004102

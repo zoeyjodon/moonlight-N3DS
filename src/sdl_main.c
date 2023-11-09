@@ -44,7 +44,7 @@ void sdl_init(int width, int height, bool fullscreen) {
   }
 
   fullscreen_flags = fullscreen?SDL_WINDOW_FULLSCREEN:0;
-  window = SDL_CreateWindow("Moonlight", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | fullscreen_flags);
+  window = SDL_CreateWindow("Moonlight", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, fullscreen_flags);
   if(!window) {
     printf("SDL: could not create window - exiting\n");
     exit(1);
@@ -52,8 +52,12 @@ void sdl_init(int width, int height, bool fullscreen) {
 
   renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
   if (!renderer) {
-    printf("SDL_CreateRenderer failed: %s\n", SDL_GetError());
-    exit(1);
+    printf("Failed to initialize a hardware accelerated renderer: %s\n", SDL_GetError());
+    renderer = SDL_CreateRenderer(window, -1, 0);
+    if (!renderer) {
+      printf("SDL_CreateRenderer failed: %s\n", SDL_GetError());
+      exit(1);
+    }
   }
 
   bmp = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STREAMING, width, height);

@@ -9,6 +9,7 @@
             "command": [
                 "docker",
                 "run",
+                "--network=host",
                 "--rm",
                 "-it",
                 "-v",
