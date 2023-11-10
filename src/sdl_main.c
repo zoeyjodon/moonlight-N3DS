@@ -44,7 +44,11 @@ void sdl_init(int width, int height, bool fullscreen) {
   }
 
   fullscreen_flags = fullscreen?SDL_WINDOW_FULLSCREEN:0;
-  window = SDL_CreateWindow("Moonlight", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, fullscreen_flags);
+  int window_flags = fullscreen_flags;
+#ifndef __3DS__
+  window_flags |= SDL_WINDOW_OPENGL;
+#endif
+  window = SDL_CreateWindow("Moonlight", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, window_flags);
   if(!window) {
     printf("SDL: could not create window - exiting\n");
     exit(1);

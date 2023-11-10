@@ -146,6 +146,45 @@ char * prompt_for_action()
   consoleClear();
   return actions[action_idx];
 }
+
+void init_3ds()
+{
+	acInit();
+	gfxInitDefault();
+	consoleInit(GFX_TOP, &topScreen);
+	consoleInit(GFX_BOTTOM, &bottomScreen);
+	consoleSelect(&topScreen);
+  atexit(n3ds_exit_handler);
+
+  osSetSpeedupEnable(true);
+	aptSetSleepAllowed(true);
+	aptInit();
+	Result romfs_rc = romfsInit();
+	if (R_FAILED(romfs_rc))
+  {
+    printf("romfsInit: %08lX\n", romfs_rc);
+  }
+	else printf("romfs Init Successful!\n");
+
+	SOC_buffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
+	u32 soc_rc = socInit(SOC_buffer, SOC_BUFFERSIZE);
+	if (soc_rc != 0)
+	{
+    printf("socInit: %08lX\n", soc_rc);
+    exit(1);
+	}
+
+	aptSetSleepAllowed (false);
+
+	Result res;
+	if (R_FAILED (res = NDMU_EnterExclusiveState (NDM_EXCLUSIVE_STATE_INFRASTRUCTURE)))
+		printf ("Failed to enter exclusive NDM state: 0x%lx\n", res);
+	else if (R_FAILED (res = NDMU_LockState ()))
+	{
+		printf ("Failed to lock NDM: 0x%lx\n", res);
+		NDMU_LeaveExclusiveState ();
+	}
+}
 #endif
 
 static void applist(PSERVER_DATA server) {
@@ -345,41 +384,7 @@ static void pair_check(PSERVER_DATA server) {
 
 int main(int argc, char* argv[]) {
 #ifdef __3DS__
-	acInit();
-	gfxInitDefault();
-	consoleInit(GFX_TOP, &topScreen);
-	consoleInit(GFX_BOTTOM, &bottomScreen);
-	consoleSelect(&topScreen);
-  atexit(n3ds_exit_handler);
-
-  osSetSpeedupEnable(true);
-	aptSetSleepAllowed(true);
-	aptInit();
-	Result romfs_rc = romfsInit();
-	if (R_FAILED(romfs_rc))
-  {
-    printf("romfsInit: %08lX\n", romfs_rc);
-  }
-	else printf("romfs Init Successful!\n");
-
-	SOC_buffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
-	u32 soc_rc = socInit(SOC_buffer, SOC_BUFFERSIZE);
-	if (soc_rc != 0)
-	{
-    printf("socInit: %08lX\n", soc_rc);
-    exit(1);
-	}
-
-	aptSetSleepAllowed (false);
-
-	Result res;
-	if (R_FAILED (res = NDMU_EnterExclusiveState (NDM_EXCLUSIVE_STATE_INFRASTRUCTURE)))
-		printf ("Failed to enter exclusive NDM state: 0x%lx\n", res);
-	else if (R_FAILED (res = NDMU_LockState ()))
-	{
-		printf ("Failed to lock NDM: 0x%lx\n", res);
-		NDMU_LeaveExclusiveState ();
-	}
+  init_3ds();
 #endif
 
   CONFIGURATION config;
@@ -388,11 +393,7 @@ int main(int argc, char* argv[]) {
 #ifndef __3DS__
   if (config.action == NULL || strcmp("help", config.action) == 0)
     help();
-#else
-    config.action = prompt_for_action();
-#endif
 
-#ifndef __3DS__
   if (config.debug_level > 0)
     printf("Moonlight Embedded %d.%d.%d (%s)\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, COMPILE_OPTIONS);
 
@@ -406,12 +407,8 @@ int main(int argc, char* argv[]) {
     evdev_map(config.inputs[0]);
     exit(0);
   }
-#endif
 
   if (config.address == NULL) {
-#ifdef __3DS__
-    printf("Specify an IP address in the configuration file.\n");
-#else
     config.address = malloc(MAX_ADDRESS_SIZE);
     if (config.address == NULL) {
       perror("Not enough memory");
@@ -424,8 +421,14 @@ int main(int argc, char* argv[]) {
       fprintf(stderr, "Autodiscovery failed. Specify an IP address next time.\n");
       exit(-1);
     }
-#endif
   }
+#else
+  if (config.address == NULL) {
+    printf("Specify an IP address in the configuration file.\n");
+    exit(1);
+  }
+  config.action = prompt_for_action();
+#endif
 
   char host_config_file[128];
   sprintf(host_config_file, "hosts/%s.conf", config.address);
@@ -501,6 +504,7 @@ int main(int argc, char* argv[]) {
       if (config.debug_level > 0)
         printf("View-only mode enabled, no input will be sent to the host computer\n");
     } else {
+#ifndef __3DS__
       if (IS_EMBEDDED(system)) {
         char* mapping_env = getenv("SDL_GAMECONTROLLERCONFIG");
         if (config.mapping == NULL && mapping_env == NULL) {
@@ -518,7 +522,6 @@ int main(int argc, char* argv[]) {
           mappings = map;
         }
 
-#ifndef __3DS__
         for (int i=0;i<config.inputsCount;i++) {
           if (config.debug_level > 0)
             printf("Adding input device %s...\n", config.inputs[i]);
@@ -529,7 +532,6 @@ int main(int argc, char* argv[]) {
         udev_init(!inputAdded, mappings, config.debug_level > 0, config.rotate);
         evdev_init(config.mouse_emulation);
         rumble_handler = evdev_rumble;
-#endif
         #ifdef HAVE_LIBCEC
         cec_init();
         #endif /* HAVE_LIBCEC */
@@ -548,6 +550,13 @@ int main(int argc, char* argv[]) {
         set_controller_led_handler = sdlinput_set_controller_led;
       }
       #endif
+#else
+      sdlinput_init(config.mapping);
+      rumble_handler = sdlinput_rumble;
+      rumble_triggers_handler = sdlinput_rumble_triggers;
+      set_motion_event_state_handler = sdlinput_set_motion_event_state;
+      set_controller_led_handler = sdlinput_set_controller_led;
+#endif
     }
 
     stream(&server, &config, system);
