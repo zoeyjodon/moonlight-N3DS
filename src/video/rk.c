@@ -18,6 +18,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include "video.h"
 #include "../util.h"
 
@@ -730,3 +732,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_rk = {
   .submitDecodeUnit = rk_submit_decode_unit,
   .capabilities = CAPABILITY_DIRECT_SUBMIT,
 };
+
+#endif

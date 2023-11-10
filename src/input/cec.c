@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include <Limelight.h>
 
 #include <ceccloader.h>
@@ -109,3 +111,5 @@ void cec_init() {
 
   g_iface.set_active_source(g_iface.connection, g_config.deviceTypes.types[0]);
 }
+
+#endif

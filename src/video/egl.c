@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include "egl.h"
 
 #include <Limelight.h>
@@ -196,3 +198,5 @@ void egl_destroy() {
   eglDestroyContext(display, context);
   eglTerminate(display);
 }
+
+#endif

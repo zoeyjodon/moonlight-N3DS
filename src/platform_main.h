@@ -19,7 +19,9 @@
 
 #include <Limelight.h>
 
+#ifndef __3DS__
 #include <dlfcn.h>
+#endif
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>

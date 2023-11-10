@@ -19,11 +19,17 @@
 
 #include "audio.h"
 
+#ifdef __3DS__
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_audio.h>
+#include <opus/opus_multistream.h>
+#else
 #include <SDL.h>
 #include <SDL_audio.h>
+#include <opus_multistream.h>
+#endif
 
 #include <stdio.h>
-#include <opus_multistream.h>
 
 static OpusMSDecoder* decoder;
 static short* pcmBuffer;

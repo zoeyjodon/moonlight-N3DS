@@ -18,7 +18,7 @@
  */
 
 #include "sdl.h"
-#include "../sdl.h"
+#include "../sdl_main.h"
 
 #include <Limelight.h>
 

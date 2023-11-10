@@ -20,11 +20,16 @@
 #include "video.h"
 #include "ffmpeg.h"
 
-#include "../sdl.h"
+#include "../sdl_main.h"
 #include "../util.h"
 
+#ifdef __3DS__
+#include <SDL2/SDL.h>
+#include <SDL2/SDL_thread.h>
+#else
 #include <SDL.h>
 #include <SDL_thread.h>
+#endif
 
 #include <unistd.h>
 #include <stdbool.h>

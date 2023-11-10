@@ -28,6 +28,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 // Video decode on Raspberry Pi using OpenMAX IL though the ilcient helper library
 // Based upon video decode example from the Raspberry Pi firmware
 
+#ifndef __3DS__
+
 #include "video.h"
 
 #include <Limelight.h>
@@ -275,3 +277,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_pi = {
   .submitDecodeUnit = decoder_renderer_submit_decode_unit,
   .capabilities = CAPABILITY_DIRECT_SUBMIT,
 };
+
+#endif

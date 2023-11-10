@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include "video.h"
 #include "egl.h"
 #include "ffmpeg.h"
@@ -204,3 +206,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_x11_vaapi = {
   .submitDecodeUnit = x11_submit_decode_unit,
   .capabilities = CAPABILITY_DIRECT_SUBMIT,
 };
+
+#endif

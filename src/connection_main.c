@@ -17,14 +17,18 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "connection.h"
+#include "connection_main.h"
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <signal.h>
 
 #ifdef HAVE_SDL
+#ifdef __3DS__
+#include <SDL2/SDL.h>
+#else
 #include <SDL.h>
+#endif
 #endif
 
 pthread_t main_thread_id = 0;
@@ -62,8 +66,10 @@ static void connection_terminated(int errorCode) {
       SDL_PushEvent(&event);
   #endif
 
+#ifndef __3DS__
   if (main_thread_id != 0)
     pthread_kill(main_thread_id, SIGTERM);
+#endif
 }
 
 static void connection_log_message(const char* format, ...) {

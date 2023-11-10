@@ -17,7 +17,7 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "platform.h"
+#include "platform_main.h"
 #include "config.h"
 #include "util.h"
 
@@ -31,6 +31,13 @@
 #include <getopt.h>
 #include <pwd.h>
 #include <sys/types.h>
+#include <limits.h>
+
+#ifdef __3DS__
+extern ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
+
+#define MOONLIGHT_3DS_PATH "/3ds/moonlight"
+#endif
 
 #define MOONLIGHT_PATH "/moonlight"
 #define USER_PATHS "."
@@ -79,6 +86,7 @@ static struct option long_options[] = {
   {0, 0, 0, 0},
 };
 
+#ifndef __3DS__
 char* get_path(char* name, char* extra_data_dirs) {
   const char *xdg_config_dir = getenv("XDG_CONFIG_DIR");
   const char *home_dir = getenv("HOME");
@@ -129,6 +137,7 @@ char* get_path(char* name, char* extra_data_dirs) {
   free(path);
   return NULL;
 }
+#endif
 
 static void parse_argument(int c, char* value, PCONFIGURATION config) {
   switch (c) {
@@ -169,12 +178,14 @@ static void parse_argument(int c, char* value, PCONFIGURATION config) {
     inputAdded = true;
     break;
   case 'k':
+#ifndef __3DS__
     config->mapping = get_path(value, getenv("XDG_DATA_DIRS"));
     if (config->mapping == NULL) {
       fprintf(stderr, "Unable to open custom mapping file: %s\n", value);
       exit(-1);
     }
     break;
+#endif
   case 'l':
     config->sops = false;
     break;
@@ -282,7 +293,7 @@ bool config_file_parse(char* filename, PCONFIGURATION config) {
   size_t len = 0;
 
   while (getline(&line, &len, fd) != -1) {
-    char *key = NULL, *value = NULL;
+  char *key = NULL, *value = NULL;
     if (sscanf(line, "%ms = %m[^\n]", &key, &value) == 2) {
       if (strcmp(key, "address") == 0) {
         config->address = value;
@@ -363,6 +374,11 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   }
 #endif
 
+#ifdef __3DS__
+  config->stream.encryptionFlags = ENCFLG_NONE;
+  config->stream.fps = 30;
+#endif
+
   config->debug_level = 0;
   config->platform = "auto";
   config->app = "Steam";
@@ -378,15 +394,23 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->viewonly = false;
   config->mouse_emulation = true;
   config->rotate = 0;
-  config->codec = CODEC_UNSPECIFIED;
   config->hdr = false;
   config->pin = 0;
   config->port = 47989;
 
   config->inputsCount = 0;
+
+#ifndef __3DS__
+  config->codec = CODEC_UNSPECIFIED;
   config->mapping = get_path("gamecontrollerdb.txt", getenv("XDG_DATA_DIRS"));
   config->key_dir[0] = 0;
+#else
+  config->codec = CODEC_H264;
+  config->mapping = (char*) "";
+  strcpy(config->key_dir, MOONLIGHT_3DS_PATH "/keys");
+#endif
 
+#ifndef __3DS__
   char* config_file = get_path("moonlight.conf", "/etc");
   if (config_file)
     config_file_parse(config_file, config);
@@ -417,6 +441,11 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
     else
       sprintf(config->key_dir, "%s" DEFAULT_CACHE_DIR MOONLIGHT_PATH, pw->pw_dir);
   }
+#else
+  char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
+  if (config_file)
+    config_file_parse(config_file, config);
+#endif
 
   if (config->stream.bitrate == -1) {
     // This table prefers 16:10 resolutions because they are

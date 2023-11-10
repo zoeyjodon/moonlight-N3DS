@@ -18,7 +18,11 @@
  */
 
 #include <stdbool.h>
+#ifdef __3DS__
+#include <SDL2/SDL.h>
+#else
 #include <SDL.h>
+#endif
 
 extern int sdl_gamepads;
 

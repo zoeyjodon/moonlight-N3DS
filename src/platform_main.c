@@ -19,7 +19,7 @@
 
 #define _GNU_SOURCE
 
-#include "platform.h"
+#include "platform_main.h"
 
 #include "util.h"
 
@@ -29,11 +29,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#ifndef __3DS__
 #include <dlfcn.h>
+#endif
 
 typedef bool(*ImxInit)();
 
 enum platform platform_check(char* name) {
+  #ifdef __3DS__
+    return SDL;
+  #endif
+
   bool std = strcmp(name, "auto") == 0;
   #ifdef HAVE_IMX
   if (std || strcmp(name, "imx") == 0) {
@@ -119,6 +125,8 @@ void platform_start(enum platform system) {
     write_bool("/sys/class/graphics/fb0/blank", true);
     break;
   #endif
+  default:
+    break;
   }
 }
 
@@ -135,6 +143,8 @@ void platform_stop(enum platform system) {
     write_bool("/sys/class/graphics/fb0/blank", false);
     break;
   #endif
+  default:
+    break;
   }
 }
 
@@ -176,6 +186,8 @@ DECODER_RENDERER_CALLBACKS* platform_get_video(enum platform system) {
   case RK:
     return (PDECODER_RENDERER_CALLBACKS) dlsym(RTLD_DEFAULT, "decoder_callbacks_rk");
   #endif
+  default:
+    break;
   }
   return NULL;
 }
@@ -202,6 +214,7 @@ AUDIO_RENDERER_CALLBACKS* platform_get_audio(enum platform system, char* audio_d
     #ifdef HAVE_ALSA
     return &audio_callbacks_alsa;
     #endif
+    break;
   }
   return NULL;
 }
@@ -222,6 +235,8 @@ bool platform_prefers_codec(enum platform system, enum codecs codec) {
     return false;
   case CODEC_AV1:
     return false;
+  default:
+    break;
   }
   return false;
 }

@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifndef __3DS__
+
 #include "imx_vpu.h"
 
 #include <stdio.h>
@@ -254,3 +256,5 @@ void vpu_cleanup() {
   IOFreePhyMem(&mem_desc);
   vpu_UnInit();
 }
+
+#endif
