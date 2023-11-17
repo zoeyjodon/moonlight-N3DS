@@ -364,6 +364,8 @@ int main(int argc, char* argv[]) {
     config.action = prompt_for_action(&server);
     if (strcmp("change server", config.action) == 0) {
       config.address = prompt_for_address();
+      // Skip the additional prompt for a button press
+      continue;
     } else if (strcmp("stream", config.action) == 0) {
       enum platform system = platform_check(config.platform);
       if (config.debug_level > 0)
