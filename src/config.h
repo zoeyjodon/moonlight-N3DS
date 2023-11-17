@@ -23,6 +23,15 @@
 
 #define MAX_INPUTS 6
 
+#ifdef __3DS__
+#define MOONLIGHT_3DS_PATH "/3ds/moonlight"
+#define MAX_PAIRED_DEVICES 30
+
+void add_pair_address(char* address);
+void remove_pair_address(char* address);
+void list_paired_addresses(char** address_list, int* address_count);
+#endif
+
 typedef struct _CONFIGURATION {
   STREAM_CONFIGURATION stream;
   int debug_level;

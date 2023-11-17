@@ -54,14 +54,10 @@ void sdl_init(int width, int height, bool fullscreen) {
     exit(1);
   }
 
-  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  renderer = SDL_CreateRenderer(window, -1, 0);
   if (!renderer) {
-    printf("Failed to initialize a hardware accelerated renderer: %s\n", SDL_GetError());
-    renderer = SDL_CreateRenderer(window, -1, 0);
-    if (!renderer) {
-      printf("SDL_CreateRenderer failed: %s\n", SDL_GetError());
-      exit(1);
-    }
+    printf("SDL_CreateRenderer failed: %s\n", SDL_GetError());
+    exit(1);
   }
 
   bmp = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STREAMING, width, height);
@@ -82,7 +78,7 @@ void sdl_loop() {
 
   SDL_SetRelativeMouseMode(SDL_TRUE);
 
-  while(!done && SDL_WaitEvent(&event)) {
+  while(aptMainLoop() && !done && SDL_WaitEvent(&event)) {
     switch (sdlinput_handle_event(window, &event)) {
     case SDL_QUIT_APPLICATION:
       done = true;
@@ -122,7 +118,6 @@ void sdl_loop() {
   }
 
   SDL_DestroyWindow(window);
-  SDL_Quit();
 }
 
 #endif /* HAVE_SDL */
