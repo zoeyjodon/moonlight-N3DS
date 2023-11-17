@@ -23,7 +23,6 @@
 
 #define MAX_INPUTS 6
 
-
 typedef struct _CONFIGURATION {
   STREAM_CONFIGURATION stream;
   int debug_level;

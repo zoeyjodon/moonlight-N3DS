@@ -30,9 +30,6 @@
 #include "audio/audio.h"
 #include "video/video.h"
 
-#include "input/mapping.h"
-#include "input/evdev.h"
-#include "input/udev.h"
 #include "input/sdl.h"
 
 #include <3ds.h>

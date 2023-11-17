@@ -35,8 +35,9 @@
 
 #ifdef __3DS__
 #include "n3ds/pair_record.h"
-#endif
 
+extern ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
+#endif
 
 #define MOONLIGHT_PATH "/moonlight"
 #define USER_PATHS "."

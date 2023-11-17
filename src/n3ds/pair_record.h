@@ -17,8 +17,6 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <stdbool.h>
-
 #define MOONLIGHT_3DS_PATH "/3ds/moonlight"
 #define MAX_PAIRED_DEVICES 30
 
