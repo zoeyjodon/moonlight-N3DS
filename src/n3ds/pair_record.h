@@ -17,41 +17,11 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include <Limelight.h>
-
 #include <stdbool.h>
 
-#define MAX_INPUTS 6
+#define MOONLIGHT_3DS_PATH "/3ds/moonlight"
+#define MAX_PAIRED_DEVICES 30
 
-
-typedef struct _CONFIGURATION {
-  STREAM_CONFIGURATION stream;
-  int debug_level;
-  char* app;
-  char* action;
-  char* address;
-  char* mapping;
-  char* platform;
-  char* audio_device;
-  char* config_file;
-  char key_dir[4096];
-  bool sops;
-  bool localaudio;
-  bool fullscreen;
-  int rotate;
-  bool unsupported;
-  bool quitappafter;
-  bool viewonly;
-  bool mouse_emulation;
-  char* inputs[MAX_INPUTS];
-  int inputsCount;
-  enum codecs codec;
-  bool hdr;
-  int pin;
-  unsigned short port;
-} CONFIGURATION, *PCONFIGURATION;
-
-extern bool inputAdded;
-
-bool config_file_parse(char* filename, PCONFIGURATION config);
-void config_parse(int argc, char* argv[], PCONFIGURATION config);
+void add_pair_address(char* address);
+void remove_pair_address(char* address);
+void list_paired_addresses(char** address_list, int* address_count);

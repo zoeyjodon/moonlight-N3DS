@@ -34,78 +34,9 @@
 #include <limits.h>
 
 #ifdef __3DS__
-extern ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
-
-void add_pair_address(char* address) {
-  // Prevent duplicates
-  char* address_list[MAX_PAIRED_DEVICES];
-  int address_count = 0;
-  list_paired_addresses(address_list, &address_count);
-
-  bool exists = false;
-  for (int i = 0; i < address_count; i++) {
-    if (strcmp(address_list[i], address) == 0) {
-      exists = true;
-    }
-    free(address_list[i]);
-  }
-  if (exists) {
-    return;
-  }
-
-  char* address_file = (char*) MOONLIGHT_3DS_PATH "/paired";
-  FILE* fd = fopen(address_file, "a");
-  if (fd == NULL) {
-    fprintf(stderr, "Can't open pair file: %s\n", address_file);
-    return;
-  }
-  fprintf(fd, "%s\n", address);
-  fclose(fd);
-}
-
-void remove_pair_address(char* address) {
-  char* address_list[MAX_PAIRED_DEVICES];
-  int address_count = 0;
-  list_paired_addresses(address_list, &address_count);
-
-  char* address_file = (char*) MOONLIGHT_3DS_PATH "/paired";
-  remove(address_file);
-
-  FILE* fd = fopen(address_file, "w");
-  for (int i = 0; i < address_count; i++) {
-    if (strcmp(address_list[i], address) != 0) {
-      fprintf(fd, "%s\n", address);
-    }
-    free(address_list[i]);
-  }
-  fclose(fd);
-}
-
-void list_paired_addresses(char** address_list, int* address_count) {
-  char* address_file = (char*) MOONLIGHT_3DS_PATH "/paired";
-  FILE* fd = fopen(address_file, "r");
-  if (fd == NULL) {
-    fprintf(stderr, "Can't open pair file: %s\n", address_file);
-    return;
-  }
-
-  int idx = 0;
-  char *line = NULL;
-  size_t len = 0;
-  while (getline(&line, &len, fd) != -1) {
-    if (strlen(line) < 2) {
-      continue;
-    }
-    address_list[idx] = malloc(strlen(line));
-    strcpy(address_list[idx], line);
-    address_list[idx][strlen(line) - 1] = '\0';
-    idx++;
-  }
-  *address_count = idx;
-
-  fclose(fd);
-}
+#include "n3ds/pair_record.h"
 #endif
+
 
 #define MOONLIGHT_PATH "/moonlight"
 #define USER_PATHS "."
