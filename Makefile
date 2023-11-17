@@ -36,6 +36,7 @@ include $(DEVKITARM)/3ds_rules
 TARGET		:=	moonlight
 BUILD		:=	build
 SOURCES		:=	src \
+				src/n3ds/ \
 				src/audio/ \
 				src/input/ \
 				src/video/ \

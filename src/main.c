@@ -17,16 +17,14 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "loop.h"
-#include "connection_main.h"
 #ifndef __3DS__
+
+#include "loop.h"
+#include "connection.h"
 #include "configuration.h"
-#else
-#include <3ds.h>
-#endif
-#include "platform_main.h"
+#include "platform.h"
 #include "config.h"
-#include "sdl_main.h"
+#include "sdl.h"
 
 #include "audio/audio.h"
 #include "video/video.h"
@@ -57,135 +55,6 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <openssl/rand.h>
-
-#ifdef __3DS__
-#define SOC_ALIGN       0x1000
-#define SOC_BUFFERSIZE  0x1000000
-
-static u32 *SOC_buffer = NULL;
-
-PrintConsole topScreen;
-PrintConsole bottomScreen;
-
-static void n3ds_exit_handler(void)
-{
-  // Allow users to decide when to exit
-  printf("\nPress any button to quit\n");
-	while (1)
-	{
-		gfxSwapBuffers();
-		gfxFlushBuffers();
-		gspWaitForVBlank();
-
-		hidScanInput();
-		u32 kDown = hidKeysDown();
-
-		if (kDown)
-			break;
-	}
-
-	irrstExit();
-	socExit();
-	free(SOC_buffer);
-	romfsExit();
-	aptExit();
-	gfxExit();
-	acExit();
-}
-
-char * prompt_for_action()
-{
-  int action_idx = 0;
-  const char* actions[5];
-  actions[0] = "pair";
-  actions[1] = "unpair";
-  actions[2] = "stream";
-  actions[3] = "list";
-  actions[4] = "quit";
-  int last_action_idx = -1;
-	while (1)
-	{
-    if (action_idx != last_action_idx)
-    {
-      consoleClear();
-      printf("Press up/down to select an action\n");
-      printf("Press A to confirm\n");
-
-      for (int i = 0; i < 5; i++) {
-        if (i == action_idx) {
-          printf(">%s\n", actions[i]);
-        }
-        else {
-          printf("%s\n", actions[i]);
-        }
-      }
-      last_action_idx = action_idx;
-    }
-
-		gfxSwapBuffers();
-		gfxFlushBuffers();
-		gspWaitForVBlank();
-
-		hidScanInput();
-		u32 kDown = hidKeysDown();
-
-		if (kDown & KEY_A)
-			break;
-
-		if (kDown & KEY_DOWN) {
-			if (action_idx < 4) {
-				action_idx++;
-			}
-		} else if (kDown & KEY_UP) {
-			if (action_idx > 0) {
-				action_idx--;
-			}
-		}
-	}
-
-  consoleClear();
-  return actions[action_idx];
-}
-
-void init_3ds()
-{
-	acInit();
-	gfxInitDefault();
-	consoleInit(GFX_TOP, &topScreen);
-	consoleInit(GFX_BOTTOM, &bottomScreen);
-	consoleSelect(&topScreen);
-  atexit(n3ds_exit_handler);
-
-  osSetSpeedupEnable(true);
-	aptSetSleepAllowed(true);
-	aptInit();
-	Result romfs_rc = romfsInit();
-	if (R_FAILED(romfs_rc))
-  {
-    printf("romfsInit: %08lX\n", romfs_rc);
-  }
-	else printf("romfs Init Successful!\n");
-
-	SOC_buffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
-	u32 soc_rc = socInit(SOC_buffer, SOC_BUFFERSIZE);
-	if (soc_rc != 0)
-	{
-    printf("socInit: %08lX\n", soc_rc);
-    exit(1);
-	}
-
-	aptSetSleepAllowed (false);
-
-	Result res;
-	if (R_FAILED (res = NDMU_EnterExclusiveState (NDM_EXCLUSIVE_STATE_INFRASTRUCTURE)))
-		printf ("Failed to enter exclusive NDM state: 0x%lx\n", res);
-	else if (R_FAILED (res = NDMU_LockState ()))
-	{
-		printf ("Failed to lock NDM: 0x%lx\n", res);
-		NDMU_LeaveExclusiveState ();
-	}
-}
-#endif
 
 static void applist(PSERVER_DATA server) {
   PAPP_LIST list = NULL;
@@ -224,9 +93,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
   }
 
   int gamepads = 0;
-#ifndef __3DS__
   gamepads += evdev_gamepads;
-#endif
   #ifdef HAVE_SDL
   gamepads += sdl_gamepads;
   #endif
@@ -274,21 +141,12 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
     connection_debug = true;
   }
 
-#ifndef __3DS__
   if (IS_EMBEDDED(system))
     loop_init();
-#endif
 
   platform_start(system);
-  int status = LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, platform_get_video(system), platform_get_audio(system, config->audio_device), NULL, drFlags, config->audio_device, 0);
-  if (status != 0) {
-    exit(status);
-  }
+  LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, platform_get_video(system), platform_get_audio(system, config->audio_device), NULL, drFlags, config->audio_device, 0);
 
-#ifdef __3DS__
-	consoleSelect(&bottomScreen);
-  sdl_loop();
-#else
   if (IS_EMBEDDED(system)) {
     if (!config->viewonly)
       evdev_start();
@@ -300,7 +158,6 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
   else if (system == SDL)
     sdl_loop();
   #endif
-#endif
 
   LiStopConnection();
 
@@ -316,10 +173,8 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
 static void help() {
   #ifdef GIT_BRANCH
   printf("Moonlight Embedded %d.%d.%d-%s-%s\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH, GIT_BRANCH, GIT_COMMIT_HASH);
-  #elif !defined(__3DS__)
-  printf("Moonlight Embedded %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
   #else
-  printf("Moonlight Embedded 3DS\n");
+  printf("Moonlight Embedded %d.%d.%d\n", VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH);
   #endif
   printf("Usage: moonlight [action] (options) [host]\n");
   printf("       moonlight [configfile]\n");
@@ -383,14 +238,9 @@ static void pair_check(PSERVER_DATA server) {
 }
 
 int main(int argc, char* argv[]) {
-#ifdef __3DS__
-  init_3ds();
-#endif
-
   CONFIGURATION config;
   config_parse(argc, argv, &config);
 
-#ifndef __3DS__
   if (config.action == NULL || strcmp("help", config.action) == 0)
     help();
 
@@ -422,13 +272,6 @@ int main(int argc, char* argv[]) {
       exit(-1);
     }
   }
-#else
-  if (config.address == NULL) {
-    printf("Specify an IP address in the configuration file.\n");
-    exit(1);
-  }
-  config.action = prompt_for_action();
-#endif
 
   char host_config_file[128];
   sprintf(host_config_file, "hosts/%s.conf", config.address);
@@ -504,7 +347,6 @@ int main(int argc, char* argv[]) {
       if (config.debug_level > 0)
         printf("View-only mode enabled, no input will be sent to the host computer\n");
     } else {
-#ifndef __3DS__
       if (IS_EMBEDDED(system)) {
         char* mapping_env = getenv("SDL_GAMECONTROLLERCONFIG");
         if (config.mapping == NULL && mapping_env == NULL) {
@@ -550,13 +392,6 @@ int main(int argc, char* argv[]) {
         set_controller_led_handler = sdlinput_set_controller_led;
       }
       #endif
-#else
-      sdlinput_init(config.mapping);
-      rumble_handler = sdlinput_rumble;
-      rumble_triggers_handler = sdlinput_rumble_triggers;
-      set_motion_event_state_handler = sdlinput_set_motion_event_state;
-      set_controller_led_handler = sdlinput_set_controller_led;
-#endif
     }
 
     stream(&server, &config, system);
@@ -567,7 +402,7 @@ int main(int argc, char* argv[]) {
     } else {
       sprintf(pin, "%d%d%d%d", (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10);
     }
-    printf("Please enter the following PIN on the target PC:\n%s\n", pin);
+    printf("Please enter the following PIN on the target PC: %s\n", pin);
     fflush(stdout);
     if (gs_pair(&server, &pin[0]) != GS_OK) {
       fprintf(stderr, "Failed to pair to server: %s\n", gs_error);
@@ -585,6 +420,6 @@ int main(int argc, char* argv[]) {
     gs_quit_app(&server);
   } else
     fprintf(stderr, "%s is not a valid action\n", config.action);
-
-  return 0;
 }
+
+#endif

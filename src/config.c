@@ -34,9 +34,9 @@
 #include <limits.h>
 
 #ifdef __3DS__
-extern ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
+#include "n3ds/pair_record.h"
 
-#define MOONLIGHT_3DS_PATH "/3ds/moonlight"
+extern ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
 #endif
 
 #define MOONLIGHT_PATH "/moonlight"

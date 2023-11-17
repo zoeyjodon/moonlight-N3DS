@@ -83,6 +83,9 @@ void sdl_loop() {
   SDL_SetRelativeMouseMode(SDL_TRUE);
 
   while(!done && SDL_WaitEvent(&event)) {
+#ifdef __3DS__
+    done = !aptMainLoop();
+#endif
     switch (sdlinput_handle_event(window, &event)) {
     case SDL_QUIT_APPLICATION:
       done = true;
@@ -122,7 +125,9 @@ void sdl_loop() {
   }
 
   SDL_DestroyWindow(window);
+#ifndef __3DS__ // leave SDL running for debug after crash
   SDL_Quit();
+#endif
 }
 
 #endif /* HAVE_SDL */
