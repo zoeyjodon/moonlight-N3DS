@@ -147,15 +147,21 @@ int console_selection_prompt(char* prompt, char** options, int option_count)
   exit(0);
 }
 
-char * prompt_for_action()
+char * prompt_for_action(PSERVER_DATA server)
 {
-  const char* actions[5];
+  if (server->paired) {
+    const char* actions[4];
+    actions[0] = "unpair";
+    actions[1] = "stream";
+    actions[2] = "quit stream";
+    actions[3] = "change server";
+    int idx = console_selection_prompt("Select an action", actions, 4);
+    return actions[idx];
+  }
+  const char* actions[2];
   actions[0] = "pair";
-  actions[1] = "unpair";
-  actions[2] = "stream";
-  actions[3] = "quit stream";
-  actions[4] = "change server";
-  int idx = console_selection_prompt("Select an action", actions, 5);
+  actions[1] = "change server";
+  int idx = console_selection_prompt("Select an action", actions, 2);
   return actions[idx];
 }
 
@@ -313,13 +319,6 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
   }
 }
 
-static void pair_check(PSERVER_DATA server) {
-  if (!server->paired) {
-    fprintf(stderr, "You must pair with the PC first\n");
-    exit(-1);
-  }
-}
-
 int main(int argc, char* argv[]) {
   init_3ds();
 
@@ -329,8 +328,6 @@ int main(int argc, char* argv[]) {
   config.address = prompt_for_address();
 
   while (aptMainLoop()) {
-    config.action = prompt_for_action();
-
     char host_config_file[128];
     sprintf(host_config_file, "hosts/%s.conf", config.address);
     if (access(host_config_file, R_OK) != -1)
@@ -368,10 +365,10 @@ int main(int argc, char* argv[]) {
       remove_pair_address(config.address);
     }
 
+    config.action = prompt_for_action(&server);
     if (strcmp("change server", config.action) == 0) {
       config.address = prompt_for_address();
     } else if (strcmp("stream", config.action) == 0) {
-      pair_check(&server);
       enum platform system = platform_check(config.platform);
       if (config.debug_level > 0)
         printf("Platform %s\n", platform_name(system));
@@ -425,7 +422,6 @@ int main(int argc, char* argv[]) {
         remove_pair_address(config.address);
       }
     } else if (strcmp("quit stream", config.action) == 0) {
-      pair_check(&server);
       gs_quit_app(&server);
     } else
       fprintf(stderr, "%s is not a valid action\n", config.action);
