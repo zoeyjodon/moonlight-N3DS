@@ -144,10 +144,10 @@ char * prompt_for_action(PSERVER_DATA server)
 {
   if (server->paired) {
     const char* actions[4];
-    actions[0] = "unpair";
-    actions[1] = "stream";
-    actions[2] = "quit stream";
-    actions[3] = "change server";
+    actions[0] = "stream";
+    actions[1] = "quit stream";
+    actions[2] = "change server";
+    actions[3] = "unpair";
     int idx = console_selection_prompt("Select an action", actions, 4);
     return actions[idx];
   }
