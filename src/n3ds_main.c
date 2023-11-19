@@ -101,7 +101,7 @@ int console_selection_prompt(char* prompt, char** options, int option_count)
         printf("%s\n", prompt);
       }
       printf("Press up/down to select\n");
-      printf("Press A to confirm\n");
+      printf("Press A to confirm\n\n");
 
       for (int i = 0; i < option_count; i++) {
         if (i == option_idx) {
@@ -146,8 +146,8 @@ char * prompt_for_action(PSERVER_DATA server)
     const char* actions[4];
     actions[0] = "stream";
     actions[1] = "quit stream";
-    actions[2] = "change server";
-    actions[3] = "unpair";
+    actions[2] = "unpair";
+    actions[3] = "change server";
     int idx = console_selection_prompt("Select an action", actions, 4);
     return actions[idx];
   }
