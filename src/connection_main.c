@@ -25,7 +25,7 @@
 
 #ifdef HAVE_SDL
 #ifdef __3DS__
-#include <SDL2/SDL.h>
+#include <SDL3/SDL.h>
 #else
 #include <SDL.h>
 #endif
@@ -62,7 +62,7 @@ static void connection_terminated(int errorCode) {
 
   #ifdef HAVE_SDL
       SDL_Event event;
-      event.type = SDL_QUIT;
+      event.type = SDL_EVENT_QUIT;
       SDL_PushEvent(&event);
   #endif
 
