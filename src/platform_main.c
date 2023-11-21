@@ -260,7 +260,7 @@ char* platform_name(enum platform system) {
   case X11_VDPAU:
     return "X Window System (VDPAU)";
   case SDL:
-    return "SDL2 (software decoding)";
+    return "SDL (software decoding)";
   case FAKE:
     return "Fake (no a/v output)";
   default:

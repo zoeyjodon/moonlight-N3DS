@@ -12,7 +12,7 @@
 	url = https://github.com/libexpat/libexpat.git
 [submodule "third_party/SDL"]
 	path = third_party/SDL
-	url = https://github.com/libsdl-org/SDL.git
+	url = https://github.com/zoeyjodon/SDL.git
 [submodule "third_party/FFmpeg_for_3DS"]
 	path = third_party/FFmpeg_for_3DS
 	url = https://github.com/Core-2-Extreme/FFmpeg_for_3DS.git
