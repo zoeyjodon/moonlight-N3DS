@@ -84,12 +84,33 @@ static void sdl_renderer_cleanup() {
   }
 }
 
+static uint64_t sdl_renderer_decode_and_play_sample_avgTime;
+static uint64_t avgLoopCount = 0;
+
+uint64_t get_sdl_renderer_decode_and_play_sample_avgTime() {
+    return sdl_renderer_decode_and_play_sample_avgTime;
+}
+
 static void sdl_renderer_decode_and_play_sample(char* data, int length) {
+  uint64_t loopTimeStart = PltGetMillis();
+
   int decodeLen = opus_multistream_decode(decoder, data, length, pcmBuffer, samplesPerFrame, 0);
   if (decodeLen > 0) {
     SDL_PutAudioStreamData(stream, pcmBuffer, decodeLen * channelCount * sizeof(short));
   } else if (decodeLen < 0) {
     printf("Opus error from decode: %d\n", decodeLen);
+  }
+
+  uint64_t loopTimeElapsed = PltGetMillis() - loopTimeStart;
+  if (avgLoopCount < 1) {
+      sdl_renderer_decode_and_play_sample_avgTime = loopTimeElapsed;
+      avgLoopCount++;
+  }
+  else {
+      sdl_renderer_decode_and_play_sample_avgTime = ((sdl_renderer_decode_and_play_sample_avgTime * avgLoopCount) + loopTimeElapsed) / (avgLoopCount + 1);
+      if (avgLoopCount < 1000) {
+          avgLoopCount++;
+      }
   }
 }
 

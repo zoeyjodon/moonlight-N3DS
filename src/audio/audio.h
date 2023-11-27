@@ -26,6 +26,7 @@ extern AUDIO_RENDERER_CALLBACKS audio_callbacks_alsa;
 #endif
 #ifdef HAVE_SDL
 extern AUDIO_RENDERER_CALLBACKS audio_callbacks_sdl;
+uint64_t get_sdl_renderer_decode_and_play_sample_avgTime();
 #endif
 #ifdef HAVE_PULSE
 extern AUDIO_RENDERER_CALLBACKS audio_callbacks_pulse;
