@@ -35,23 +35,24 @@
 #include <stdbool.h>
 
 #define SLICES_PER_FRAME 4
+#define N3DS_DEC_BUFF_SIZE 23
 
-static void* ffmpeg_buffer;
-static size_t ffmpeg_buffer_size;
+static void* n3ds_buffer;
+static size_t n3ds_buffer_size;
 
 static int sdl_setup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
-  if (ffmpeg_init(videoFormat, width, height, SLICE_THREADING, SDL_BUFFER_FRAMES, SLICES_PER_FRAME) < 0) {
-    fprintf(stderr, "Couldn't initialize video decoding\n");
+  if (n3ds_init(width, height, N3DS_DEC_BUFF_SIZE) < 0) {
+    fprintf(stderr, "Couldn't initialize 3DS video decoding\n");
     return -1;
   }
 
-  ensure_buf_size(&ffmpeg_buffer, &ffmpeg_buffer_size, INITIAL_DECODER_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
+  ensure_linear_buf_size(&n3ds_buffer, &n3ds_buffer_size, INITIAL_DECODER_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
 
   return 0;
 }
 
 static void sdl_cleanup() {
-  ffmpeg_destroy();
+  n3ds_destroy();
 }
 
 static uint64_t sdl_submit_decode_unit_avgTime;
@@ -67,17 +68,17 @@ static int sdl_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   PLENTRY entry = decodeUnit->bufferList;
   int length = 0;
 
-  ensure_buf_size(&ffmpeg_buffer, &ffmpeg_buffer_size, decodeUnit->fullLength + AV_INPUT_BUFFER_PADDING_SIZE);
+  ensure_linear_buf_size(&n3ds_buffer, &n3ds_buffer_size, decodeUnit->fullLength + AV_INPUT_BUFFER_PADDING_SIZE);
 
   while (entry != NULL) {
-    memcpy(ffmpeg_buffer+length, entry->data, entry->length);
+    memcpy(n3ds_buffer+length, entry->data, entry->length);
     length += entry->length;
     entry = entry->next;
   }
-  ffmpeg_decode(ffmpeg_buffer, length);
+  n3ds_decode(n3ds_buffer, length);
 
   SDL_LockMutex(mutex);
-  AVFrame* frame = ffmpeg_get_frame(false);
+  AVFrame* frame = n3ds_get_frame(false);
   if (frame != NULL) {
     sdlNextFrame++;
 
