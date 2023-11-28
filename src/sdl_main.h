@@ -39,7 +39,6 @@
 
 void sdl_init(int width, int height, bool fullscreen);
 void sdl_loop();
-uint64_t get_sdl_loop_avgTime();
 
 extern SDL_Mutex *mutex;
 extern int sdlCurrentFrame, sdlNextFrame;

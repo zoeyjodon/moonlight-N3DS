@@ -54,16 +54,7 @@ static void sdl_cleanup() {
   ffmpeg_destroy();
 }
 
-static uint64_t sdl_submit_decode_unit_avgTime;
-static uint64_t avgLoopCount = 0;
-
-uint64_t get_sdl_submit_decode_unit_avgTime() {
-    return sdl_submit_decode_unit_avgTime;
-}
-
 static int sdl_submit_decode_unit(PDECODE_UNIT decodeUnit) {
-  uint64_t loopTimeStart = PltGetMillis();
-
   PLENTRY entry = decodeUnit->bufferList;
   int length = 0;
 
@@ -90,17 +81,6 @@ static int sdl_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   }
   SDL_UnlockMutex(mutex);
 
-  uint64_t loopTimeElapsed = PltGetMillis() - loopTimeStart;
-  if (avgLoopCount < 1) {
-      sdl_submit_decode_unit_avgTime = loopTimeElapsed;
-      avgLoopCount++;
-  }
-  else {
-      sdl_submit_decode_unit_avgTime = ((sdl_submit_decode_unit_avgTime * avgLoopCount) + loopTimeElapsed) / (avgLoopCount + 1);
-      if (avgLoopCount < 1000) {
-          avgLoopCount++;
-      }
-  }
   return DR_OK;
 }
 

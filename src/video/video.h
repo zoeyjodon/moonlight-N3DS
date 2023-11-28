@@ -46,6 +46,5 @@ extern DECODER_RENDERER_CALLBACKS decoder_callbacks_x11_vdpau;
 #endif
 #endif
 #ifdef HAVE_SDL
-uint64_t get_sdl_submit_decode_unit_avgTime();
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_sdl;
 #endif

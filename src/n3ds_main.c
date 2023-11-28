@@ -66,18 +66,6 @@ static void n3ds_exit_handler(void)
 {
   // Allow users to decide when to exit
 	consoleInit(GFX_BOTTOM, &bottomScreen);
-  printf("inputSendThreadProc: %llu\n", get_inputSendThreadProc_avgLoopTime());
-  printf("asyncCallbackThreadFunc: %llu\n", get_asyncCallbackThreadFunc_avgLoopTime());
-  printf("controlReceiveThreadFunc: %llu\n", get_controlReceiveThreadFunc_avgLoopTime());
-  printf("invalidateRefFramesFunc: %llu\n", get_invalidateRefFramesFunc_avgLoopTime());
-  printf("AudioReceiveThreadProc: %llu\n", get_AudioReceiveThreadProc_avgLoopTime());
-  printf("AudioDecoderThreadProc: %llu\n", get_AudioDecoderThreadProc_avgLoopTime());
-  printf("VideoReceiveThreadProc: %llu\n", get_VideoReceiveThreadProc_avgLoopTime());
-  printf("VideoDecoderThreadProc: %llu\n", get_VideoDecoderThreadProc_avgLoopTime());
-  printf("sdl_submit_decode_unit: %llu\n", get_sdl_submit_decode_unit_avgTime());
-  printf("sdl_renderer_decode_and_play_sample: %llu\n", get_sdl_renderer_decode_and_play_sample_avgTime());
-  printf("sdl_loop: %llu\n", get_sdl_loop_avgTime());
-
 
   printf("\nPress any button to quit\n");
 	while (aptMainLoop())

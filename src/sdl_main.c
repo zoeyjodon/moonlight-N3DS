@@ -77,18 +77,11 @@ void sdl_init(int width, int height, bool fullscreen) {
   }
 }
 
-static uint64_t sdl_loop_avgTime;
-
-uint64_t get_sdl_loop_avgTime() {
-    return sdl_loop_avgTime;
-}
-
 void sdl_loop() {
   SDL_Event event;
 
   SDL_SetRelativeMouseMode(SDL_TRUE);
 
-  uint64_t avgLoopCount = 0;
   while(!done && SDL_WaitEvent(&event)) {
 #ifdef __3DS__
     done = !aptMainLoop();
@@ -117,8 +110,6 @@ void sdl_loop() {
           if (++sdlCurrentFrame <= sdlNextFrame - SDL_BUFFER_FRAMES) {
             //Skip frame
           } else {
-            uint64_t loopTimeStart = PltGetMillis();
-
             SDL_LockMutex(mutex);
             Uint8** data = ((Uint8**) event.user.data1);
             int* linesize = ((int*) event.user.data2);
@@ -127,18 +118,6 @@ void sdl_loop() {
             SDL_RenderClear(renderer);
             SDL_RenderTexture(renderer, bmp, NULL, NULL);
             SDL_RenderPresent(renderer);
-
-            uint64_t loopTimeElapsed = PltGetMillis() - loopTimeStart;
-            if (avgLoopCount < 1) {
-                sdl_loop_avgTime = loopTimeElapsed;
-                avgLoopCount++;
-            }
-            else {
-                sdl_loop_avgTime = ((sdl_loop_avgTime * avgLoopCount) + loopTimeElapsed) / (avgLoopCount + 1);
-                if (avgLoopCount < 1000) {
-                    avgLoopCount++;
-                }
-            }
           }
         }
       }
