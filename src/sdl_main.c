@@ -64,7 +64,7 @@ void sdl_init(int width, int height, bool fullscreen) {
     }
   }
 
-  bmp = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB565, SDL_TEXTUREACCESS_STREAMING, width, height);
+  bmp = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STREAMING, width, height);
   if (!bmp) {
     printf("SDL: could not create texture - exiting\n");
     exit(1);
@@ -119,17 +119,11 @@ void sdl_loop() {
           } else {
             uint64_t loopTimeStart = PltGetMillis();
 
-            // SDL_LockMutex(mutex);
+            SDL_LockMutex(mutex);
             Uint8** data = ((Uint8**) event.user.data1);
             int* linesize = ((int*) event.user.data2);
-            void *bmp_pixels;
-            int bmp_pitch;
-            if (SDL_LockTexture(bmp, NULL, &bmp_pixels, &bmp_pitch) == 0) {
-              memcpy(bmp_pixels, data[0], linesize[0]);
-              SDL_UnlockTexture(bmp);
-            }
-
-            // SDL_UnlockMutex(mutex);
+            SDL_UpdateYUVTexture(bmp, NULL, data[0], linesize[0], data[1], linesize[1], data[2], linesize[2]);
+            SDL_UnlockMutex(mutex);
             SDL_RenderClear(renderer);
             SDL_RenderTexture(renderer, bmp, NULL, NULL);
             SDL_RenderPresent(renderer);
