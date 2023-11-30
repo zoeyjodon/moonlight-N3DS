@@ -301,7 +301,6 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
     exit(status);
   }
 
-	// consoleInit(GFX_BOTTOM, &bottomScreen);
 	consoleSelect(&bottomScreen);
   sdl_loop();
 

@@ -73,33 +73,44 @@ static void connection_terminated(int errorCode) {
 }
 
 static void connection_log_message(const char* format, ...) {
+#ifndef __3DS__
   va_list arglist;
   va_start(arglist, format);
   vprintf(format, arglist);
   va_end(arglist);
+#endif
 }
 
 static void rumble(unsigned short controllerNumber, unsigned short lowFreqMotor, unsigned short highFreqMotor) {
+#ifndef __3DS__
   if (rumble_handler)
     rumble_handler(controllerNumber, lowFreqMotor, highFreqMotor);
+#endif
 }
 
 static void rumble_triggers(unsigned short controllerNumber, unsigned short leftTrigger, unsigned short rightTrigger) {
+#ifndef __3DS__
   if (rumble_handler)
     rumble_triggers_handler(controllerNumber, leftTrigger, rightTrigger);
+#endif
 }
 
 static void set_motion_event_state(unsigned short controllerNumber, unsigned char motionType, unsigned short reportRateHz) {
+#ifndef __3DS__
   if (set_motion_event_state_handler)
     set_motion_event_state_handler(controllerNumber, motionType, reportRateHz);
+#endif
 }
 
 static void set_controller_led(unsigned short controllerNumber, unsigned char r, unsigned char g, unsigned char b) {
+#ifndef __3DS__
   if (set_controller_led_handler)
     set_controller_led_handler(controllerNumber, r, g, b);
+#endif
 }
 
 static void connection_status_update(int status) {
+#ifndef __3DS__
   switch (status) {
     case CONN_STATUS_OKAY:
       printf("Connection is okay\n");
@@ -108,6 +119,7 @@ static void connection_status_update(int status) {
       printf("Connection is poor\n");
       break;
   }
+#endif
 }
 
 CONNECTION_LISTENER_CALLBACKS connection_callbacks = {
