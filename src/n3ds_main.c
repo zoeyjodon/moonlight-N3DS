@@ -65,37 +65,35 @@ PrintConsole bottomScreen;
 static void n3ds_exit_handler(void)
 {
   // Allow users to decide when to exit
-	consoleInit(GFX_BOTTOM, &bottomScreen);
-
   printf("\nPress any button to quit\n");
-	while (aptMainLoop())
-	{
-		gfxSwapBuffers();
-		gfxFlushBuffers();
-		gspWaitForVBlank();
+  while (aptMainLoop())
+  {
+    gfxSwapBuffers();
+    gfxFlushBuffers();
+    gspWaitForVBlank();
 
-		hidScanInput();
-		u32 kDown = hidKeysDown();
+    hidScanInput();
+    u32 kDown = hidKeysDown();
 
-		if (kDown)
-			break;
-	}
+    if (kDown)
+      break;
+  }
 
-	irrstExit();
-	socExit();
-	free(SOC_buffer);
-	romfsExit();
-	aptExit();
-	gfxExit();
-	acExit();
+  irrstExit();
+  socExit();
+  free(SOC_buffer);
+  romfsExit();
+  aptExit();
+  gfxExit();
+  acExit();
 }
 
 int console_selection_prompt(char* prompt, char** options, int option_count)
 {
   int option_idx = 0;
   int last_option_idx = -1;
-	while (aptMainLoop())
-	{
+  while (aptMainLoop())
+  {
     if (option_idx != last_option_idx)
     {
       consoleClear();
@@ -116,28 +114,28 @@ int console_selection_prompt(char* prompt, char** options, int option_count)
       last_option_idx = option_idx;
     }
 
-		gfxSwapBuffers();
-		gfxFlushBuffers();
-		gspWaitForVBlank();
+    gfxSwapBuffers();
+    gfxFlushBuffers();
+    gspWaitForVBlank();
 
-		hidScanInput();
-		u32 kDown = hidKeysDown();
+    hidScanInput();
+    u32 kDown = hidKeysDown();
 
-		if (kDown & KEY_A) {
-			consoleClear();
+    if (kDown & KEY_A) {
+      consoleClear();
       return option_idx;
     }
-		if (kDown & KEY_DOWN) {
-			if (option_idx < 4) {
-				option_idx++;
-			}
-		}
+    if (kDown & KEY_DOWN) {
+      if (option_idx < 4) {
+        option_idx++;
+      }
+    }
     else if (kDown & KEY_UP) {
-			if (option_idx > 0) {
-				option_idx--;
-			}
-		}
-	}
+      if (option_idx > 0) {
+        option_idx--;
+      }
+    }
+  }
 
   exit(0);
 }
@@ -183,44 +181,42 @@ char * prompt_for_address()
 
 void init_3ds()
 {
-	acInit();
-	gfxInitDefault();
-	consoleInit(GFX_TOP, &topScreen);
-	consoleInit(GFX_BOTTOM, &bottomScreen);
-	consoleSelect(&topScreen);
+  acInit();
+  gfxInitDefault();
+  consoleInit(GFX_TOP, &topScreen);
+  consoleInit(GFX_BOTTOM, &bottomScreen);
+  consoleSelect(&topScreen);
   atexit(n3ds_exit_handler);
 
   osSetSpeedupEnable(true);
-	aptSetSleepAllowed(true);
-	aptInit();
-	Result status = romfsInit();
-	if (R_FAILED(status))
+  aptSetSleepAllowed(true);
+  aptInit();
+  Result status = romfsInit();
+  if (R_FAILED(status))
   {
     printf("romfsInit: %08lX\n", status);
   }
-	else printf("romfs Init Successful!\n");
+  else printf("romfs Init Successful!\n");
 
-	SOC_buffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
-	status = socInit(SOC_buffer, SOC_BUFFERSIZE);
-	if (R_FAILED(status))
-	{
+  SOC_buffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
+  status = socInit(SOC_buffer, SOC_BUFFERSIZE);
+  if (R_FAILED(status))
+  {
     printf("socInit: %08lX\n", status);
     exit(1);
-	}
+  }
 
-	aptSetSleepAllowed (false);
-
-	status = NDMU_EnterExclusiveState(NDM_EXCLUSIVE_STATE_INFRASTRUCTURE);
-	if (R_FAILED(status))
+  status = NDMU_EnterExclusiveState(NDM_EXCLUSIVE_STATE_INFRASTRUCTURE);
+  if (R_FAILED(status))
   {
-		printf ("Failed to enter exclusive NDM state: %08lX\n", status);
+    printf ("Failed to enter exclusive NDM state: %08lX\n", status);
   }
   status = NDMU_LockState();
-	if (R_FAILED(status))
-	{
-		printf ("Failed to lock NDM: %08lX\n", status);
-		NDMU_LeaveExclusiveState();
-	}
+  if (R_FAILED(status))
+  {
+    printf ("Failed to lock NDM: %08lX\n", status);
+    NDMU_LeaveExclusiveState();
+  }
 }
 
 int prompt_for_app_id(PSERVER_DATA server)
@@ -291,17 +287,15 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
     printf("Ignoring invalid rotation value: %d\n", config->rotate);
   }
 
-  if (config->debug_level > 0) {
-    printf("Stream %d x %d, %d fps, %d kbps\n", config->stream.width, config->stream.height, config->stream.fps, config->stream.bitrate);
-    connection_debug = true;
-  }
+  printf("Loading...\nStream %d x %d, %d fps, %d kbps\n", config->stream.width, config->stream.height, config->stream.fps, config->stream.bitrate);
 
   int status = LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, &decoder_callbacks_sdl, &audio_callbacks_sdl, NULL, drFlags, config->audio_device, 0);
   if (status != 0) {
     exit(status);
   }
 
-	consoleSelect(&bottomScreen);
+  consoleInit(GFX_BOTTOM, &bottomScreen);
+  consoleSelect(&bottomScreen);
   sdl_loop();
 
   LiStopConnection();
@@ -418,6 +412,7 @@ int main(int argc, char* argv[]) {
         remove_pair_address(config.address);
       }
     } else if (strcmp("quit stream", config.action) == 0) {
+      printf("Sending app quit request ...\n");
       gs_quit_app(&server);
     } else
       fprintf(stderr, "%s is not a valid action\n", config.action);
