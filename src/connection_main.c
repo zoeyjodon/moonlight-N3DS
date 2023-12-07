@@ -38,6 +38,10 @@ ConnListenerRumbleTriggers rumble_triggers_handler = NULL;
 ConnListenerSetMotionEventState set_motion_event_state_handler = NULL;
 ConnListenerSetControllerLED set_controller_led_handler = NULL;
 
+#ifdef __3DS__
+static const char* disconnect_message = "";
+#endif
+
 static void connection_terminated(int errorCode) {
   switch (errorCode) {
   case ML_ERROR_GRACEFUL_TERMINATION:
@@ -56,6 +60,9 @@ static void connection_terminated(int errorCode) {
     printf("The connection was terminated by the host due to DRM-protected content. Close any DRM-protected content on the host and try again.\n");
     break;
   default:
+#ifdef __3DS__
+    printf("%s\n", disconnect_message);
+#endif
     printf("Connection terminated with error: %d\n", errorCode);
     break;
   }
@@ -78,6 +85,8 @@ static void connection_log_message(const char* format, ...) {
   va_start(arglist, format);
   vprintf(format, arglist);
   va_end(arglist);
+#else
+  disconnect_message = format;
 #endif
 }
 
