@@ -101,7 +101,8 @@ int console_selection_prompt(char* prompt, char** options, int option_count)
         printf("%s\n", prompt);
       }
       printf("Press up/down to select\n");
-      printf("Press A to confirm\n\n");
+      printf("Press A to confirm\n");
+      printf("Press B to go back\n\n");
 
       for (int i = 0; i < option_count; i++) {
         if (i == option_idx) {
@@ -125,6 +126,10 @@ int console_selection_prompt(char* prompt, char** options, int option_count)
       consoleClear();
       return option_idx;
     }
+    if (kDown & KEY_B) {
+      consoleClear();
+      return -1;
+    }
     if (kDown & KEY_DOWN) {
       if (option_idx < 4) {
         option_idx++;
@@ -143,18 +148,22 @@ int console_selection_prompt(char* prompt, char** options, int option_count)
 char * prompt_for_action(PSERVER_DATA server)
 {
   if (server->paired) {
-    const char* actions[4];
+    const char* actions[3];
     actions[0] = "stream";
     actions[1] = "quit stream";
     actions[2] = "unpair";
-    actions[3] = "change server";
-    int idx = console_selection_prompt("Select an action", actions, 4);
+    int idx = console_selection_prompt("Select an action", actions, 3);
+    if (idx < 0) {
+      return NULL;
+    }
     return actions[idx];
   }
-  const char* actions[2];
+  const char* actions[1];
   actions[0] = "pair";
-  actions[1] = "change server";
-  int idx = console_selection_prompt("Select an action", actions, 2);
+  int idx = console_selection_prompt("Select an action", actions, 1);
+  if (idx < 0) {
+    return NULL;
+  }
   return actions[idx];
 }
 
@@ -166,7 +175,10 @@ char * prompt_for_address()
 
   address_list[address_count] = "new";
   int idx = console_selection_prompt("Select a server address", address_list, address_count + 1);
-  if (strcmp(address_list[idx], "new") != 0) {
+  if (idx < 0) {
+    return NULL;
+  }
+  else if (strcmp(address_list[idx], "new") != 0) {
     return address_list[idx];
   }
 
@@ -243,6 +255,9 @@ int prompt_for_app_id(PSERVER_DATA server)
   }
 
   int id_idx = console_selection_prompt("Select an app", app_names, idx);
+  if (id_idx == -1) {
+    return -1;
+  }
   return app_ids[id_idx];
 }
 
@@ -313,9 +328,12 @@ int main(int argc, char* argv[]) {
   CONFIGURATION config;
   config_parse(argc, argv, &config);
 
-  config.address = prompt_for_address();
-
   while (aptMainLoop()) {
+    config.address = prompt_for_address();
+    if (config.address == NULL) {
+      continue;
+    }
+
     char host_config_file[128];
     sprintf(host_config_file, "hosts/%s.conf", config.address);
     if (access(host_config_file, R_OK) != -1)
@@ -353,80 +371,90 @@ int main(int argc, char* argv[]) {
       remove_pair_address(config.address);
     }
 
-    config.action = prompt_for_action(&server);
-    if (strcmp("change server", config.action) == 0) {
-      config.address = prompt_for_address();
-      // Skip the additional prompt for a button press
-      continue;
-    } else if (strcmp("stream", config.action) == 0) {
-      enum platform system = platform_check(config.platform);
-      if (config.debug_level > 0)
-        printf("Platform %s\n", platform_name(system));
-
-      if (system == 0) {
-        fprintf(stderr, "Platform '%s' not found\n", config.platform);
-        exit(-1);
-      } else if (system == SDL && config.audio_device != NULL) {
-        fprintf(stderr, "You can't select a audio device for SDL\n");
-        exit(-1);
-      }
-
-      int appId = prompt_for_app_id(&server);
-
-      config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
-      sdl_init(config.stream.width, config.stream.height, config.fullscreen);
-
-      if (config.viewonly) {
-        if (config.debug_level > 0)
-          printf("View-only mode enabled, no input will be sent to the host computer\n");
-      } else {
-        sdlinput_init(config.mapping);
-        rumble_handler = sdlinput_rumble;
-        rumble_triggers_handler = sdlinput_rumble_triggers;
-        set_motion_event_state_handler = sdlinput_set_motion_event_state;
-        set_controller_led_handler = sdlinput_set_controller_led;
-      }
-      stream(&server, &config, system, appId);
-      // Exit app after streaming has closed
-      exit(0);
-    } else if (strcmp("pair", config.action) == 0) {
-      char pin[5];
-      if (config.pin > 0 && config.pin <= 9999) {
-        sprintf(pin, "%04d", config.pin);
-      } else {
-        sprintf(pin, "%d%d%d%d", (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10);
-      }
-      printf("Please enter the following PIN on the target PC:\n%s\n", pin);
-      fflush(stdout);
-      if (gs_pair(&server, &pin[0]) != GS_OK) {
-        fprintf(stderr, "Failed to pair to server: %s\n", gs_error);
-      } else {
-        printf("Succesfully paired\n");
-        add_pair_address(config.address);
-      }
-    } else if (strcmp("unpair", config.action) == 0) {
-      if (gs_unpair(&server) != GS_OK) {
-        fprintf(stderr, "Failed to unpair to server: %s\n", gs_error);
-      } else {
-        printf("Succesfully unpaired\n");
-        remove_pair_address(config.address);
-      }
-    } else if (strcmp("quit stream", config.action) == 0) {
-      printf("Sending app quit request ...\n");
-      gs_quit_app(&server);
-    } else
-      fprintf(stderr, "%s is not a valid action\n", config.action);
-
-
-    printf("\nPress any button to continue\n");
-    while (aptMainLoop())
-    {
-      gfxSwapBuffers();
-      gfxFlushBuffers();
-      gspWaitForVBlank();
-      hidScanInput();
-      if (hidKeysDown())
+    while (aptMainLoop()) {
+      config.action = prompt_for_action(&server);
+      if (config.action == NULL) {
         break;
+      }
+      else if (strcmp("stream", config.action) == 0) {
+        enum platform system = platform_check(config.platform);
+        if (config.debug_level > 0)
+          printf("Platform %s\n", platform_name(system));
+
+        if (system == 0) {
+          fprintf(stderr, "Platform '%s' not found\n", config.platform);
+          exit(-1);
+        } else if (system == SDL && config.audio_device != NULL) {
+          fprintf(stderr, "You can't select a audio device for SDL\n");
+          exit(-1);
+        }
+
+        int appId = prompt_for_app_id(&server);
+        if (appId == -1) {
+          continue;
+        }
+
+        config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
+        sdl_init(config.stream.width, config.stream.height, config.fullscreen);
+
+        if (config.viewonly) {
+          if (config.debug_level > 0)
+            printf("View-only mode enabled, no input will be sent to the host computer\n");
+        } else {
+          sdlinput_init(config.mapping);
+          rumble_handler = sdlinput_rumble;
+          rumble_triggers_handler = sdlinput_rumble_triggers;
+          set_motion_event_state_handler = sdlinput_set_motion_event_state;
+          set_controller_led_handler = sdlinput_set_controller_led;
+        }
+        stream(&server, &config, system, appId);
+        // Exit app after streaming has closed
+        exit(0);
+      }
+      else if (strcmp("pair", config.action) == 0) {
+        char pin[5];
+        if (config.pin > 0 && config.pin <= 9999) {
+          sprintf(pin, "%04d", config.pin);
+        } else {
+          sprintf(pin, "%d%d%d%d", (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10);
+        }
+        printf("Please enter the following PIN on the target PC:\n%s\n", pin);
+        fflush(stdout);
+        if (gs_pair(&server, &pin[0]) != GS_OK) {
+          fprintf(stderr, "Failed to pair to server: %s\n", gs_error);
+        } else {
+          printf("Succesfully paired\n");
+          add_pair_address(config.address);
+          break;
+        }
+      }
+      else if (strcmp("unpair", config.action) == 0) {
+        if (gs_unpair(&server) != GS_OK) {
+          fprintf(stderr, "Failed to unpair to server: %s\n", gs_error);
+        } else {
+          printf("Succesfully unpaired\n");
+          remove_pair_address(config.address);
+          break;
+        }
+      }
+      else if (strcmp("quit stream", config.action) == 0) {
+        printf("Sending app quit request ...\n");
+        gs_quit_app(&server);
+      }
+      else
+        fprintf(stderr, "%s is not a valid action\n", config.action);
+
+
+      printf("\nPress any button to continue\n");
+      while (aptMainLoop())
+      {
+        gfxSwapBuffers();
+        gfxFlushBuffers();
+        gspWaitForVBlank();
+        hidScanInput();
+        if (hidKeysDown())
+          break;
+      }
     }
   }
   return 0;
