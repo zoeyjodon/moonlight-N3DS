@@ -22,6 +22,7 @@
 #include "sdl_main.h"
 #include "input/sdl.h"
 
+#include <3ds.h>
 #include <Limelight.h>
 
 static bool done;
@@ -34,39 +35,21 @@ static SDL_Texture *bmp;
 SDL_Mutex *mutex;
 
 int sdlCurrentFrame, sdlNextFrame;
+int surface_width, surface_height, pixel_size;
 
 void sdl_init(int width, int height, bool fullscreen) {
   sdlCurrentFrame = sdlNextFrame = 0;
 
-  if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+  if(SDL_Init(SDL_INIT_EVENTS)) {
     printf("Could not initialize SDL - %s\n", SDL_GetError());
     exit(1);
   }
 
   fullscreen_flags = fullscreen?SDL_WINDOW_FULLSCREEN:0;
   int window_flags = fullscreen_flags;
-#ifndef __3DS__
-  window_flags |= SDL_WINDOW_OPENGL;
-#endif
   window = SDL_CreateWindow("Moonlight", width, height, window_flags);
   if(!window) {
     printf("SDL: could not create window - exiting\n");
-    exit(1);
-  }
-
-  renderer = SDL_CreateRenderer(window, NULL, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-  if (!renderer) {
-    printf("Failed to initialize a hardware accelerated renderer: %s\n", SDL_GetError());
-    renderer = SDL_CreateRenderer(window, NULL, 0);
-    if (!renderer) {
-      printf("SDL_CreateRenderer failed: %s\n", SDL_GetError());
-      exit(1);
-    }
-  }
-
-  bmp = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STREAMING, width, height);
-  if (!bmp) {
-    printf("SDL: could not create texture - exiting\n");
     exit(1);
   }
 
@@ -74,6 +57,35 @@ void sdl_init(int width, int height, bool fullscreen) {
   if (!mutex) {
     printf("Couldn't create mutex\n");
     exit(1);
+  }
+
+  GSPGPU_FramebufferFormat px_fmt = GSP_BGR8_OES;
+  gfxInit(px_fmt, GSP_RGBA8_OES, false);
+  surface_width = width;
+  surface_height = height;
+  pixel_size = gspGetBytesPerPixel(px_fmt);
+}
+
+static inline int GetDestOffset(int x, int y)
+{
+    return surface_height - y - 1 + surface_height * x;
+}
+
+static inline int GetSourceOffset(int x, int y)
+{
+    return x + y * surface_width;
+}
+
+static inline void writePictureToFramebuffer(u8 *dest, const u8 **source) {
+  for (int y = 0; y < surface_height; ++y) {
+      for (int x = 0; x < surface_width; ++x) {
+        int src_offset = GetSourceOffset(x, y);
+        int dst_offset = GetDestOffset(x, y) * pixel_size;
+        for (int i = 0; i < pixel_size; i++) {
+          int px_offset = src_offset + (i * surface_width);
+          dest[dst_offset + i] = source[0][px_offset];
+        }
+      }
   }
 }
 
@@ -110,14 +122,12 @@ void sdl_loop() {
           if (++sdlCurrentFrame <= sdlNextFrame - SDL_BUFFER_FRAMES) {
             //Skip frame
           } else {
-            SDL_LockMutex(mutex);
             Uint8** data = ((Uint8**) event.user.data1);
             int* linesize = ((int*) event.user.data2);
-            SDL_UpdateYUVTexture(bmp, NULL, data[0], linesize[0], data[1], linesize[1], data[2], linesize[2]);
-            SDL_UnlockMutex(mutex);
-            SDL_RenderClear(renderer);
-            SDL_RenderTexture(renderer, bmp, NULL, NULL);
-            SDL_RenderPresent(renderer);
+            u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+
+            writePictureToFramebuffer(gfxtopadr, data);
+            gfxScreenSwapBuffers(GFX_TOP, false);
           }
         }
       }

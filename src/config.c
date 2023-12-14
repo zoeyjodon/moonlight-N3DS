@@ -293,7 +293,7 @@ bool config_file_parse(char* filename, PCONFIGURATION config) {
   size_t len = 0;
 
   while (getline(&line, &len, fd) != -1) {
-  char *key = NULL, *value = NULL;
+    char *key = NULL, *value = NULL;
     if (sscanf(line, "%ms = %m[^\n]", &key, &value) == 2) {
       if (strcmp(key, "address") == 0) {
         config->address = value;
@@ -374,11 +374,6 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   }
 #endif
 
-#ifdef __3DS__
-  config->stream.encryptionFlags = ENCFLG_NONE;
-  config->stream.fps = 30;
-#endif
-
   config->debug_level = 0;
   config->platform = "auto";
   config->app = "Steam";
@@ -394,21 +389,14 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->viewonly = false;
   config->mouse_emulation = true;
   config->rotate = 0;
+  config->codec = CODEC_UNSPECIFIED;
   config->hdr = false;
   config->pin = 0;
   config->port = 47989;
 
   config->inputsCount = 0;
-
-#ifndef __3DS__
-  config->codec = CODEC_UNSPECIFIED;
-  config->mapping = get_path("gamecontrollerdb.txt", getenv("XDG_DATA_DIRS"));
-  config->key_dir[0] = 0;
-#else
-  config->codec = CODEC_H264;
   config->mapping = (char*) "";
   strcpy(config->key_dir, MOONLIGHT_3DS_PATH "/keys");
-#endif
 
 #ifndef __3DS__
   char* config_file = get_path("moonlight.conf", "/etc");

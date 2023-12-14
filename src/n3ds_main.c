@@ -306,11 +306,11 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
 
   int status = LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, &decoder_callbacks_sdl, &audio_callbacks_sdl, NULL, drFlags, config->audio_device, 0);
   if (status != 0) {
+    connection_callbacks.connectionTerminated(status);
     exit(status);
   }
+  printf("Connected!\n");
 
-  consoleInit(GFX_BOTTOM, &bottomScreen);
-  consoleSelect(&bottomScreen);
   sdl_loop();
 
   LiStopConnection();
@@ -396,6 +396,10 @@ int main(int argc, char* argv[]) {
 
         config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
         sdl_init(config.stream.width, config.stream.height, config.fullscreen);
+
+        consoleClear();
+        consoleInit(GFX_BOTTOM, &bottomScreen);
+        consoleSelect(&bottomScreen);
 
         if (config.viewonly) {
           if (config.debug_level > 0)
