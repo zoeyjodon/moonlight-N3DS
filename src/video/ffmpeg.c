@@ -118,7 +118,7 @@ int ffmpeg_init(int videoFormat, int width, int height, int perf_lvl, int buffer
 
     decoder_ctx->width = width;
     decoder_ctx->height = height;
-    decoder_ctx->pix_fmt = AV_PIX_FMT_RGB24;
+    decoder_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
 
     int err = avcodec_open2(decoder_ctx, decoder, NULL);
     if (err < 0) {

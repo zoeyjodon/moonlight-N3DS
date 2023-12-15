@@ -36,6 +36,7 @@ SDL_Mutex *mutex;
 
 int sdlCurrentFrame, sdlNextFrame;
 int surface_width, surface_height, pixel_size;
+static u8* img_buffer;
 
 void sdl_init(int width, int height, bool fullscreen) {
   sdlCurrentFrame = sdlNextFrame = 0;
@@ -59,34 +60,106 @@ void sdl_init(int width, int height, bool fullscreen) {
     exit(1);
   }
 
-  GSPGPU_FramebufferFormat px_fmt = GSP_BGR8_OES;
+  if(y2rInit())
+  {
+    printf("Failed to initialize Y2R\n");
+    exit(1);
+  }
+  Y2RU_ConversionParams y2r_parameters;
+	y2r_parameters.input_format = INPUT_YUV420_INDIV_8;
+	y2r_parameters.output_format = OUTPUT_RGB_16_565;
+	y2r_parameters.rotation = ROTATION_NONE;
+	y2r_parameters.block_alignment = BLOCK_LINE;
+	y2r_parameters.input_line_width = width;
+	y2r_parameters.input_lines = height;
+	y2r_parameters.standard_coefficient = COEFFICIENT_ITU_R_BT_709_SCALING;
+	y2r_parameters.alpha = 0xFF;
+	int status = Y2RU_SetConversionParams(&y2r_parameters);
+  if (status) {
+    printf("Failed to set Y2RU params\n");
+    exit(1);
+  }
+
+  GSPGPU_FramebufferFormat px_fmt = GSP_RGB565_OES;
   gfxInit(px_fmt, GSP_RGBA8_OES, false);
   surface_width = width;
   surface_height = height;
   pixel_size = gspGetBytesPerPixel(px_fmt);
+
+  img_buffer = linearAlloc(width * height * pixel_size);
+  if (!img_buffer) {
+    printf("Out of memory!");
+    exit(1);
+  }
 }
 
 static inline int GetDestOffset(int x, int y)
 {
-    return surface_height - y - 1 + surface_height * x;
+  return surface_height - y - 1 + surface_height * x;
 }
 
 static inline int GetSourceOffset(int x, int y)
 {
-    return x + y * surface_width;
+  return x + y * surface_width;
 }
 
-static inline void writePictureToFramebuffer(u8 *dest, const u8 **source) {
+static inline void rotatePicture90(u16* dest, u16* source) {
   for (int y = 0; y < surface_height; ++y) {
-      for (int x = 0; x < surface_width; ++x) {
-        int src_offset = GetSourceOffset(x, y);
-        int dst_offset = GetDestOffset(x, y) * pixel_size;
-        for (int i = 0; i < pixel_size; i++) {
-          int px_offset = src_offset + (i * surface_width);
-          dest[dst_offset + i] = source[0][px_offset];
-        }
-      }
+    for (int x = 0; x < surface_width; ++x) {
+      int src_offset = GetSourceOffset(x, y);
+      int dst_offset = GetDestOffset(x, y);
+      dest[dst_offset] = source[src_offset];
+    }
   }
+}
+
+static inline void writePictureToFramebuffer(u8 *dest, const u8 **source, int width, int height) {
+	Handle conversion_finish_event_handle;
+  int status = 0;
+
+  status = Y2RU_SetSendingY(source[0], width * height, width, 0);
+  if (status) {
+    printf("Y2RU_SetSendingY failed\n");
+    goto y2ru_failed;
+  }
+
+  status = Y2RU_SetSendingU(source[1], width * height / 4, width / 2, 0);
+  if (status) {
+    printf("Y2RU_SetSendingU failed\n");
+    goto y2ru_failed;
+  }
+
+  status = Y2RU_SetSendingV(source[2], width * height / 4, width / 2, 0);
+  if (status) {
+    printf("Y2RU_SetSendingV failed\n");
+    goto y2ru_failed;
+  }
+
+  status = Y2RU_SetReceiving(img_buffer, width * height * pixel_size, width * pixel_size * 4, 0);
+  if (status) {
+    printf("Y2RU_SetReceiving failed\n");
+    goto y2ru_failed;
+  }
+
+  status = Y2RU_StartConversion();
+  if (status) {
+    printf("Y2RU_StartConversion failed\n");
+    goto y2ru_failed;
+  }
+
+  status = Y2RU_GetTransferEndEvent(&conversion_finish_event_handle);
+  if (status) {
+    printf("Y2RU_GetTransferEndEvent failed\n");
+    goto y2ru_failed;
+  }
+
+  svcWaitSynchronization(conversion_finish_event_handle, 200000000);//Wait up to 200ms.
+  svcCloseHandle(conversion_finish_event_handle);
+  rotatePicture90(dest, img_buffer);
+  return;
+
+	y2ru_failed:
+  done = true;
 }
 
 void sdl_loop() {
@@ -122,11 +195,12 @@ void sdl_loop() {
           if (++sdlCurrentFrame <= sdlNextFrame - SDL_BUFFER_FRAMES) {
             //Skip frame
           } else {
+            SDL_LockMutex(mutex);
             Uint8** data = ((Uint8**) event.user.data1);
             int* linesize = ((int*) event.user.data2);
             u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-
-            writePictureToFramebuffer(gfxtopadr, data);
+            writePictureToFramebuffer(gfxtopadr, data, surface_width, surface_height);
+            SDL_UnlockMutex(mutex);
             gfxScreenSwapBuffers(GFX_TOP, false);
           }
         }
@@ -137,6 +211,9 @@ void sdl_loop() {
   SDL_DestroyWindow(window);
 #ifndef __3DS__ // leave SDL running for debug after crash
   SDL_Quit();
+#else
+  y2rExit();
+  linearFree(img_buffer);
 #endif
 }
 
