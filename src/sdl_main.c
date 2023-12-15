@@ -93,27 +93,27 @@ void sdl_init(int width, int height, bool fullscreen) {
   }
 }
 
-static inline int GetDestOffset(int x, int y)
+static inline int get_dest_offset(int x, int y, int height)
 {
-  return surface_height - y - 1 + surface_height * x;
+  return height - y - 1 + height * x;
 }
 
-static inline int GetSourceOffset(int x, int y)
+static inline int get_source_offset(int x, int y, int width)
 {
-  return x + y * surface_width;
+  return x + y * width;
 }
 
-static inline void rotatePicture90(u16* dest, u16* source) {
-  for (int y = 0; y < surface_height; ++y) {
-    for (int x = 0; x < surface_width; ++x) {
-      int src_offset = GetSourceOffset(x, y);
-      int dst_offset = GetDestOffset(x, y);
+static inline void write_rgb565_to_framebuffer(u16* dest, u16* source, int width, int height) {
+  for (int y = 0; y < height; ++y) {
+    for (int x = 0; x < width; ++x) {
+      int src_offset = get_source_offset(x, y, width);
+      int dst_offset = get_dest_offset(x, y, height);
       dest[dst_offset] = source[src_offset];
     }
   }
 }
 
-static inline void writePictureToFramebuffer(u8 *dest, const u8 **source, int width, int height) {
+static inline void write_yuv_to_framebuffer(u8 *dest, const u8 **source, int width, int height) {
 	Handle conversion_finish_event_handle;
   int status = 0;
 
@@ -155,7 +155,7 @@ static inline void writePictureToFramebuffer(u8 *dest, const u8 **source, int wi
 
   svcWaitSynchronization(conversion_finish_event_handle, 200000000);//Wait up to 200ms.
   svcCloseHandle(conversion_finish_event_handle);
-  rotatePicture90(dest, img_buffer);
+  write_rgb565_to_framebuffer(dest, img_buffer, width, height);
   return;
 
 	y2ru_failed:
@@ -199,7 +199,7 @@ void sdl_loop() {
             Uint8** data = ((Uint8**) event.user.data1);
             int* linesize = ((int*) event.user.data2);
             u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-            writePictureToFramebuffer(gfxtopadr, data, surface_width, surface_height);
+            write_yuv_to_framebuffer(gfxtopadr, data, surface_width, surface_height);
             SDL_UnlockMutex(mutex);
             gfxScreenSwapBuffers(GFX_TOP, false);
           }
