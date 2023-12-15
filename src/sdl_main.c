@@ -195,13 +195,13 @@ void sdl_loop() {
           if (++sdlCurrentFrame <= sdlNextFrame - SDL_BUFFER_FRAMES) {
             //Skip frame
           } else {
-            SDL_LockMutex(mutex);
             Uint8** data = ((Uint8**) event.user.data1);
             int* linesize = ((int*) event.user.data2);
+            SDL_LockMutex(mutex);
             u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
             write_yuv_to_framebuffer(gfxtopadr, data, surface_width, surface_height);
-            SDL_UnlockMutex(mutex);
             gfxScreenSwapBuffers(GFX_TOP, false);
+            SDL_UnlockMutex(mutex);
           }
         }
       }
