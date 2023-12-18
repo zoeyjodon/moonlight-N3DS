@@ -41,7 +41,6 @@ static void* ffmpeg_buffer;
 static size_t ffmpeg_buffer_size;
 static int surface_width, surface_height, pixel_size;
 static u8* img_buffer;
-static LightLock render_mutex;
 
 static int sdl_setup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
   if (ffmpeg_init(videoFormat, width, height, SLICE_THREADING, SDL_BUFFER_FRAMES, SLICES_PER_FRAME) < 0) {
@@ -50,8 +49,6 @@ static int sdl_setup(int videoFormat, int width, int height, int redrawRate, voi
   }
 
   ensure_buf_size(&ffmpeg_buffer, &ffmpeg_buffer_size, INITIAL_DECODER_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
-
-  LightLock_Init(&render_mutex);
 
   if(y2rInit())
   {
