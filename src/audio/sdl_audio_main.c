@@ -20,8 +20,8 @@
 #include "audio.h"
 
 #ifdef __3DS__
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_audio.h>
+#include <3ds.h>
+#include <math.h>
 #include <opus/opus_multistream.h>
 #else
 #include <SDL.h>
@@ -31,38 +31,71 @@
 
 #include <stdio.h>
 
+#define WAVEBUF_SIZE 3
+
 static OpusMSDecoder* decoder;
 static short* pcmBuffer;
 static int samplesPerFrame;
-static SDL_AudioDeviceID dev;
-static SDL_AudioStream *stream;
+static int sampleRate;
 static int channelCount;
+static ndspWaveBuf audio_wave_buf[WAVEBUF_SIZE];
+static int wave_buf_idx = 0;
+LightEvent buf_ready_event;
+
+
+static void AudioFrameFinished(void *_unused)
+{
+    for (int i = 0; i < WAVEBUF_SIZE; i++) {
+        if (audio_wave_buf[i].status == NDSP_WBUF_DONE) {
+          wave_buf_idx = i;
+          LightEvent_Signal(&buf_ready_event);
+          break;
+        }
+    }
+}
 
 static int sdl_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, void* context, int arFlags) {
   int rc;
   decoder = opus_multistream_decoder_create(opusConfig->sampleRate, opusConfig->channelCount, opusConfig->streams, opusConfig->coupledStreams, opusConfig->mapping, &rc);
 
+  sampleRate = opusConfig->sampleRate;
   channelCount = opusConfig->channelCount;
   samplesPerFrame = opusConfig->samplesPerFrame;
-  pcmBuffer = malloc(sizeof(short) * channelCount * samplesPerFrame);
+  int bytes_per_frame = sizeof(short) * channelCount * samplesPerFrame;
+  pcmBuffer = malloc(bytes_per_frame);
   if (pcmBuffer == NULL)
     return -1;
 
-  SDL_InitSubSystem(SDL_INIT_AUDIO);
-
-  SDL_AudioSpec want;
-  SDL_zero(want);
-  want.freq = opusConfig->sampleRate;
-  want.format = SDL_AUDIO_S16LE;
-  want.channels = opusConfig->channelCount;
-
-  stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &want, NULL, NULL);
-  if (stream == NULL) {
-    printf("Failed to open audio: %s\n", SDL_GetError());
+	if(ndspInit() != 0)
+	{
+		printf("ndspInit() failed\n");
     return -1;
+	}
+
+	u32 *audioBuffer = (u32*)linearAlloc(bytes_per_frame * WAVEBUF_SIZE);
+	memset(audioBuffer, 0, bytes_per_frame * WAVEBUF_SIZE);
+
+	ndspChnWaveBufClear(0);
+  ndspChnReset(0);
+  ndspSetOutputMode(NDSP_OUTPUT_STEREO);
+  ndspChnSetInterp(0, NDSP_INTERP_LINEAR);
+  ndspChnSetRate(0, sampleRate);
+  ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
+
+	float mix[12];
+	memset(mix, 0, sizeof(mix));
+  mix[0] = mix[1] = 1.0f;
+	ndspChnSetMix(0, mix);
+
+	memset(audio_wave_buf,0,sizeof(audio_wave_buf));
+  for (int i = 0; i < WAVEBUF_SIZE; i++) {
+    audio_wave_buf[i].data_vaddr = &audioBuffer[i * bytes_per_frame];
+    audio_wave_buf[i].status = NDSP_WBUF_DONE;
   }
-  dev = SDL_GetAudioStreamDevice(stream);
-  SDL_ResumeAudioDevice(dev);
+
+  LightEvent_Init(&buf_ready_event, RESET_ONESHOT);
+  ndspSetCallback(AudioFrameFinished, NULL);
+	ndspChnSetPaused(0, false);
 
   return 0;
 }
@@ -78,18 +111,34 @@ static void sdl_renderer_cleanup() {
     pcmBuffer = NULL;
   }
 
-  if (dev != 0) {
-    SDL_CloseAudioDevice(dev);
-    dev = 0;
-  }
+	ndspChnWaveBufClear(0);
+	ndspExit();
 }
 
 static void sdl_renderer_decode_and_play_sample(char* data, int length) {
   int decodeLen = opus_multistream_decode(decoder, data, length, pcmBuffer, samplesPerFrame, 0);
-  if (decodeLen > 0) {
-    SDL_PutAudioStreamData(stream, pcmBuffer, decodeLen * channelCount * sizeof(short));
-  } else if (decodeLen < 0) {
+  if (decodeLen < 0) {
     printf("Opus error from decode: %d\n", decodeLen);
+    return;
+  }
+
+  if (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)
+  {
+    LightEvent_Wait(&buf_ready_event);
+  }
+
+  int decodeByteLen = decodeLen * channelCount * sizeof(short);
+	memcpy(audio_wave_buf[wave_buf_idx].data_vaddr, pcmBuffer, decodeByteLen);
+	DSP_FlushDataCache(audio_wave_buf[wave_buf_idx].data_vaddr, decodeByteLen);
+
+  audio_wave_buf[wave_buf_idx].nsamples = decodeLen;
+	ndspChnWaveBufAdd(0, &audio_wave_buf[wave_buf_idx]);
+
+  for (int i = 0; i < WAVEBUF_SIZE; i++) {
+    if (audio_wave_buf[i].status == NDSP_WBUF_DONE) {
+      wave_buf_idx = i;
+      break;
+    }
   }
 }
 
@@ -97,5 +146,5 @@ AUDIO_RENDERER_CALLBACKS audio_callbacks_sdl = {
   .init = sdl_renderer_init,
   .cleanup = sdl_renderer_cleanup,
   .decodeAndPlaySample = sdl_renderer_decode_and_play_sample,
-  .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_SUPPORTS_ARBITRARY_AUDIO_DURATION,
+  .capabilities = 0,
 };
