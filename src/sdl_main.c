@@ -23,29 +23,15 @@
 #include "input/sdl.h"
 
 #include <3ds.h>
+#include <limits.h>
 #include <Limelight.h>
 
 static bool done;
 static int fullscreen_flags;
 
-static SDL_Window *window;
 SDL_Mutex *mutex;
 
 void sdl_init(int width, int height, bool fullscreen) {
-
-  if(SDL_Init(SDL_INIT_EVENTS)) {
-    printf("Could not initialize SDL - %s\n", SDL_GetError());
-    exit(1);
-  }
-
-  fullscreen_flags = fullscreen?SDL_WINDOW_FULLSCREEN:0;
-  int window_flags = fullscreen_flags;
-  window = SDL_CreateWindow("Moonlight", width, height, window_flags);
-  if(!window) {
-    printf("SDL: could not create window - exiting\n");
-    exit(1);
-  }
-
   mutex = SDL_CreateMutex();
   if (!mutex) {
     printf("Couldn't create mutex\n");
@@ -54,37 +40,18 @@ void sdl_init(int width, int height, bool fullscreen) {
 }
 
 void sdl_loop() {
-  SDL_Event event;
-
-  SDL_SetRelativeMouseMode(SDL_TRUE);
-
-  while(!done && SDL_WaitEvent(&event)) {
+  while(!done) {
 #ifdef __3DS__
     done = !aptMainLoop();
 #endif
-    switch (sdlinput_handle_event(window, &event)) {
+    switch (sdlinput_handle_event(NULL)) {
     case SDL_QUIT_APPLICATION:
       done = true;
       break;
-    case SDL_TOGGLE_FULLSCREEN:
-      fullscreen_flags ^= SDL_WINDOW_FULLSCREEN;
-      SDL_SetWindowFullscreen(window, fullscreen_flags);
-      break;
-    case SDL_MOUSE_GRAB:
-      SDL_ShowCursor();
-      SDL_SetRelativeMouseMode(SDL_TRUE);
-      break;
-    case SDL_MOUSE_UNGRAB:
-      SDL_SetRelativeMouseMode(SDL_FALSE);
-      SDL_HideCursor();
-      break;
-    default:
-      if (event.type == SDL_EVENT_QUIT)
-        done = true;
     }
+    hidWaitForEvent(HIDEVENT_PAD0, true);
   }
 
-  SDL_DestroyWindow(window);
 #ifndef __3DS__ // leave SDL running for debug after crash
   SDL_Quit();
 #endif

@@ -88,7 +88,7 @@ static void n3ds_exit_handler(void)
   acExit();
 }
 
-int console_selection_prompt(char* prompt, char** options, int option_count)
+static int console_selection_prompt(char* prompt, char** options, int option_count)
 {
   int option_idx = 0;
   int last_option_idx = -1;
@@ -262,11 +262,7 @@ int prompt_for_app_id(PSERVER_DATA server)
 }
 
 static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform system, int appId) {
-  int gamepads = sdl_gamepads;
-  int gamepad_mask = 0;
-  for (int i = 0; i < gamepads; i++)
-    gamepad_mask = (gamepad_mask << 1) + 1;
-
+  int gamepad_mask = 1;
   int ret = gs_start_app(server, &config->stream, appId, config->sops, config->localaudio, gamepad_mask);
   if (ret < 0) {
     if (ret == GS_NOT_SUPPORTED_4K)
@@ -406,10 +402,6 @@ int main(int argc, char* argv[]) {
             printf("View-only mode enabled, no input will be sent to the host computer\n");
         } else {
           sdlinput_init(config.mapping);
-          rumble_handler = sdlinput_rumble;
-          rumble_triggers_handler = sdlinput_rumble_triggers;
-          set_motion_event_state_handler = sdlinput_set_motion_event_state;
-          set_controller_led_handler = sdlinput_set_controller_led;
         }
         stream(&server, &config, system, appId);
         // Exit app after streaming has closed
