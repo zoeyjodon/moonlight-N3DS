@@ -31,28 +31,15 @@
 
 #include <stdio.h>
 
-#define WAVEBUF_SIZE 3
+#define WAVEBUF_SIZE 1024
 
 static OpusMSDecoder* decoder;
-static short* pcmBuffer;
+static u8* audioBuffer;
 static int samplesPerFrame;
 static int sampleRate;
 static int channelCount;
 static ndspWaveBuf audio_wave_buf[WAVEBUF_SIZE];
 static int wave_buf_idx = 0;
-LightEvent buf_ready_event;
-
-
-static void AudioFrameFinished(void *_unused)
-{
-    for (int i = 0; i < WAVEBUF_SIZE; i++) {
-        if (audio_wave_buf[i].status == NDSP_WBUF_DONE) {
-          wave_buf_idx = i;
-          LightEvent_Signal(&buf_ready_event);
-          break;
-        }
-    }
-}
 
 static int sdl_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, void* context, int arFlags) {
   int rc;
@@ -62,9 +49,6 @@ static int sdl_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURA
   channelCount = opusConfig->channelCount;
   samplesPerFrame = opusConfig->samplesPerFrame;
   int bytes_per_frame = sizeof(short) * channelCount * samplesPerFrame;
-  pcmBuffer = malloc(bytes_per_frame);
-  if (pcmBuffer == NULL)
-    return -1;
 
 	if(ndspInit() != 0)
 	{
@@ -72,7 +56,9 @@ static int sdl_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURA
     return -1;
 	}
 
-	u32 *audioBuffer = (u32*)linearAlloc(bytes_per_frame * WAVEBUF_SIZE);
+	u8 *audioBuffer = (u8*)linearAlloc(bytes_per_frame * WAVEBUF_SIZE);
+  if (audioBuffer == NULL)
+    return -1;
 	memset(audioBuffer, 0, bytes_per_frame * WAVEBUF_SIZE);
 
 	ndspChnWaveBufClear(0);
@@ -93,8 +79,6 @@ static int sdl_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURA
     audio_wave_buf[i].status = NDSP_WBUF_DONE;
   }
 
-  LightEvent_Init(&buf_ready_event, RESET_ONESHOT);
-  ndspSetCallback(AudioFrameFinished, NULL);
 	ndspChnSetPaused(0, false);
 
   return 0;
@@ -106,45 +90,35 @@ static void sdl_renderer_cleanup() {
     decoder = NULL;
   }
 
-  if (pcmBuffer != NULL) {
-    free(pcmBuffer);
-    pcmBuffer = NULL;
-  }
-
 	ndspChnWaveBufClear(0);
 	ndspExit();
+  if (audioBuffer != NULL) {
+    free(audioBuffer);
+    audioBuffer = NULL;
+  }
 }
 
 static void sdl_renderer_decode_and_play_sample(char* data, int length) {
-  int decodeLen = opus_multistream_decode(decoder, data, length, pcmBuffer, samplesPerFrame, 0);
+  if (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)
+  {
+    return;
+  }
+
+  int decodeLen = opus_multistream_decode(decoder, data, length, audio_wave_buf[wave_buf_idx].data_vaddr, samplesPerFrame, 0);
   if (decodeLen < 0) {
     printf("Opus error from decode: %d\n", decodeLen);
     return;
   }
-
-  if (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)
-  {
-    LightEvent_Wait(&buf_ready_event);
-  }
-
-  int decodeByteLen = decodeLen * channelCount * sizeof(short);
-	memcpy(audio_wave_buf[wave_buf_idx].data_vaddr, pcmBuffer, decodeByteLen);
-	DSP_FlushDataCache(audio_wave_buf[wave_buf_idx].data_vaddr, decodeByteLen);
-
+	DSP_FlushDataCache(audio_wave_buf[wave_buf_idx].data_vaddr, decodeLen * channelCount * sizeof(short));
   audio_wave_buf[wave_buf_idx].nsamples = decodeLen;
 	ndspChnWaveBufAdd(0, &audio_wave_buf[wave_buf_idx]);
 
-  for (int i = 0; i < WAVEBUF_SIZE; i++) {
-    if (audio_wave_buf[i].status == NDSP_WBUF_DONE) {
-      wave_buf_idx = i;
-      break;
-    }
-  }
+  wave_buf_idx = (wave_buf_idx +  1) % WAVEBUF_SIZE;
 }
 
 AUDIO_RENDERER_CALLBACKS audio_callbacks_sdl = {
   .init = sdl_renderer_init,
   .cleanup = sdl_renderer_cleanup,
   .decodeAndPlaySample = sdl_renderer_decode_and_play_sample,
-  .capabilities = 0,
+  .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_SLOW_OPUS_DECODER,
 };
