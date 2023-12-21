@@ -20,30 +20,22 @@
 #include "video.h"
 #include "ffmpeg.h"
 
-#include "../sdl_main.h"
 #include "../util.h"
 
-#ifdef __3DS__
 #include <3ds.h>
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_thread.h>
-#else
-#include <SDL.h>
-#include <SDL_thread.h>
-#endif
-
 #include <unistd.h>
 #include <stdbool.h>
 
 #define SLICES_PER_FRAME 4
+#define N3DS_BUFFER_FRAMES 2
 
 static void* ffmpeg_buffer;
 static size_t ffmpeg_buffer_size;
 static int surface_width, surface_height, pixel_size;
 static u8* img_buffer;
 
-static int sdl_setup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
-  if (ffmpeg_init(videoFormat, width, height, SLICE_THREADING, SDL_BUFFER_FRAMES, SLICES_PER_FRAME) < 0) {
+static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
+  if (ffmpeg_init(videoFormat, width, height, SLICE_THREADING, N3DS_BUFFER_FRAMES, SLICES_PER_FRAME) < 0) {
     fprintf(stderr, "Couldn't initialize video decoding\n");
     return -1;
   }
@@ -85,7 +77,7 @@ static int sdl_setup(int videoFormat, int width, int height, int redrawRate, voi
   return 0;
 }
 
-static void sdl_cleanup() {
+static void n3ds_cleanup() {
   ffmpeg_destroy();
   y2rExit();
   linearFree(img_buffer);
@@ -160,7 +152,7 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int widt
   return -1;
 }
 
-static int sdl_submit_decode_unit(PDECODE_UNIT decodeUnit) {
+static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   PLENTRY entry = decodeUnit->bufferList;
   int length = 0;
 
@@ -181,9 +173,9 @@ static int sdl_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   return status;
 }
 
-DECODER_RENDERER_CALLBACKS decoder_callbacks_sdl = {
-  .setup = sdl_setup,
-  .cleanup = sdl_cleanup,
-  .submitDecodeUnit = sdl_submit_decode_unit,
+DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds = {
+  .setup = n3ds_setup,
+  .cleanup = n3ds_cleanup,
+  .submitDecodeUnit = n3ds_submit_decode_unit,
   .capabilities = CAPABILITY_SLICES_PER_FRAME(SLICES_PER_FRAME) | CAPABILITY_REFERENCE_FRAME_INVALIDATION_HEVC,
 };

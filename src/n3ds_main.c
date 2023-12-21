@@ -23,14 +23,13 @@
 #include "connection_main.h"
 #include "platform_main.h"
 #include "config.h"
-#include "sdl_main.h"
 
 #include "n3ds/pair_record.h"
 
 #include "audio/audio.h"
 #include "video/video.h"
 
-#include "input/sdl.h"
+#include "input/n3ds_input.h"
 
 #include <3ds.h>
 
@@ -261,7 +260,15 @@ int prompt_for_app_id(PSERVER_DATA server)
   return app_ids[id_idx];
 }
 
-static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform system, int appId) {
+static inline void stream_loop() {
+  bool done = false;
+  while(!done && aptMainLoop()) {
+    done = n3dsinput_handle_event();
+    hidWaitForEvent(HIDEVENT_PAD0, true);
+  }
+}
+
+static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
   int gamepad_mask = 1;
   int ret = gs_start_app(server, &config->stream, appId, config->sops, config->localaudio, gamepad_mask);
   if (ret < 0) {
@@ -300,20 +307,19 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
 
   printf("Loading...\nStream %d x %d, %d fps, %d kbps\n", config->stream.width, config->stream.height, config->stream.fps, config->stream.bitrate);
 
-  int status = LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, &decoder_callbacks_sdl, &audio_callbacks_sdl, NULL, drFlags, config->audio_device, 0);
+  int status = LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, &decoder_callbacks_n3ds, &audio_callbacks_n3ds, NULL, drFlags, config->audio_device, 0);
   if (status != 0) {
     connection_callbacks.connectionTerminated(status);
     exit(status);
   }
   printf("Connected!\n");
 
-  sdl_loop();
+  stream_loop();
 
   LiStopConnection();
 
   if (config->quitappafter) {
-    if (config->debug_level > 0)
-      printf("Sending app quit request ...\n");
+    printf("Sending app quit request ...\n");
     gs_quit_app(server);
   }
 }
@@ -373,26 +379,12 @@ int main(int argc, char* argv[]) {
         break;
       }
       else if (strcmp("stream", config.action) == 0) {
-        enum platform system = platform_check(config.platform);
-        if (config.debug_level > 0)
-          printf("Platform %s\n", platform_name(system));
-
-        if (system == 0) {
-          fprintf(stderr, "Platform '%s' not found\n", config.platform);
-          exit(-1);
-        } else if (system == SDL && config.audio_device != NULL) {
-          fprintf(stderr, "You can't select a audio device for SDL\n");
-          exit(-1);
-        }
-
         int appId = prompt_for_app_id(&server);
         if (appId == -1) {
           continue;
         }
 
         config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
-        sdl_init(config.stream.width, config.stream.height, config.fullscreen);
-
         consoleClear();
         consoleInit(GFX_BOTTOM, &bottomScreen);
         consoleSelect(&bottomScreen);
@@ -401,9 +393,9 @@ int main(int argc, char* argv[]) {
           if (config.debug_level > 0)
             printf("View-only mode enabled, no input will be sent to the host computer\n");
         } else {
-          sdlinput_init(config.mapping);
+          n3dsinput_init();
         }
-        stream(&server, &config, system, appId);
+        stream(&server, &config, appId);
         // Exit app after streaming has closed
         exit(0);
       }

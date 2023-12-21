@@ -47,6 +47,7 @@ extern DECODER_RENDERER_CALLBACKS decoder_callbacks_x11_vdpau;
 #endif
 #ifdef __3DS__
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds;
+extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd;
 #endif
 #ifdef HAVE_SDL
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_sdl;

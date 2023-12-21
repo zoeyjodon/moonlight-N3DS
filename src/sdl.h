@@ -19,42 +19,24 @@
 
 #ifdef HAVE_SDL
 
-#include "sdl_main.h"
-#include "input/sdl.h"
+#include <SDL.h>
 
-#include <3ds.h>
-#include <limits.h>
-#include <Limelight.h>
+#include <stdbool.h>
 
-static bool done;
-static int fullscreen_flags;
+#define SDL_NOTHING 0
+#define SDL_QUIT_APPLICATION 1
+#define SDL_MOUSE_GRAB 2
+#define SDL_MOUSE_UNGRAB 3
+#define SDL_TOGGLE_FULLSCREEN 4
 
-SDL_Mutex *mutex;
+#define SDL_CODE_FRAME 0
 
-void sdl_init(int width, int height, bool fullscreen) {
-  mutex = SDL_CreateMutex();
-  if (!mutex) {
-    printf("Couldn't create mutex\n");
-    exit(1);
-  }
-}
+#define SDL_BUFFER_FRAMES 2
 
-void sdl_loop() {
-  while(!done) {
-#ifdef __3DS__
-    done = !aptMainLoop();
-#endif
-    switch (sdlinput_handle_event(NULL)) {
-    case SDL_QUIT_APPLICATION:
-      done = true;
-      break;
-    }
-    hidWaitForEvent(HIDEVENT_PAD0, true);
-  }
+void sdl_init(int width, int height, bool fullscreen);
+void sdl_loop();
 
-#ifndef __3DS__ // leave SDL running for debug after crash
-  SDL_Quit();
-#endif
-}
+extern SDL_mutex *mutex;
+extern int sdlCurrentFrame, sdlNextFrame;
 
 #endif /* HAVE_SDL */

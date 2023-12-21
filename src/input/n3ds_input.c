@@ -17,8 +17,7 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "sdl.h"
-#include "../sdl_main.h"
+#include "n3ds_input.h"
 
 #include <3ds.h>
 #include <limits.h>
@@ -50,7 +49,7 @@ static void remove_gamepad() {
   LiSendMultiControllerEvent(0, ~activeGamepadMask, 0, 0, 0, 0, 0, 0, 0);
 }
 
-void sdlinput_init(char* mappings) {
+void n3dsinput_init(char* mappings) {
   hidInit();
   add_gamepad();
 }
@@ -91,7 +90,7 @@ static inline int scale_n3ds_axis(int axis_n3ds) {
     return (axis_n3ds * SHRT_MAX) / 160;
 }
 
-int sdlinput_handle_event(SDL_Event* event) {
+int n3dsinput_handle_event() {
   hidScanInput();
   u32 kDown = hidKeysDown();
   u32 kUp = hidKeysUp();
@@ -108,7 +107,7 @@ int sdlinput_handle_event(SDL_Event* event) {
   }
 
   if ((gamepad_state.buttons & QUIT_BUTTONS) == QUIT_BUTTONS)
-    return SDL_QUIT_APPLICATION;
+    return 1;
 
   circlePosition cpad_pos;
   hidCircleRead(&cpad_pos);
@@ -122,6 +121,5 @@ int sdlinput_handle_event(SDL_Event* event) {
 
   LiSendMultiControllerEvent(0, activeGamepadMask, gamepad_state.buttons, gamepad_state.leftTrigger, gamepad_state.rightTrigger, gamepad_state.leftStickX, gamepad_state.leftStickY, gamepad_state.rightStickX, gamepad_state.rightStickY);
 
-  // return SDL_QUIT_APPLICATION;
-  return SDL_NOTHING;
+  return 0;
 }

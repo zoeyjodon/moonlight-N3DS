@@ -19,16 +19,9 @@
 
 #include "audio.h"
 
-#ifdef __3DS__
 #include <3ds.h>
 #include <math.h>
 #include <opus/opus_multistream.h>
-#else
-#include <SDL.h>
-#include <SDL_audio.h>
-#include <opus_multistream.h>
-#endif
-
 #include <stdio.h>
 
 #define WAVEBUF_SIZE 1024
@@ -41,7 +34,7 @@ static int channelCount;
 static ndspWaveBuf audio_wave_buf[WAVEBUF_SIZE];
 static int wave_buf_idx = 0;
 
-static int sdl_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, void* context, int arFlags) {
+static int n3ds_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, void* context, int arFlags) {
   int rc;
   decoder = opus_multistream_decoder_create(opusConfig->sampleRate, opusConfig->channelCount, opusConfig->streams, opusConfig->coupledStreams, opusConfig->mapping, &rc);
 
@@ -84,7 +77,7 @@ static int sdl_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURA
   return 0;
 }
 
-static void sdl_renderer_cleanup() {
+static void n3ds_renderer_cleanup() {
   if (decoder != NULL) {
     opus_multistream_decoder_destroy(decoder);
     decoder = NULL;
@@ -98,7 +91,7 @@ static void sdl_renderer_cleanup() {
   }
 }
 
-static void sdl_renderer_decode_and_play_sample(char* data, int length) {
+static void n3ds_renderer_decode_and_play_sample(char* data, int length) {
   if (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)
   {
     return;
@@ -116,9 +109,9 @@ static void sdl_renderer_decode_and_play_sample(char* data, int length) {
   wave_buf_idx = (wave_buf_idx +  1) % WAVEBUF_SIZE;
 }
 
-AUDIO_RENDERER_CALLBACKS audio_callbacks_sdl = {
-  .init = sdl_renderer_init,
-  .cleanup = sdl_renderer_cleanup,
-  .decodeAndPlaySample = sdl_renderer_decode_and_play_sample,
+AUDIO_RENDERER_CALLBACKS audio_callbacks_n3ds = {
+  .init = n3ds_renderer_init,
+  .cleanup = n3ds_renderer_cleanup,
+  .decodeAndPlaySample = n3ds_renderer_decode_and_play_sample,
   .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_SLOW_OPUS_DECODER,
 };
