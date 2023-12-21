@@ -20,10 +20,10 @@
 #ifdef __3DS__
 
 #include "loop.h"
-#include "connection_main.h"
 #include "platform_main.h"
 #include "config.h"
 
+#include "n3ds/n3ds_connection.h"
 #include "n3ds/pair_record.h"
 
 #include "audio/audio.h"
@@ -263,7 +263,7 @@ int prompt_for_app_id(PSERVER_DATA server)
 static inline void stream_loop() {
   bool done = false;
   while(!done && aptMainLoop()) {
-    done = n3dsinput_handle_event();
+    done = n3dsinput_handle_event() | n3ds_connection_closed;
     hidWaitForEvent(HIDEVENT_PAD0, true);
   }
 }
@@ -307,9 +307,9 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
 
   printf("Loading...\nStream %d x %d, %d fps, %d kbps\n", config->stream.width, config->stream.height, config->stream.fps, config->stream.bitrate);
 
-  int status = LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, &decoder_callbacks_n3ds, &audio_callbacks_n3ds, NULL, drFlags, config->audio_device, 0);
+  int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, &decoder_callbacks_n3ds, &audio_callbacks_n3ds, NULL, drFlags, config->audio_device, 0);
   if (status != 0) {
-    connection_callbacks.connectionTerminated(status);
+    n3ds_connection_callbacks.connectionTerminated(status);
     exit(status);
   }
   printf("Connected!\n");

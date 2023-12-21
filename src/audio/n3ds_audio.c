@@ -94,6 +94,8 @@ static void n3ds_renderer_cleanup() {
 static void n3ds_renderer_decode_and_play_sample(char* data, int length) {
   if (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)
   {
+    // Buffer is full, drop the frame
+    opus_multistream_decode(decoder, NULL, 0, NULL, samplesPerFrame, 0);
     return;
   }
 

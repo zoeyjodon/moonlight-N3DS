@@ -17,19 +17,7 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __3DS__
-
 #include <Limelight.h>
 
-#include <pthread.h>
-#include <stdbool.h>
-
-extern CONNECTION_LISTENER_CALLBACKS connection_callbacks;
-extern pthread_t main_thread_id;
-extern bool connection_debug;
-extern ConnListenerRumble rumble_handler;
-extern ConnListenerRumbleTriggers rumble_triggers_handler;
-extern ConnListenerSetMotionEventState set_motion_event_state_handler;
-extern ConnListenerSetControllerLED set_controller_led_handler;
-
-#endif
+extern bool n3ds_connection_closed;
+extern CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks;
