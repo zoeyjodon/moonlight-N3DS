@@ -12,6 +12,68 @@ static inline void init_safe_alloc() {
     util_safe_linear_alloc_init = true;
 }
 
+static inline void* Util_safe_linear_alloc(size_t size)
+{
+	void* pointer = NULL;
+	if(!util_safe_linear_alloc_init)
+		return NULL;
+
+	LightLock_Lock(&util_safe_linear_alloc_mutex);
+	pointer = linearAlloc(size);
+	LightLock_Unlock(&util_safe_linear_alloc_mutex);
+
+	return pointer;
+}
+
+static inline void* Util_safe_linear_align(size_t alignment, size_t size)
+{
+    init_safe_alloc();
+
+    LightLock_Lock(&util_safe_linear_alloc_mutex);
+    void* pointer = linearMemAlign(size, alignment);
+    LightLock_Unlock(&util_safe_linear_alloc_mutex);
+
+    return pointer;
+}
+
+static inline void Util_safe_linear_free(void* pointer)
+{
+    init_safe_alloc();
+
+    LightLock_Lock(&util_safe_linear_alloc_mutex);
+    linearFree(pointer);
+    LightLock_Unlock(&util_safe_linear_alloc_mutex);
+}
+
+static inline void* Util_safe_linear_realloc(void* pointer, size_t size)
+{
+    init_safe_alloc();
+
+    if(size == 0)
+    {
+        Util_safe_linear_free(pointer);
+        return pointer;
+    }
+    if(!pointer)
+        return Util_safe_linear_alloc(size);
+
+    void* new_ptr = Util_safe_linear_alloc(size);
+    if(new_ptr)
+    {
+        LightLock_Lock(&util_safe_linear_alloc_mutex);
+        u32 pointer_size = linearGetSize(pointer);
+        LightLock_Unlock(&util_safe_linear_alloc_mutex);
+
+        if(size > pointer_size)
+            memcpy((u8*)new_ptr, (u8*)pointer, pointer_size);
+        else
+            memcpy((u8*)new_ptr, (u8*)pointer, size);
+
+        Util_safe_linear_free(pointer);
+    }
+    return new_ptr;
+}
+
 void* __wrap_malloc(size_t size)
 {
     void* ptr = NULL;
@@ -101,54 +163,4 @@ void* __wrap_memalign(size_t alignment, size_t size)
             ptr = Util_safe_linear_align(alignment, size);
     }
     return ptr;
-}
-
-
-void* Util_safe_linear_align(size_t alignment, size_t size)
-{
-    init_safe_alloc();
-
-    LightLock_Lock(&util_safe_linear_alloc_mutex);
-    void* pointer = linearMemAlign(size, alignment);
-    LightLock_Unlock(&util_safe_linear_alloc_mutex);
-
-    return pointer;
-}
-
-void* Util_safe_linear_realloc(void* pointer, size_t size)
-{
-    init_safe_alloc();
-
-    if(size == 0)
-    {
-        Util_safe_linear_free(pointer);
-        return pointer;
-    }
-    if(!pointer)
-        return Util_safe_linear_alloc(size);
-
-    void* new_ptr = Util_safe_linear_alloc(size);
-    if(new_ptr)
-    {
-        LightLock_Lock(&util_safe_linear_alloc_mutex);
-        u32 pointer_size = linearGetSize(pointer);
-        LightLock_Unlock(&util_safe_linear_alloc_mutex);
-
-        if(size > pointer_size)
-            memcpy_asm((u8*)new_ptr, (u8*)pointer, pointer_size);
-        else
-            memcpy_asm((u8*)new_ptr, (u8*)pointer, size);
-
-        Util_safe_linear_free(pointer);
-    }
-    return new_ptr;
-}
-
-void Util_safe_linear_free(void* pointer)
-{
-    init_safe_alloc();
-
-    LightLock_Lock(&util_safe_linear_alloc_mutex);
-    linearFree(pointer);
-    LightLock_Unlock(&util_safe_linear_alloc_mutex);
 }
