@@ -67,7 +67,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
   surface_height = height;
   pixel_size = gspGetBytesPerPixel(px_fmt);
 
-  img_buffer = linearAlloc(width * height * pixel_size);
+  img_buffer = linearMemAlign(width * height * pixel_size, 0x80);
   if (!img_buffer) {
     printf("Out of memory!");
     return -1;
