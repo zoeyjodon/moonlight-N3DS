@@ -19,8 +19,8 @@ cd $FFMPEG_DIR
              --disable-protocols --disable-txtpages --disable-podpages --disable-manpages \
              --disable-htmlpages --disable-doc \
              --enable-inline-asm --enable-vfp --enable-armv5te --enable-armv6 \
-             --enable-decoder="h264" \
-             --enable-demuxer="h264" \
+             --enable-decoder="h264,hevc,av1" \
+             --enable-demuxer="h264,hevc,av1" \
              --enable-muxer="mp4,mp3,mp2,ac3" \
              --enable-protocol="file" \
              --enable-libx264 --enable-libdav1d --enable-gpl --enable-pthreads
