@@ -51,7 +51,7 @@
 #include <openssl/rand.h>
 
 #define SOC_ALIGN       0x1000
-#define SOC_BUFFERSIZE  0x2000000
+#define SOC_BUFFERSIZE  0x3000000
 
 #define MAX_INPUT_CHAR 60
 #define MAX_APP_LIST 30
