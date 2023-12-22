@@ -193,7 +193,7 @@ char * prompt_for_address()
 void init_3ds()
 {
   acInit();
-  gfxInitDefault();
+  gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
   consoleInit(GFX_TOP, &topScreen);
   consoleInit(GFX_BOTTOM, &bottomScreen);
   consoleSelect(&topScreen);

@@ -92,11 +92,10 @@ static void n3ds_renderer_cleanup() {
 }
 
 static void n3ds_renderer_decode_and_play_sample(char* data, int length) {
-  if (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)
+  while (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)
   {
-    // Buffer is full, drop the frame
-    opus_multistream_decode(decoder, NULL, 0, NULL, samplesPerFrame, 0);
-    return;
+    // Wait for an average frame time (5ms)
+    svcSleepThread(5000000);
   }
 
   int decodeLen = opus_multistream_decode(decoder, data, length, audio_wave_buf[wave_buf_idx].data_vaddr, samplesPerFrame, 0);

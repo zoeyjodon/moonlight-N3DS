@@ -62,8 +62,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
     return -1;
   }
 
-  GSPGPU_FramebufferFormat px_fmt = GSP_RGB565_OES;
-  gfxInit(px_fmt, GSP_RGB565_OES, false);
+  GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
   surface_width = width;
   surface_height = height;
   pixel_size = gspGetBytesPerPixel(px_fmt);
@@ -83,27 +82,27 @@ static void n3ds_cleanup() {
   linearFree(img_buffer);
 }
 
-static inline int get_dest_offset(int x, int y, int height)
+static inline int get_dest_offset(int x, int y)
 {
-  return height - y - 1 + height * x;
+  return GSP_SCREEN_WIDTH - y - 1 + GSP_SCREEN_WIDTH * x;
 }
 
-static inline int get_source_offset(int x, int y, int width)
+static inline int get_source_offset(int x, int y, int width, int height)
 {
-  return x + y * width;
+  return (x * width / GSP_SCREEN_HEIGHT_TOP) + (y * height / GSP_SCREEN_WIDTH) * width;
 }
 
-static inline void write_rgb565_to_framebuffer(u16* dest, u16* source, int width, int height) {
-  for (int y = 0; y < height; ++y) {
-    for (int x = 0; x < width; ++x) {
-      int src_offset = get_source_offset(x, y, width);
-      int dst_offset = get_dest_offset(x, y, height);
-      dest[dst_offset] = source[src_offset];
+static inline void write_px_to_framebuffer(u8* dest, u8* source, int width, int height, int px_size) {
+  for (int y = 0; y < GSP_SCREEN_WIDTH; ++y) {
+    for (int x = 0; x < GSP_SCREEN_HEIGHT_TOP; ++x) {
+      int src_offset = px_size * get_source_offset(x, y, width, height);
+      int dst_offset = px_size * get_dest_offset(x, y);
+      memcpy(dest + dst_offset, source + src_offset, px_size);
     }
   }
 }
 
-static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int width, int height) {
+static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int width, int height, int px_size) {
 	Handle conversion_finish_event_handle;
   int status = 0;
 
@@ -125,7 +124,7 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int widt
     goto y2ru_failed;
   }
 
-  status = Y2RU_SetReceiving(img_buffer, width * height * pixel_size, width * pixel_size * 4, 0);
+  status = Y2RU_SetReceiving(img_buffer, width * height * px_size, width * px_size * 4, 0);
   if (status) {
     printf("Y2RU_SetReceiving failed\n");
     goto y2ru_failed;
@@ -145,7 +144,7 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int widt
 
   svcWaitSynchronization(conversion_finish_event_handle, 200000000);//Wait up to 200ms.
   svcCloseHandle(conversion_finish_event_handle);
-  write_rgb565_to_framebuffer(dest, img_buffer, width, height);
+  write_px_to_framebuffer(dest, img_buffer, width, height, px_size);
   return DR_OK;
 
 	y2ru_failed:
@@ -167,7 +166,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
 
   AVFrame* frame = ffmpeg_get_frame(false);
   u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-  int status = write_yuv_to_framebuffer(gfxtopadr, frame->data, surface_width, surface_height);
+  int status = write_yuv_to_framebuffer(gfxtopadr, frame->data, surface_width, surface_height, pixel_size);
   gfxScreenSwapBuffers(GFX_TOP, false);
 
   return status;
