@@ -124,7 +124,7 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int widt
     goto y2ru_failed;
   }
 
-  status = Y2RU_SetReceiving(img_buffer, width * height * px_size, width * px_size * 4, 0);
+  status = Y2RU_SetReceiving(img_buffer, width * height * px_size, 8, 0);
   if (status) {
     printf("Y2RU_SetReceiving failed\n");
     goto y2ru_failed;
@@ -142,7 +142,7 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int widt
     goto y2ru_failed;
   }
 
-  svcWaitSynchronization(conversion_finish_event_handle, 200000000);//Wait up to 200ms.
+  svcWaitSynchronization(conversion_finish_event_handle, 10000000);//Wait up to 10ms.
   svcCloseHandle(conversion_finish_event_handle);
   write_px_to_framebuffer(dest, img_buffer, width, height, px_size);
   return DR_OK;

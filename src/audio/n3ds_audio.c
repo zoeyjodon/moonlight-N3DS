@@ -94,8 +94,8 @@ static void n3ds_renderer_cleanup() {
 static void n3ds_renderer_decode_and_play_sample(char* data, int length) {
   while (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)
   {
-    // Wait for an average frame time (5ms)
-    svcSleepThread(5000000);
+    // Yield to other threads while we wait for a buffer
+    svcSleepThread(1000000);
   }
 
   int decodeLen = opus_multistream_decode(decoder, data, length, audio_wave_buf[wave_buf_idx].data_vaddr, samplesPerFrame, 0);
