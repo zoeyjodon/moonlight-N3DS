@@ -51,7 +51,7 @@
 #include <openssl/rand.h>
 
 #define SOC_ALIGN       0x1000
-#define SOC_BUFFERSIZE  0x3000000
+#define SOC_BUFFERSIZE  0x3500000
 
 #define MAX_INPUT_CHAR 60
 #define MAX_APP_LIST 30
@@ -130,7 +130,7 @@ static int console_selection_prompt(char* prompt, char** options, int option_cou
       return -1;
     }
     if (kDown & KEY_DOWN) {
-      if (option_idx < 4) {
+      if (option_idx < option_count) {
         option_idx++;
       }
     }
@@ -147,19 +147,22 @@ static int console_selection_prompt(char* prompt, char** options, int option_cou
 char * prompt_for_action(PSERVER_DATA server)
 {
   if (server->paired) {
-    const char* actions[3];
-    actions[0] = "stream";
-    actions[1] = "quit stream";
-    actions[2] = "unpair";
-    int idx = console_selection_prompt("Select an action", actions, 3);
+    const char* actions[] = {
+      "stream",
+      "quit stream",
+      "stream settings",
+      "unpair",
+    };
+    int actions_len = sizeof(actions) / sizeof(actions[0]);
+    int idx = console_selection_prompt("Select an action", actions, actions_len);
     if (idx < 0) {
       return NULL;
     }
     return actions[idx];
   }
-  const char* actions[1];
-  actions[0] = "pair";
-  int idx = console_selection_prompt("Select an action", actions, 1);
+  const char* actions[] = {"pair"};
+  int actions_len = sizeof(actions) / sizeof(actions[0]);
+  int idx = console_selection_prompt("Select an action", actions, actions_len);
   if (idx < 0) {
     return NULL;
   }
@@ -188,6 +191,115 @@ char * prompt_for_address()
   swkbdInputText(&swkbd, addr_buff, MAX_INPUT_CHAR);
   addr_buff = realloc(addr_buff, strlen(addr_buff));
   return addr_buff;
+}
+
+void prompt_for_stream_settings(PCONFIGURATION config)
+{
+  const char* setting_names[] = {
+    "width",
+    "height",
+    "fps",
+    "bitrate",
+    "packetsize",
+    "nosops",
+    "localaudio",
+    "quitappafter",
+    "viewonly",
+    "rotate",
+  };
+  char argument_ids[] = {
+    'c',
+    'd',
+    'v',
+    'g',
+    'h',
+    'l',
+    'n',
+    '1',
+    '2',
+    '3',
+  };
+  int settings_len = sizeof(setting_names) / sizeof(setting_names[0]);
+  char* setting_buff = malloc(MAX_INPUT_CHAR);
+  while (1) {
+    int idx = console_selection_prompt("Select a setting", setting_names, settings_len);
+    if (idx < 0) {
+      break;
+    }
+
+    SwkbdState swkbd;
+    memset(setting_buff, 0, MAX_INPUT_CHAR);
+    if (strcmp("width", setting_names[idx]) == 0) {
+			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.width);
+    }
+    else if (strcmp("height", setting_names[idx]) == 0) {
+			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.height);
+    }
+    else if (strcmp("fps", setting_names[idx]) == 0) {
+			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.fps);
+    }
+    else if (strcmp("bitrate", setting_names[idx]) == 0) {
+			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.bitrate);
+    }
+    else if (strcmp("packetsize", setting_names[idx]) == 0) {
+			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.packetSize);
+    }
+    else if (strcmp("nosops", setting_names[idx]) == 0) {
+      swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
+      if (config->sops) {
+        sprintf(setting_buff, "false");
+      }
+      else {
+        sprintf(setting_buff, "true");
+      }
+    }
+    else if (strcmp("localaudio", setting_names[idx]) == 0) {
+      swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
+      if (config->localaudio) {
+        sprintf(setting_buff, "true");
+      }
+      else {
+        sprintf(setting_buff, "false");
+      }
+    }
+    else if (strcmp("quitappafter", setting_names[idx]) == 0) {
+      swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
+      if (config->quitappafter) {
+        sprintf(setting_buff, "true");
+      }
+      else {
+        sprintf(setting_buff, "false");
+      }
+    }
+    else if (strcmp("viewonly", setting_names[idx]) == 0) {
+      swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
+      if (config->viewonly) {
+        sprintf(setting_buff, "true");
+      }
+      else {
+        sprintf(setting_buff, "false");
+      }
+    }
+    else if (strcmp("rotate", setting_names[idx]) == 0) {
+			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->rotate);
+    }
+
+    swkbdSetInitialText(&swkbd, setting_buff);
+    swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
+
+    parse_argument(argument_ids[idx], setting_buff, config);
+  }
+
+  // Update the config file
+  char* config_file_path = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
+  config_save(config_file_path, config);
+  free(setting_buff);
 }
 
 void init_3ds()
@@ -415,6 +527,10 @@ int main(int argc, char* argv[]) {
           add_pair_address(config.address);
           break;
         }
+      }
+      else if (strcmp("stream settings", config.action) == 0) {
+        prompt_for_stream_settings(&config);
+        continue;
       }
       else if (strcmp("unpair", config.action) == 0) {
         if (gs_unpair(&server) != GS_OK) {

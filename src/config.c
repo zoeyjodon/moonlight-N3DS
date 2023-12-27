@@ -139,7 +139,7 @@ char* get_path(char* name, char* extra_data_dirs) {
 }
 #endif
 
-static void parse_argument(int c, char* value, PCONFIGURATION config) {
+void parse_argument(int c, char* value, PCONFIGURATION config) {
   switch (c) {
   case 'a':
     config->stream.width = 1280;
