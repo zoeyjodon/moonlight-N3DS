@@ -187,13 +187,23 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     break;
 #endif
   case 'l':
-    config->sops = false;
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->sops = false;
+    }
+    else {
+      config->sops = true;
+    }
     break;
   case 'm':
     config->audio_device = value;
     break;
   case 'n':
-    config->localaudio = true;
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->localaudio = true;
+    }
+    else {
+      config->localaudio = false;
+    }
     break;
   case 'o':
     if (!config_file_parse(value, config))
@@ -244,10 +254,20 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     config->unsupported = false;
     break;
   case '1':
-    config->quitappafter = true;
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->quitappafter = true;
+    }
+    else {
+      config->quitappafter = false;
+    }
     break;
   case '2':
-    config->viewonly = true;
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->viewonly = true;
+    }
+    else {
+      config->viewonly = false;
+    }
     break;
   case '3':
     config->rotate = atoi(value);
