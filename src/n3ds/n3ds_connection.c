@@ -58,9 +58,8 @@ static void connection_terminated(int errorCode) {
     SDL_Event event;
     event.type = SDL_EVENT_QUIT;
     SDL_PushEvent(&event);
-#else
-  n3ds_connection_closed = true;
 #endif
+  n3ds_connection_closed = true;
 }
 
 static void connection_log_message(const char* format, ...) {

@@ -442,7 +442,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
 #ifdef HAVE_SDL
   sdl_loop();
 #else
-  stream_loop();
+  stream_loop(config);
 #endif
 
   LiStopConnection();
