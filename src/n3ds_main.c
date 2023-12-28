@@ -83,6 +83,9 @@ static void n3ds_exit_handler(void)
       break;
   }
 
+  NDMU_UnlockState();
+  NDMU_LeaveExclusiveState();
+  ndmuExit();
   irrstExit();
   socExit();
   free(SOC_buffer);
@@ -309,22 +312,16 @@ void prompt_for_stream_settings(PCONFIGURATION config)
 
 void init_3ds()
 {
+  Result status = 0;
   acInit();
   gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
   consoleInit(GFX_TOP, &topScreen);
-  consoleInit(GFX_BOTTOM, &bottomScreen);
   consoleSelect(&topScreen);
   atexit(n3ds_exit_handler);
 
   osSetSpeedupEnable(true);
-  aptSetSleepAllowed(true);
+  aptSetSleepAllowed(false);
   aptInit();
-  Result status = romfsInit();
-  if (R_FAILED(status))
-  {
-    printf("romfsInit: %08lX\n", status);
-  }
-  else printf("romfs Init Successful!\n");
 
   SOC_buffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
   status = socInit(SOC_buffer, SOC_BUFFERSIZE);
@@ -334,16 +331,13 @@ void init_3ds()
     exit(1);
   }
 
-  status = NDMU_EnterExclusiveState(NDM_EXCLUSIVE_STATE_INFRASTRUCTURE);
+	status = ndmuInit();
+  status |= NDMU_EnterExclusiveState(NDM_EXCLUSIVE_STATE_INFRASTRUCTURE);
+  status |= NDMU_LockState();
   if (R_FAILED(status))
   {
     printf ("Failed to enter exclusive NDM state: %08lX\n", status);
-  }
-  status = NDMU_LockState();
-  if (R_FAILED(status))
-  {
-    printf ("Failed to lock NDM: %08lX\n", status);
-    NDMU_LeaveExclusiveState();
+    exit(1);
   }
 }
 
