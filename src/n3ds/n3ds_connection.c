@@ -24,6 +24,10 @@
 #include <stdarg.h>
 #include <signal.h>
 
+#ifdef HAVE_SDL
+#include <SDL3/SDL.h>
+#endif
+
 bool n3ds_connection_closed = false;
 static const char* disconnect_message = "";
 
@@ -50,7 +54,13 @@ static void connection_terminated(int errorCode) {
     break;
   }
 
+#ifdef HAVE_SDL
+    SDL_Event event;
+    event.type = SDL_EVENT_QUIT;
+    SDL_PushEvent(&event);
+#else
   n3ds_connection_closed = true;
+#endif
 }
 
 static void connection_log_message(const char* format, ...) {

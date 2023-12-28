@@ -19,7 +19,11 @@
 
 #ifdef HAVE_SDL
 
+#ifdef __3DS__
+#include <SDL3/SDL.h>
+#else
 #include <SDL.h>
+#endif
 
 #include <stdbool.h>
 
@@ -36,7 +40,7 @@
 void sdl_init(int width, int height, bool fullscreen);
 void sdl_loop();
 
-extern SDL_mutex *mutex;
+extern SDL_Mutex *mutex;
 extern int sdlCurrentFrame, sdlNextFrame;
 
 #endif /* HAVE_SDL */

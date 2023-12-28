@@ -60,7 +60,7 @@ static void connection_terminated(int errorCode) {
 
   #ifdef HAVE_SDL
       SDL_Event event;
-      event.type = SDL_QUIT;
+      event.type = SDL_EVENT_QUIT;
       SDL_PushEvent(&event);
   #endif
 

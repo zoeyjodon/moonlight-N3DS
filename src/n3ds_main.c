@@ -23,6 +23,11 @@
 #include "platform_main.h"
 #include "config.h"
 
+#ifdef HAVE_SDL
+#include "sdl_main.h"
+#include "input/sdl.h"
+#endif
+
 #include "n3ds/n3ds_connection.h"
 #include "n3ds/pair_record.h"
 
@@ -372,10 +377,13 @@ int prompt_for_app_id(PSERVER_DATA server)
   return app_ids[id_idx];
 }
 
-static inline void stream_loop() {
+static inline void stream_loop(PCONFIGURATION config) {
   bool done = false;
   while(!done && aptMainLoop()) {
-    done = n3dsinput_handle_event() | n3ds_connection_closed;
+    done = n3ds_connection_closed;
+    if (!config->viewonly) {
+      done |= n3dsinput_handle_event();
+    }
     hidWaitForEvent(HIDEVENT_PAD0, true);
   }
 }
@@ -419,14 +427,23 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
 
   printf("Loading...\nStream %d x %d, %d fps, %d kbps\n", config->stream.width, config->stream.height, config->stream.fps, config->stream.bitrate);
 
+#ifdef HAVE_SDL
+  int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, &decoder_callbacks_n3ds, &audio_callbacks_sdl, NULL, drFlags, config->audio_device, 0);
+#else
   int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, &decoder_callbacks_n3ds, &audio_callbacks_n3ds, NULL, drFlags, config->audio_device, 0);
+#endif
+
   if (status != 0) {
     n3ds_connection_callbacks.connectionTerminated(status);
     exit(status);
   }
   printf("Connected!\n");
 
+#ifdef HAVE_SDL
+  sdl_loop();
+#else
   stream_loop();
+#endif
 
   LiStopConnection();
 
@@ -497,6 +514,14 @@ int main(int argc, char* argv[]) {
         }
 
         config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
+
+#ifdef HAVE_SDL
+        sdl_init(config.stream.width, config.stream.height, config.fullscreen);
+        if (!config.viewonly) {
+          sdlinput_init(config.mapping);
+        }
+#endif
+
         consoleClear();
         consoleInit(GFX_BOTTOM, &bottomScreen);
         consoleSelect(&bottomScreen);
