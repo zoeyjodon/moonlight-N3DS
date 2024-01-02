@@ -24,7 +24,8 @@
 #include <opus/opus_multistream.h>
 #include <stdio.h>
 
-#define WAVEBUF_SIZE 1024
+#define WAVEBUF_SIZE 2048
+bool n3ds_audio_disabled = false;
 
 static OpusMSDecoder* decoder;
 static u8* audioBuffer;
@@ -92,6 +93,10 @@ static void n3ds_renderer_cleanup() {
 }
 
 static void n3ds_renderer_decode_and_play_sample(char* data, int length) {
+  if (n3ds_audio_disabled) {
+    return;
+  }
+
   while (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)
   {
     // Yield to other threads while we wait for a buffer

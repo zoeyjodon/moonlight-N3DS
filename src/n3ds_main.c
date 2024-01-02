@@ -63,13 +63,10 @@
 
 static u32 *SOC_buffer = NULL;
 
-PrintConsole topScreen;
-PrintConsole bottomScreen;
+static PrintConsole topScreen;
+static PrintConsole bottomScreen;
 
-static void n3ds_exit_handler(void)
-{
-  // Allow users to decide when to exit
-  printf("\nPress any button to quit\n");
+static inline void wait_for_button() {
   while (aptMainLoop())
   {
     gfxSwapBuffers();
@@ -82,6 +79,13 @@ static void n3ds_exit_handler(void)
     if (kDown)
       break;
   }
+}
+
+static void n3ds_exit_handler(void)
+{
+  // Allow users to decide when to exit
+  printf("\nPress any button to quit\n");
+  wait_for_button();
 
   NDMU_UnlockState();
   NDMU_LeaveExclusiveState();
@@ -336,8 +340,9 @@ void init_3ds()
   status |= NDMU_LockState();
   if (R_FAILED(status))
   {
-    printf ("Failed to enter exclusive NDM state: %08lX\n", status);
-    exit(1);
+    printf ("Warning: failed to enter exclusive NDM state: %08lX\n", status);
+    printf("\nPress any button to continue\n");
+    wait_for_button();
   }
 }
 
@@ -398,6 +403,8 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
       fprintf(stderr, "Errorcode starting app: %d\n", ret);
     exit(-1);
   }
+
+  n3ds_audio_disabled = config->localaudio;
 
   int drFlags = 0;
   if (config->fullscreen)
@@ -569,15 +576,7 @@ int main(int argc, char* argv[]) {
 
 
       printf("\nPress any button to continue\n");
-      while (aptMainLoop())
-      {
-        gfxSwapBuffers();
-        gfxFlushBuffers();
-        gspWaitForVBlank();
-        hidScanInput();
-        if (hidKeysDown())
-          break;
-      }
+      wait_for_button();
     }
   }
   return 0;
