@@ -28,6 +28,7 @@
 #define SUPPORTED_BUTTONS (A_FLAG|B_FLAG|X_FLAG|Y_FLAG|\
   RIGHT_FLAG|LEFT_FLAG|UP_FLAG|DOWN_FLAG|RB_FLAG|LB_FLAG|\
   BACK_FLAG|PLAY_FLAG|TOUCHPAD_FLAG)
+#define N3DS_ANALOG_MAX 160
 
 typedef struct _GAMEPAD_STATE {
   unsigned char leftTrigger, rightTrigger;
@@ -35,9 +36,9 @@ typedef struct _GAMEPAD_STATE {
   short rightStickX, rightStickY;
   int buttons;
 } GAMEPAD_STATE;
-static GAMEPAD_STATE gamepad_state;
+static GAMEPAD_STATE gamepad_state, previous_state;
 
-static int activeGamepadMask = 1;
+static const int activeGamepadMask = 1;
 
 static void add_gamepad() {
   unsigned short capabilities = 0;
@@ -81,19 +82,44 @@ static inline unsigned char n3ds_to_li_trigger(u32 key_in, u32 key_n3ds) {
 }
 
 static inline int scale_n3ds_axis(int axis_n3ds) {
-    if (axis_n3ds > 160) {
+    if (axis_n3ds > N3DS_ANALOG_MAX) {
         return SHRT_MAX;
     }
-    else if (axis_n3ds < -160) {
+    else if (axis_n3ds < -N3DS_ANALOG_MAX) {
         return -SHRT_MAX;
     }
-    return (axis_n3ds * SHRT_MAX) / 160;
+    return (axis_n3ds * SHRT_MAX) / N3DS_ANALOG_MAX;
+}
+
+static inline bool joystick_state_changed(short before, short after) {
+  return (before / 10) != (after / 10);
+}
+
+static inline bool gamepad_state_changed() {
+  if ((previous_state.buttons != gamepad_state.buttons) ||
+      (previous_state.leftTrigger != gamepad_state.leftTrigger) ||
+      (previous_state.rightTrigger != gamepad_state.rightTrigger)) {
+    return true;
+  }
+
+  if (joystick_state_changed(previous_state.leftStickX, gamepad_state.leftStickX) ||
+      joystick_state_changed(previous_state.leftStickY, gamepad_state.leftStickY)){
+    return true;
+  }
+
+  if (joystick_state_changed(previous_state.rightStickX, gamepad_state.rightStickX) ||
+      joystick_state_changed(previous_state.rightStickY, gamepad_state.rightStickY)) {
+    return true;
+  }
+
+  return false;
 }
 
 int n3dsinput_handle_event() {
   hidScanInput();
   u32 kDown = hidKeysDown();
   u32 kUp = hidKeysUp();
+  previous_state = gamepad_state;
 
   if (kDown) {
     gamepad_state.buttons |= n3ds_to_li_buttons(kDown);
@@ -119,7 +145,9 @@ int n3dsinput_handle_event() {
   gamepad_state.rightStickX = scale_n3ds_axis(cstick_pos.dx);
   gamepad_state.rightStickY = scale_n3ds_axis(cstick_pos.dy);
 
-  LiSendMultiControllerEvent(0, activeGamepadMask, gamepad_state.buttons, gamepad_state.leftTrigger, gamepad_state.rightTrigger, gamepad_state.leftStickX, gamepad_state.leftStickY, gamepad_state.rightStickX, gamepad_state.rightStickY);
+  if (gamepad_state_changed()) {
+    LiSendMultiControllerEvent(0, activeGamepadMask, gamepad_state.buttons, gamepad_state.leftTrigger, gamepad_state.rightTrigger, gamepad_state.leftStickX, gamepad_state.leftStickY, gamepad_state.rightStickX, gamepad_state.rightStickY);
+  }
 
   return 0;
 }
