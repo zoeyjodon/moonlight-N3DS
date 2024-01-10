@@ -23,8 +23,10 @@
 #include <math.h>
 #include <opus/opus_multistream.h>
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 
-#define WAVEBUF_SIZE 2048
+#define WAVEBUF_SIZE 256
 bool n3ds_audio_disabled = false;
 
 static OpusMSDecoder* decoder;
@@ -93,17 +95,11 @@ static void n3ds_renderer_cleanup() {
 }
 
 static void n3ds_renderer_decode_and_play_sample(char* data, int length) {
-  if (n3ds_audio_disabled) {
+  if (n3ds_audio_disabled || (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)) {
     return;
   }
 
-  while (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)
-  {
-    // Yield to other threads while we wait for a buffer
-    svcSleepThread(1000000);
-  }
-
-  int decodeLen = opus_multistream_decode(decoder, data, length, audio_wave_buf[wave_buf_idx].data_vaddr, samplesPerFrame, 0);
+  int decodeLen = opus_multistream_decode(decoder, (const unsigned char *)data, length, (opus_int16 *)audio_wave_buf[wave_buf_idx].data_vaddr, samplesPerFrame, 0);
   if (decodeLen < 0) {
     printf("Opus error from decode: %d\n", decodeLen);
     return;

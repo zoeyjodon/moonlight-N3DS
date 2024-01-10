@@ -48,6 +48,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <malloc.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -91,6 +92,8 @@ static void n3ds_exit_handler(void)
   NDMU_LeaveExclusiveState();
   ndmuExit();
   irrstExit();
+  SOCU_ShutdownSockets();
+  SOCU_CloseSockets();
   socExit();
   free(SOC_buffer);
   romfsExit();
@@ -159,7 +162,7 @@ static int console_selection_prompt(char* prompt, char** options, int option_cou
 char * prompt_for_action(PSERVER_DATA server)
 {
   if (server->paired) {
-    const char* actions[] = {
+    char* actions[] = {
       "stream",
       "quit stream",
       "stream settings",
@@ -172,7 +175,7 @@ char * prompt_for_action(PSERVER_DATA server)
     }
     return actions[idx];
   }
-  const char* actions[] = {"pair"};
+  char* actions[] = {"pair"};
   int actions_len = sizeof(actions) / sizeof(actions[0]);
   int idx = console_selection_prompt("Select an action", actions, actions_len);
   if (idx < 0) {
@@ -207,7 +210,7 @@ char * prompt_for_address()
 
 void prompt_for_stream_settings(PCONFIGURATION config)
 {
-  const char* setting_names[] = {
+  char* setting_names[] = {
     "width",
     "height",
     "fps",
@@ -351,7 +354,7 @@ int prompt_for_app_id(PSERVER_DATA server)
   PAPP_LIST list = NULL;
   if (gs_applist(server, &list) != GS_OK) {
     fprintf(stderr, "Can't get app list\n");
-    return;
+    return -1;
   }
 
   char* app_names[MAX_APP_LIST];

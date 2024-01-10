@@ -25,6 +25,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#ifdef __3DS__
+#include <3ds.h>
+#endif
 
 int write_bool(char *path, bool val) {
   int fd = open(path, O_RDWR);
@@ -65,6 +68,7 @@ bool ensure_buf_size(void **buf, size_t *buf_size, size_t required_size) {
   return true;
 }
 
+#ifdef __3DS__
 bool ensure_linear_buf_size(void **buf, size_t *buf_size, size_t required_size) {
   if (*buf_size >= required_size)
     return false;
@@ -72,7 +76,7 @@ bool ensure_linear_buf_size(void **buf, size_t *buf_size, size_t required_size) 
   linearFree(*buf);
 
   *buf_size = required_size;
-  *buf = linearAlloc(*buf, *buf_size);
+  *buf = linearAlloc(*buf_size);
   if (!*buf) {
     fprintf(stderr, "Failed to allocate %zu bytes\n", *buf_size);
     abort();
@@ -80,3 +84,4 @@ bool ensure_linear_buf_size(void **buf, size_t *buf_size, size_t required_size) 
 
   return true;
 }
+#endif
