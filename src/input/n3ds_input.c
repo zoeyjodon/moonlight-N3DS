@@ -28,7 +28,7 @@
 #define SUPPORTED_BUTTONS (A_FLAG|B_FLAG|X_FLAG|Y_FLAG|\
   RIGHT_FLAG|LEFT_FLAG|UP_FLAG|DOWN_FLAG|RB_FLAG|LB_FLAG|\
   BACK_FLAG|PLAY_FLAG|TOUCHPAD_FLAG)
-#define N3DS_ANALOG_MAX 140
+#define N3DS_ANALOG_MAX 100
 
 typedef struct _GAMEPAD_STATE {
   unsigned char leftTrigger, rightTrigger;
@@ -73,7 +73,7 @@ static inline int n3ds_to_li_buttons(u32 key_n3ds) {
   li_out |= n3ds_to_li_button(key_n3ds, KEY_L, LB_FLAG);
   li_out |= n3ds_to_li_button(key_n3ds, KEY_X, X_FLAG);
   li_out |= n3ds_to_li_button(key_n3ds, KEY_Y, Y_FLAG);
-  li_out |= n3ds_to_li_button(key_n3ds, KEY_TOUCH, TOUCHPAD_FLAG);
+  li_out |= n3ds_to_li_button(key_n3ds, KEY_TOUCH, SPECIAL_FLAG);
   return li_out;
 }
 

@@ -62,6 +62,13 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
     return -1;
   }
 
+  if (width >= 800) {
+    gfxSetWide(true);
+  }
+  else {
+    gfxSetWide(false);
+  }
+
   GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
   surface_width = width;
   surface_height = height;
@@ -84,17 +91,17 @@ static void n3ds_cleanup() {
 
 static inline int get_dest_offset(int x, int y)
 {
-  return GSP_SCREEN_WIDTH - y - 1 + GSP_SCREEN_WIDTH * x;
+  return surface_height - y - 1 + surface_height * x;
 }
 
 static inline int get_source_offset(int x, int y, int width, int height)
 {
-  return (x * width / GSP_SCREEN_HEIGHT_TOP) + (y * height / GSP_SCREEN_WIDTH) * width;
+  return (x * width / surface_width) + (y * height / surface_height) * width;
 }
 
 static inline void write_px_to_framebuffer(u8* dest, u8* source, int width, int height, int px_size) {
-  for (int y = 0; y < GSP_SCREEN_WIDTH; ++y) {
-    for (int x = 0; x < GSP_SCREEN_HEIGHT_TOP; ++x) {
+  for (int y = 0; y < surface_height; ++y) {
+    for (int x = 0; x < surface_width; ++x) {
       int src_offset = px_size * get_source_offset(x, y, width, height);
       int dst_offset = px_size * get_dest_offset(x, y);
       memcpy(dest + dst_offset, source + src_offset, px_size);

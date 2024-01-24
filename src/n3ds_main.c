@@ -57,7 +57,7 @@
 #include <openssl/rand.h>
 
 #define SOC_ALIGN       0x1000
-#define SOC_BUFFERSIZE  0x3500000
+#define SOC_BUFFERSIZE  0x200000
 
 #define MAX_INPUT_CHAR 60
 #define MAX_APP_LIST 30
@@ -102,9 +102,9 @@ static void n3ds_exit_handler(void)
   acExit();
 }
 
-static int console_selection_prompt(char* prompt, char** options, int option_count)
+static int console_selection_prompt(char* prompt, char** options, int option_count, int default_idx)
 {
-  int option_idx = 0;
+  int option_idx = default_idx;
   int last_option_idx = -1;
   while (aptMainLoop())
   {
@@ -159,7 +159,7 @@ static int console_selection_prompt(char* prompt, char** options, int option_cou
   exit(0);
 }
 
-char * prompt_for_action(PSERVER_DATA server)
+static char * prompt_for_action(PSERVER_DATA server)
 {
   if (server->paired) {
     char* actions[] = {
@@ -169,7 +169,7 @@ char * prompt_for_action(PSERVER_DATA server)
       "unpair",
     };
     int actions_len = sizeof(actions) / sizeof(actions[0]);
-    int idx = console_selection_prompt("Select an action", actions, actions_len);
+    int idx = console_selection_prompt("Select an action", actions, actions_len, 0);
     if (idx < 0) {
       return NULL;
     }
@@ -177,21 +177,21 @@ char * prompt_for_action(PSERVER_DATA server)
   }
   char* actions[] = {"pair"};
   int actions_len = sizeof(actions) / sizeof(actions[0]);
-  int idx = console_selection_prompt("Select an action", actions, actions_len);
+  int idx = console_selection_prompt("Select an action", actions, actions_len, 0);
   if (idx < 0) {
     return NULL;
   }
   return actions[idx];
 }
 
-char * prompt_for_address()
+static char * prompt_for_address()
 {
   char* address_list[MAX_PAIRED_DEVICES + 1];
   int address_count = 0;
   list_paired_addresses(address_list, &address_count);
 
   address_list[address_count] = "new";
-  int idx = console_selection_prompt("Select a server address", address_list, address_count + 1);
+  int idx = console_selection_prompt("Select a server address", address_list, address_count + 1, 0);
   if (idx < 0) {
     return NULL;
   }
@@ -208,11 +208,24 @@ char * prompt_for_address()
   return addr_buff;
 }
 
-void prompt_for_stream_settings(PCONFIGURATION config)
+static inline char * prompt_for_boolean(char* prompt, bool default_val)
+{
+  char* options[] = {
+    "true",
+    "false",
+  };
+  int options_len = sizeof(options) / sizeof(options[0]);
+  int idx = console_selection_prompt(prompt, options, options_len, default_val ? 0 : 1);
+  if (idx < 0) {
+    return NULL;
+  }
+  return options[idx];
+}
+
+static void prompt_for_stream_settings(PCONFIGURATION config)
 {
   char* setting_names[] = {
     "width",
-    "height",
     "fps",
     "bitrate",
     "packetsize",
@@ -224,7 +237,6 @@ void prompt_for_stream_settings(PCONFIGURATION config)
   };
   char argument_ids[] = {
     'c',
-    'd',
     'v',
     'g',
     'h',
@@ -236,8 +248,9 @@ void prompt_for_stream_settings(PCONFIGURATION config)
   };
   int settings_len = sizeof(setting_names) / sizeof(setting_names[0]);
   char* setting_buff = malloc(MAX_INPUT_CHAR);
+  int idx = 0;
   while (1) {
-    int idx = console_selection_prompt("Select a setting", setting_names, settings_len);
+    idx = console_selection_prompt("Select a setting", setting_names, settings_len, idx);
     if (idx < 0) {
       break;
     }
@@ -245,68 +258,64 @@ void prompt_for_stream_settings(PCONFIGURATION config)
     SwkbdState swkbd;
     memset(setting_buff, 0, MAX_INPUT_CHAR);
     if (strcmp("width", setting_names[idx]) == 0) {
-			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
-      sprintf(setting_buff, "%d", config->stream.width);
-    }
-    else if (strcmp("height", setting_names[idx]) == 0) {
-			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
-      sprintf(setting_buff, "%d", config->stream.height);
+      idx = config->stream.width == 400 ? 0 : 1;
+      char* width_options[] = {
+        "400",
+        "800",
+      };
+      idx = console_selection_prompt("Select a setting", width_options, 2, idx);
+      if (idx > -1) {
+        sprintf(setting_buff, "%s", width_options[idx]);
+      }
     }
     else if (strcmp("fps", setting_names[idx]) == 0) {
 			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
       sprintf(setting_buff, "%d", config->stream.fps);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
     }
     else if (strcmp("bitrate", setting_names[idx]) == 0) {
 			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
       sprintf(setting_buff, "%d", config->stream.bitrate);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
     }
     else if (strcmp("packetsize", setting_names[idx]) == 0) {
 			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
       sprintf(setting_buff, "%d", config->stream.packetSize);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
     }
     else if (strcmp("nosops", setting_names[idx]) == 0) {
-      swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
-      if (config->sops) {
-        sprintf(setting_buff, "false");
-      }
-      else {
-        sprintf(setting_buff, "true");
+      char* bool_str = prompt_for_boolean("Disable sops", config->sops);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
       }
     }
     else if (strcmp("localaudio", setting_names[idx]) == 0) {
-      swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
-      if (config->localaudio) {
-        sprintf(setting_buff, "true");
-      }
-      else {
-        sprintf(setting_buff, "false");
+      char* bool_str = prompt_for_boolean("Enable local audio", config->localaudio);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
       }
     }
     else if (strcmp("quitappafter", setting_names[idx]) == 0) {
-      swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
-      if (config->quitappafter) {
-        sprintf(setting_buff, "true");
-      }
-      else {
-        sprintf(setting_buff, "false");
+      char* bool_str = prompt_for_boolean("Quit app after streaming", config->quitappafter);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
       }
     }
     else if (strcmp("viewonly", setting_names[idx]) == 0) {
-      swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
-      if (config->viewonly) {
-        sprintf(setting_buff, "true");
-      }
-      else {
-        sprintf(setting_buff, "false");
+      char* bool_str = prompt_for_boolean("Disable controller input", config->viewonly);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
       }
     }
     else if (strcmp("rotate", setting_names[idx]) == 0) {
 			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
       sprintf(setting_buff, "%d", config->rotate);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
     }
-
-    swkbdSetInitialText(&swkbd, setting_buff);
-    swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
 
     parse_argument(argument_ids[idx], setting_buff, config);
   }
@@ -317,7 +326,7 @@ void prompt_for_stream_settings(PCONFIGURATION config)
   free(setting_buff);
 }
 
-void init_3ds()
+static void init_3ds()
 {
   Result status = 0;
   acInit();
@@ -349,7 +358,7 @@ void init_3ds()
   }
 }
 
-int prompt_for_app_id(PSERVER_DATA server)
+static int prompt_for_app_id(PSERVER_DATA server)
 {
   PAPP_LIST list = NULL;
   if (gs_applist(server, &list) != GS_OK) {
@@ -372,7 +381,7 @@ int prompt_for_app_id(PSERVER_DATA server)
     list = list->next;
   }
 
-  int id_idx = console_selection_prompt("Select an app", app_names, idx);
+  int id_idx = console_selection_prompt("Select an app", app_names, idx, 0);
   if (id_idx == -1) {
     return -1;
   }
@@ -386,7 +395,8 @@ static inline void stream_loop(PCONFIGURATION config) {
     if (!config->viewonly) {
       done |= n3dsinput_handle_event();
     }
-    hidWaitForEvent(HIDEVENT_PAD0, true);
+    // Restrict input updates to prevent flooding the send queue
+    svcSleepThread(30 * 1000000);
   }
 }
 
@@ -429,7 +439,18 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     printf("Ignoring invalid rotation value: %d\n", config->rotate);
   }
 
-  printf("Loading...\nStream %d x %d, %d fps, %d kbps\n", config->stream.width, config->stream.height, config->stream.fps, config->stream.bitrate);
+  printf("Loading...\nStream %d x %d, %d fps, %d kbps, \nsops=%d, localaudio=%d, quitappafter=%d, viewonly=%d, rotate=%d, encryption=%x\n",
+          config->stream.width,
+          config->stream.height,
+          config->stream.fps,
+          config->stream.bitrate,
+          config->sops,
+          config->localaudio,
+          config->quitappafter,
+          config->viewonly,
+          config->rotate,
+          config->stream.encryptionFlags
+        );
 
 #ifdef HAVE_SDL
   int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, &decoder_callbacks_n3ds, &audio_callbacks_sdl, NULL, drFlags, config->audio_device, 0);
@@ -492,7 +513,8 @@ int main(int argc, char* argv[]) {
       exit(-1);
     } else if (ret != GS_OK) {
       fprintf(stderr, "Can't connect to server %s\n", config.address);
-      exit(-1);
+      wait_for_button();
+      continue;
     }
 
     if (config.debug_level > 0) {
