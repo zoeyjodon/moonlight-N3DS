@@ -83,6 +83,7 @@ static struct option long_options[] = {
   {"pin", required_argument, NULL, '5'},
   {"port", required_argument, NULL, '6'},
   {"hdr", no_argument, NULL, '7'},
+  {"hwdecode", no_argument, NULL, '8'},
   {0, 0, 0, 0},
 };
 
@@ -290,6 +291,14 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
   case '7':
     config->hdr = true;
     break;
+  case '8':
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->hwdecode = true;
+    }
+    else {
+      config->hwdecode = false;
+    }
+    break;
   case 1:
     if (config->action == NULL)
       config->action = value;
@@ -361,6 +370,8 @@ void config_save(char* filename, PCONFIGURATION config) {
     write_config_bool(fd, "viewonly", config->viewonly);
   if (config->rotate != 0)
     write_config_int(fd, "rotate", config->rotate);
+  if (config->hwdecode)
+    write_config_bool(fd, "hwdecode", config->hwdecode);
 
   if (strcmp(config->app, "Steam") != 0)
     write_config_string(fd, "app", config->app);
@@ -454,6 +465,7 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->stream.height = 240;
   config->stream.fps = 30;
   config->stream.encryptionFlags = ENCFLG_NONE;
+  config->hwdecode = false;
 
   char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
   if (config_file)

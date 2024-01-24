@@ -234,6 +234,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     "quitappafter",
     "viewonly",
     "rotate",
+    "hwdecode",
   };
   char argument_ids[] = {
     'c',
@@ -245,6 +246,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     '1',
     '2',
     '3',
+    '8',
   };
   int settings_len = sizeof(setting_names) / sizeof(setting_names[0]);
   char* setting_buff = malloc(MAX_INPUT_CHAR);
@@ -315,6 +317,12 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
       sprintf(setting_buff, "%d", config->rotate);
       swkbdSetInitialText(&swkbd, setting_buff);
       swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
+    }
+    else if (strcmp("hwdecode", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Use hardware video decoder", config->hwdecode);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
     }
 
     parse_argument(argument_ids[idx], setting_buff, config);
@@ -440,13 +448,14 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
   }
 
   PDECODER_RENDERER_CALLBACKS video_callbacks = &decoder_callbacks_n3ds;
-  if (video_callbacks == &decoder_callbacks_n3ds_mvd) {
+  if (config->hwdecode) {
+    video_callbacks = &decoder_callbacks_n3ds_mvd;
     // MVD requires specific width/height parameters
     config->stream.height = 400;
     config->stream.width = 240;
   }
 
-  printf("Loading...\nStream %d x %d, %d fps, %d kbps, \nsops=%d, localaudio=%d, quitappafter=%d, viewonly=%d, rotate=%d, encryption=%x\n",
+  printf("Loading...\nStream %d x %d, %d fps, %d kbps, \nsops=%d, localaudio=%d, quitappafter=%d, viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d\n",
           config->stream.width,
           config->stream.height,
           config->stream.fps,
@@ -456,7 +465,8 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
           config->quitappafter,
           config->viewonly,
           config->rotate,
-          config->stream.encryptionFlags
+          config->stream.encryptionFlags,
+          config->hwdecode
         );
 
 #ifdef HAVE_SDL
