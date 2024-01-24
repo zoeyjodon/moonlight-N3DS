@@ -287,7 +287,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
       swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
     }
     else if (strcmp("nosops", setting_names[idx]) == 0) {
-      char* bool_str = prompt_for_boolean("Disable sops", config->sops);
+      char* bool_str = prompt_for_boolean("Disable sops", !config->sops);
       if (bool_str != NULL) {
         sprintf(setting_buff, bool_str);
       }
@@ -439,6 +439,13 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     printf("Ignoring invalid rotation value: %d\n", config->rotate);
   }
 
+  PDECODER_RENDERER_CALLBACKS video_callbacks = &decoder_callbacks_n3ds;
+  if (video_callbacks == &decoder_callbacks_n3ds_mvd) {
+    // MVD requires specific width/height parameters
+    config->stream.height = 400;
+    config->stream.width = 240;
+  }
+
   printf("Loading...\nStream %d x %d, %d fps, %d kbps, \nsops=%d, localaudio=%d, quitappafter=%d, viewonly=%d, rotate=%d, encryption=%x\n",
           config->stream.width,
           config->stream.height,
@@ -453,9 +460,9 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
         );
 
 #ifdef HAVE_SDL
-  int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, &decoder_callbacks_n3ds, &audio_callbacks_sdl, NULL, drFlags, config->audio_device, 0);
+  int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, video_callbacks, &audio_callbacks_sdl, NULL, drFlags, config->audio_device, 0);
 #else
-  int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, &decoder_callbacks_n3ds, &audio_callbacks_n3ds, NULL, drFlags, config->audio_device, 0);
+  int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, video_callbacks, &audio_callbacks_n3ds, NULL, drFlags, config->audio_device, 0);
 #endif
 
   if (status != 0) {

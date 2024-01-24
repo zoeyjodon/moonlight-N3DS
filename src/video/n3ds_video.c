@@ -44,7 +44,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
 
   if(y2rInit())
   {
-    printf("Failed to initialize Y2R\n");
+    fprintf(stderr, "Failed to initialize Y2R\n");
     return -1;
   }
   Y2RU_ConversionParams y2r_parameters;
@@ -58,7 +58,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
 	y2r_parameters.alpha = 0xFF;
 	int status = Y2RU_SetConversionParams(&y2r_parameters);
   if (status) {
-    printf("Failed to set Y2RU params\n");
+    fprintf(stderr, "Failed to set Y2RU params\n");
     return -1;
   }
 
@@ -76,7 +76,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
 
   img_buffer = linearMemAlign(width * height * pixel_size, 0x80);
   if (!img_buffer) {
-    printf("Out of memory!");
+    fprintf(stderr, "Out of memory!\n");
     return -1;
   }
 
@@ -89,21 +89,27 @@ static void n3ds_cleanup() {
   linearFree(img_buffer);
 }
 
-static inline int get_dest_offset(int x, int y)
+static inline int get_dest_offset(int x, int y, int dest_height)
 {
-  return surface_height - y - 1 + surface_height * x;
+  return dest_height - y - 1 + dest_height * x;
 }
 
-static inline int get_source_offset(int x, int y, int width, int height)
+static inline int get_source_offset(int x, int y, int src_width, int src_height, int dest_width, int dest_height)
 {
-  return (x * width / surface_width) + (y * height / surface_height) * width;
+  return (x * src_width / dest_width) + (y * src_height / dest_height) * src_width;
 }
 
-static inline void write_px_to_framebuffer(u8* dest, u8* source, int width, int height, int px_size) {
-  for (int y = 0; y < surface_height; ++y) {
-    for (int x = 0; x < surface_width; ++x) {
-      int src_offset = px_size * get_source_offset(x, y, width, height);
-      int dst_offset = px_size * get_dest_offset(x, y);
+void write_px_to_framebuffer(uint8_t* dest,
+                             int dest_width,
+                             int dest_height,
+                             uint8_t* source,
+                             int src_width,
+                             int src_height,
+                             int px_size) {
+  for (int y = 0; y < dest_height; ++y) {
+    for (int x = 0; x < dest_width; ++x) {
+      int src_offset = px_size * get_source_offset(x, y, src_width, src_height, dest_width, dest_height);
+      int dst_offset = px_size * get_dest_offset(x, y, dest_height);
       memcpy(dest + dst_offset, source + src_offset, px_size);
     }
   }
@@ -151,7 +157,7 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int widt
 
   svcWaitSynchronization(conversion_finish_event_handle, 10000000);//Wait up to 10ms.
   svcCloseHandle(conversion_finish_event_handle);
-  write_px_to_framebuffer(dest, img_buffer, width, height, px_size);
+  write_px_to_framebuffer(dest, surface_width, surface_height, img_buffer, width, height, px_size);
   return DR_OK;
 
 	y2ru_failed:

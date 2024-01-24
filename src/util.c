@@ -76,7 +76,7 @@ bool ensure_linear_buf_size(void **buf, size_t *buf_size, size_t required_size) 
   linearFree(*buf);
 
   *buf_size = required_size;
-  *buf = linearAlloc(*buf_size);
+  *buf = linearMemAlign(*buf_size, 0x80);
   if (!*buf) {
     fprintf(stderr, "Failed to allocate %zu bytes\n", *buf_size);
     abort();
