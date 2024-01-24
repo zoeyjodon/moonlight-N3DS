@@ -507,11 +507,6 @@ int main(int argc, char* argv[]) {
       continue;
     }
 
-    char host_config_file[128];
-    sprintf(host_config_file, "hosts/%s.conf", config.address);
-    if (access(host_config_file, R_OK) != -1)
-      config_file_parse(host_config_file, &config);
-
     SERVER_DATA server;
     printf("Connecting to %s...\n", config.address);
 
