@@ -78,7 +78,7 @@ static struct option long_options[] = {
   {"viewonly", required_argument, NULL, '2'},
   {"rotate", required_argument, NULL, '3'},
   {"verbose", no_argument, NULL, 'z'},
-  {"debug", no_argument, NULL, 'Z'},
+  {"debug", required_argument, NULL, 'Z'},
   {"nomouseemulation", no_argument, NULL, '4'},
   {"pin", required_argument, NULL, '5'},
   {"port", required_argument, NULL, '6'},
@@ -277,7 +277,12 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     config->debug_level = 1;
     break;
   case 'Z':
-    config->debug_level = 2;
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->debug_level = 2;
+    }
+    else {
+      config->debug_level = 0;
+    }
     break;
   case '4':
     config->mouse_emulation = false;
@@ -372,6 +377,8 @@ void config_save(char* filename, PCONFIGURATION config) {
     write_config_int(fd, "rotate", config->rotate);
   if (config->hwdecode)
     write_config_bool(fd, "hwdecode", config->hwdecode);
+  if (config->debug_level)
+    write_config_bool(fd, "debug", config->debug_level);
 
   if (strcmp(config->app, "Steam") != 0)
     write_config_string(fd, "app", config->app);

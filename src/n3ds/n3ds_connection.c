@@ -29,7 +29,7 @@
 #endif
 
 bool n3ds_connection_closed = false;
-static const char* disconnect_message = "";
+bool n3ds_connection_debug = false;
 
 static void connection_terminated(int errorCode) {
   switch (errorCode) {
@@ -49,7 +49,6 @@ static void connection_terminated(int errorCode) {
     printf("The connection was terminated by the host due to DRM-protected content. Close any DRM-protected content on the host and try again.\n");
     break;
   default:
-    printf("%s\n", disconnect_message);
     printf("Connection terminated with error: %d\n", errorCode);
     break;
   }
@@ -63,7 +62,23 @@ static void connection_terminated(int errorCode) {
 }
 
 static void connection_log_message(const char* format, ...) {
-  disconnect_message = format;
+  if (n3ds_connection_debug) {
+    va_list arglist;
+    va_start(arglist, format);
+    vprintf(format, arglist);
+    va_end(arglist);
+  }
+}
+
+static void connection_status_update(int status) {
+  switch (status) {
+    case CONN_STATUS_OKAY:
+      printf("Connection is okay\n");
+      break;
+    case CONN_STATUS_POOR:
+      printf("Connection is poor\n");
+      break;
+  }
 }
 
 CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks = {
@@ -74,7 +89,7 @@ CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks = {
   .connectionTerminated = connection_terminated,
   .logMessage = connection_log_message,
   .rumble = NULL,
-  .connectionStatusUpdate = NULL,
+  .connectionStatusUpdate = connection_status_update,
   .setHdrMode = NULL,
   .rumbleTriggers = NULL,
   .setMotionEventState = NULL,

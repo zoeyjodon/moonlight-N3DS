@@ -57,7 +57,9 @@
 #include <openssl/rand.h>
 
 #define SOC_ALIGN       0x1000
-#define SOC_BUFFERSIZE  0x200000
+// 0x80000 for each enet host (2 hosts total)
+// 0x410000 for each platform socket (2 sockets total)
+#define SOC_BUFFERSIZE  0x490000
 
 #define MAX_INPUT_CHAR 60
 #define MAX_APP_LIST 30
@@ -217,7 +219,7 @@ static inline char * prompt_for_boolean(char* prompt, bool default_val)
   int options_len = sizeof(options) / sizeof(options[0]);
   int idx = console_selection_prompt(prompt, options, options_len, default_val ? 0 : 1);
   if (idx < 0) {
-    return NULL;
+    idx = default_val ? 0 : 1;
   }
   return options[idx];
 }
@@ -235,6 +237,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     "viewonly",
     "rotate",
     "hwdecode",
+    "debug",
   };
   char argument_ids[] = {
     'c',
@@ -247,6 +250,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     '2',
     '3',
     '8',
+    'Z',
   };
   int settings_len = sizeof(setting_names) / sizeof(setting_names[0]);
   char* setting_buff = malloc(MAX_INPUT_CHAR);
@@ -320,6 +324,12 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     }
     else if (strcmp("hwdecode", setting_names[idx]) == 0) {
       char* bool_str = prompt_for_boolean("Use hardware video decoder", config->hwdecode);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
+    }
+    else if (strcmp("debug", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Enable debug logs", config->debug_level);
       if (bool_str != NULL) {
         sprintf(setting_buff, bool_str);
       }
@@ -426,6 +436,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
   }
 
   n3ds_audio_disabled = config->localaudio;
+  n3ds_connection_debug = config->debug_level;
 
   int drFlags = 0;
   if (config->fullscreen)
@@ -455,7 +466,8 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     config->stream.width = 240;
   }
 
-  printf("Loading...\nStream %d x %d, %d fps, %d kbps, \nsops=%d, localaudio=%d, quitappafter=%d, viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d\n",
+  printf("Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
+ viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, debug=%d\n",
           config->stream.width,
           config->stream.height,
           config->stream.fps,
@@ -466,7 +478,8 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
           config->viewonly,
           config->rotate,
           config->stream.encryptionFlags,
-          config->hwdecode
+          config->hwdecode,
+          config->debug_level
         );
 
 #ifdef HAVE_SDL
