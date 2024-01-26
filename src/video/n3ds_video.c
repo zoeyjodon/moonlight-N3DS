@@ -48,15 +48,15 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
     return -1;
   }
   Y2RU_ConversionParams y2r_parameters;
-	y2r_parameters.input_format = INPUT_YUV420_INDIV_8;
-	y2r_parameters.output_format = OUTPUT_RGB_16_565;
-	y2r_parameters.rotation = ROTATION_NONE;
-	y2r_parameters.block_alignment = BLOCK_LINE;
-	y2r_parameters.input_line_width = width;
-	y2r_parameters.input_lines = height;
-	y2r_parameters.standard_coefficient = COEFFICIENT_ITU_R_BT_709_SCALING;
-	y2r_parameters.alpha = 0xFF;
-	int status = Y2RU_SetConversionParams(&y2r_parameters);
+  y2r_parameters.input_format = INPUT_YUV420_INDIV_8;
+  y2r_parameters.output_format = OUTPUT_RGB_16_565;
+  y2r_parameters.rotation = ROTATION_NONE;
+  y2r_parameters.block_alignment = BLOCK_LINE;
+  y2r_parameters.input_line_width = width;
+  y2r_parameters.input_lines = height;
+  y2r_parameters.standard_coefficient = COEFFICIENT_ITU_R_BT_709_SCALING;
+  y2r_parameters.alpha = 0xFF;
+  int status = Y2RU_SetConversionParams(&y2r_parameters);
   if (status) {
     fprintf(stderr, "Failed to set Y2RU params\n");
     return -1;
@@ -116,7 +116,7 @@ void write_px_to_framebuffer(uint8_t* dest,
 }
 
 static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int width, int height, int px_size) {
-	Handle conversion_finish_event_handle;
+  Handle conversion_finish_event_handle;
   int status = 0;
 
   status = Y2RU_SetSendingY(source[0], width * height, width, 0);
@@ -160,7 +160,7 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int widt
   write_px_to_framebuffer(dest, surface_width, surface_height, img_buffer, width, height, px_size);
   return DR_OK;
 
-	y2ru_failed:
+  y2ru_failed:
   return -1;
 }
 

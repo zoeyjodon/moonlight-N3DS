@@ -270,19 +270,19 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
       }
     }
     else if (strcmp("fps", setting_names[idx]) == 0) {
-			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
       sprintf(setting_buff, "%d", config->stream.fps);
       swkbdSetInitialText(&swkbd, setting_buff);
       swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
     }
     else if (strcmp("bitrate", setting_names[idx]) == 0) {
-			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
       sprintf(setting_buff, "%d", config->stream.bitrate);
       swkbdSetInitialText(&swkbd, setting_buff);
       swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
     }
     else if (strcmp("packetsize", setting_names[idx]) == 0) {
-			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
       sprintf(setting_buff, "%d", config->stream.packetSize);
       swkbdSetInitialText(&swkbd, setting_buff);
       swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
@@ -312,7 +312,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
       }
     }
     else if (strcmp("rotate", setting_names[idx]) == 0) {
-			swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
       sprintf(setting_buff, "%d", config->rotate);
       swkbdSetInitialText(&swkbd, setting_buff);
       swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
@@ -360,7 +360,7 @@ static void init_3ds()
     exit(1);
   }
 
-	status = ndmuInit();
+  status = ndmuInit();
   status |= NDMU_EnterExclusiveState(NDM_EXCLUSIVE_STATE_INFRASTRUCTURE);
   status |= NDMU_LockState();
   if (R_FAILED(status))

@@ -46,36 +46,36 @@ static int n3ds_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGUR
   samplesPerFrame = opusConfig->samplesPerFrame;
   int bytes_per_frame = sizeof(short) * channelCount * samplesPerFrame;
 
-	if(ndspInit() != 0)
-	{
-		printf("ndspInit() failed\n");
+  if(ndspInit() != 0)
+  {
+    printf("ndspInit() failed\n");
     return -1;
-	}
+  }
 
-	u8 *audioBuffer = (u8*)linearAlloc(bytes_per_frame * WAVEBUF_SIZE);
+  u8 *audioBuffer = (u8*)linearAlloc(bytes_per_frame * WAVEBUF_SIZE);
   if (audioBuffer == NULL)
     return -1;
-	memset(audioBuffer, 0, bytes_per_frame * WAVEBUF_SIZE);
+  memset(audioBuffer, 0, bytes_per_frame * WAVEBUF_SIZE);
 
-	ndspChnWaveBufClear(0);
+  ndspChnWaveBufClear(0);
   ndspChnReset(0);
   ndspSetOutputMode(NDSP_OUTPUT_STEREO);
   ndspChnSetInterp(0, NDSP_INTERP_LINEAR);
   ndspChnSetRate(0, sampleRate);
   ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
 
-	float mix[12];
-	memset(mix, 0, sizeof(mix));
+  float mix[12];
+  memset(mix, 0, sizeof(mix));
   mix[0] = mix[1] = 1.0f;
-	ndspChnSetMix(0, mix);
+  ndspChnSetMix(0, mix);
 
-	memset(audio_wave_buf,0,sizeof(audio_wave_buf));
+  memset(audio_wave_buf,0,sizeof(audio_wave_buf));
   for (int i = 0; i < WAVEBUF_SIZE; i++) {
     audio_wave_buf[i].data_vaddr = &audioBuffer[i * bytes_per_frame];
     audio_wave_buf[i].status = NDSP_WBUF_DONE;
   }
 
-	ndspChnSetPaused(0, false);
+  ndspChnSetPaused(0, false);
 
   return 0;
 }
@@ -86,8 +86,8 @@ static void n3ds_renderer_cleanup() {
     decoder = NULL;
   }
 
-	ndspChnWaveBufClear(0);
-	ndspExit();
+  ndspChnWaveBufClear(0);
+  ndspExit();
   if (audioBuffer != NULL) {
     free(audioBuffer);
     audioBuffer = NULL;
@@ -104,9 +104,9 @@ static void n3ds_renderer_decode_and_play_sample(char* data, int length) {
     printf("Opus error from decode: %d\n", decodeLen);
     return;
   }
-	DSP_FlushDataCache(audio_wave_buf[wave_buf_idx].data_vaddr, decodeLen * channelCount * sizeof(short));
+  DSP_FlushDataCache(audio_wave_buf[wave_buf_idx].data_vaddr, decodeLen * channelCount * sizeof(short));
   audio_wave_buf[wave_buf_idx].nsamples = decodeLen;
-	ndspChnWaveBufAdd(0, &audio_wave_buf[wave_buf_idx]);
+  ndspChnWaveBufAdd(0, &audio_wave_buf[wave_buf_idx]);
 
   wave_buf_idx = (wave_buf_idx +  1) % WAVEBUF_SIZE;
 }

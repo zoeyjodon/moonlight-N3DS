@@ -59,8 +59,8 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate, voi
   }
 
   ensure_linear_buf_size(&n3ds_buffer, &n3ds_buffer_size, INITIAL_DECODER_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
-	mvdstdGenerateDefaultConfig(&mvdstd_config, width, height, width, height, NULL, img_buffer, NULL);
-	MVDSTD_SetConfig(&mvdstd_config);
+  mvdstdGenerateDefaultConfig(&mvdstd_config, width, height, width, height, NULL, img_buffer, NULL);
+  MVDSTD_SetConfig(&mvdstd_config);
   return 0;
 }
 
