@@ -43,7 +43,7 @@ static const int activeGamepadMask = 1;
 
 static void add_gamepad() {
   unsigned short capabilities = 0;
-  unsigned char type = LI_CTYPE_UNKNOWN;
+  unsigned char type = LI_CTYPE_NINTENDO;
   LiSendControllerArrivalEvent(0, activeGamepadMask, type, SUPPORTED_BUTTONS, capabilities);
 }
 
