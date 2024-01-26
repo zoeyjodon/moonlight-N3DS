@@ -44,10 +44,10 @@ int random_get_fd(void)
 		if (i >= 0)
 			fcntl(fd, F_SETFD, i | FD_CLOEXEC);
 	}
-#ifndef __3DS__
-	srand((getpid() << 16) ^ getuid() ^ tv.tv_sec ^ tv.tv_usec);
-#else
+#ifdef __3DS__
 	srand((1 << 16) ^ tv.tv_sec ^ tv.tv_usec);
+#else
+	srand((getpid() << 16) ^ getuid() ^ tv.tv_sec ^ tv.tv_usec);
 #endif
 
 #ifdef DO_JRAND_MIX

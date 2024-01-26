@@ -61,9 +61,9 @@ static struct option long_options[] = {
   {"app", required_argument, NULL, 'i'},
   {"input", required_argument, NULL, 'j'},
   {"mapping", required_argument, NULL, 'k'},
-  {"nosops", no_argument, NULL, 'l'},
+  {"nosops", required_argument, NULL, 'l'},
   {"audio", required_argument, NULL, 'm'},
-  {"localaudio", no_argument, NULL, 'n'},
+  {"localaudio", required_argument, NULL, 'n'},
   {"config", required_argument, NULL, 'o'},
   {"platform", required_argument, NULL, 'p'},
   {"save", required_argument, NULL, 'q'},
@@ -74,15 +74,16 @@ static struct option long_options[] = {
   {"fps", required_argument, NULL, 'v'},
   {"codec", required_argument, NULL, 'x'},
   {"nounsupported", no_argument, NULL, 'y'},
-  {"quitappafter", no_argument, NULL, '1'},
-  {"viewonly", no_argument, NULL, '2'},
+  {"quitappafter", required_argument, NULL, '1'},
+  {"viewonly", required_argument, NULL, '2'},
   {"rotate", required_argument, NULL, '3'},
   {"verbose", no_argument, NULL, 'z'},
-  {"debug", no_argument, NULL, 'Z'},
+  {"debug", required_argument, NULL, 'Z'},
   {"nomouseemulation", no_argument, NULL, '4'},
   {"pin", required_argument, NULL, '5'},
   {"port", required_argument, NULL, '6'},
   {"hdr", no_argument, NULL, '7'},
+  {"hwdecode", required_argument, NULL, '8'},
   {0, 0, 0, 0},
 };
 
@@ -139,7 +140,7 @@ char* get_path(char* name, char* extra_data_dirs) {
 }
 #endif
 
-static void parse_argument(int c, char* value, PCONFIGURATION config) {
+void parse_argument(int c, char* value, PCONFIGURATION config) {
   switch (c) {
   case 'a':
     config->stream.width = 1280;
@@ -187,13 +188,23 @@ static void parse_argument(int c, char* value, PCONFIGURATION config) {
     break;
 #endif
   case 'l':
-    config->sops = false;
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->sops = false;
+    }
+    else {
+      config->sops = true;
+    }
     break;
   case 'm':
     config->audio_device = value;
     break;
   case 'n':
-    config->localaudio = true;
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->localaudio = true;
+    }
+    else {
+      config->localaudio = false;
+    }
     break;
   case 'o':
     if (!config_file_parse(value, config))
@@ -244,10 +255,20 @@ static void parse_argument(int c, char* value, PCONFIGURATION config) {
     config->unsupported = false;
     break;
   case '1':
-    config->quitappafter = true;
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->quitappafter = true;
+    }
+    else {
+      config->quitappafter = false;
+    }
     break;
   case '2':
-    config->viewonly = true;
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->viewonly = true;
+    }
+    else {
+      config->viewonly = false;
+    }
     break;
   case '3':
     config->rotate = atoi(value);
@@ -256,7 +277,12 @@ static void parse_argument(int c, char* value, PCONFIGURATION config) {
     config->debug_level = 1;
     break;
   case 'Z':
-    config->debug_level = 2;
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->debug_level = 2;
+    }
+    else {
+      config->debug_level = 0;
+    }
     break;
   case '4':
     config->mouse_emulation = false;
@@ -269,6 +295,14 @@ static void parse_argument(int c, char* value, PCONFIGURATION config) {
     break;
   case '7':
     config->hdr = true;
+    break;
+  case '8':
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->hwdecode = true;
+    }
+    else {
+      config->hwdecode = false;
+    }
     break;
   case 1:
     if (config->action == NULL)
@@ -293,7 +327,7 @@ bool config_file_parse(char* filename, PCONFIGURATION config) {
   size_t len = 0;
 
   while (getline(&line, &len, fd) != -1) {
-  char *key = NULL, *value = NULL;
+    char *key = NULL, *value = NULL;
     if (sscanf(line, "%ms = %m[^\n]", &key, &value) == 2) {
       if (strcmp(key, "address") == 0) {
         config->address = value;
@@ -341,6 +375,10 @@ void config_save(char* filename, PCONFIGURATION config) {
     write_config_bool(fd, "viewonly", config->viewonly);
   if (config->rotate != 0)
     write_config_int(fd, "rotate", config->rotate);
+  if (config->hwdecode)
+    write_config_bool(fd, "hwdecode", config->hwdecode);
+  if (config->debug_level)
+    write_config_bool(fd, "debug", config->debug_level);
 
   if (strcmp(config->app, "Steam") != 0)
     write_config_string(fd, "app", config->app);
@@ -374,11 +412,6 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   }
 #endif
 
-#ifdef __3DS__
-  config->stream.encryptionFlags = ENCFLG_NONE;
-  config->stream.fps = 30;
-#endif
-
   config->debug_level = 0;
   config->platform = "auto";
   config->app = "Steam";
@@ -394,23 +427,26 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->viewonly = false;
   config->mouse_emulation = true;
   config->rotate = 0;
+  config->codec = CODEC_UNSPECIFIED;
   config->hdr = false;
   config->pin = 0;
   config->port = 47989;
 
   config->inputsCount = 0;
-
-#ifndef __3DS__
-  config->codec = CODEC_UNSPECIFIED;
-  config->mapping = get_path("gamecontrollerdb.txt", getenv("XDG_DATA_DIRS"));
-  config->key_dir[0] = 0;
-#else
-  config->codec = CODEC_H264;
   config->mapping = (char*) "";
   strcpy(config->key_dir, MOONLIGHT_3DS_PATH "/keys");
-#endif
 
-#ifndef __3DS__
+#ifdef __3DS__
+  config->stream.width = 400;
+  config->stream.height = 240;
+  config->stream.fps = 30;
+  config->stream.encryptionFlags = ENCFLG_NONE;
+  config->hwdecode = false;
+
+  char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
+  if (config_file)
+    config_file_parse(config_file, config);
+#else
   char* config_file = get_path("moonlight.conf", "/etc");
   if (config_file)
     config_file_parse(config_file, config);
@@ -441,10 +477,6 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
     else
       sprintf(config->key_dir, "%s" DEFAULT_CACHE_DIR MOONLIGHT_PATH, pw->pw_dir);
   }
-#else
-  char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
-  if (config_file)
-    config_file_parse(config_file, config);
 #endif
 
   if (config->stream.bitrate == -1) {

@@ -17,19 +17,16 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef HAVE_SDL
+
 #include "video.h"
 #include "ffmpeg.h"
 
-#include "../sdl_main.h"
+#include "../sdl.h"
 #include "../util.h"
 
-#ifdef __3DS__
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_thread.h>
-#else
 #include <SDL.h>
 #include <SDL_thread.h>
-#endif
 
 #include <unistd.h>
 #include <stdbool.h>
@@ -73,7 +70,7 @@ static int sdl_submit_decode_unit(PDECODE_UNIT decodeUnit) {
     sdlNextFrame++;
 
     SDL_Event event;
-    event.type = SDL_EVENT_USER;
+    event.type = SDL_USEREVENT;
     event.user.code = SDL_CODE_FRAME;
     event.user.data1 = &frame->data;
     event.user.data2 = &frame->linesize;
@@ -90,3 +87,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_sdl = {
   .submitDecodeUnit = sdl_submit_decode_unit,
   .capabilities = CAPABILITY_SLICES_PER_FRAME(SLICES_PER_FRAME) | CAPABILITY_REFERENCE_FRAME_INVALIDATION_HEVC | CAPABILITY_DIRECT_SUBMIT,
 };
+
+#endif

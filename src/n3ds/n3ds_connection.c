@@ -17,24 +17,15 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __3DS__
+#include "n3ds_connection.h"
 
-#include "connection.h"
-
+#include <3ds.h>
 #include <stdio.h>
 #include <stdarg.h>
 #include <signal.h>
 
-#ifdef HAVE_SDL
-#include <SDL.h>
-#endif
-
-pthread_t main_thread_id = 0;
-bool connection_debug;
-ConnListenerRumble rumble_handler = NULL;
-ConnListenerRumbleTriggers rumble_triggers_handler = NULL;
-ConnListenerSetMotionEventState set_motion_event_state_handler = NULL;
-ConnListenerSetControllerLED set_controller_led_handler = NULL;
+bool n3ds_connection_closed = false;
+bool n3ds_connection_debug = false;
 
 static void connection_terminated(int errorCode) {
   switch (errorCode) {
@@ -58,67 +49,42 @@ static void connection_terminated(int errorCode) {
     break;
   }
 
-  #ifdef HAVE_SDL
-      SDL_Event event;
-      event.type = SDL_EVENT_QUIT;
-      SDL_PushEvent(&event);
-  #endif
-
-  if (main_thread_id != 0)
-    pthread_kill(main_thread_id, SIGTERM);
+  n3ds_connection_closed = true;
 }
 
 static void connection_log_message(const char* format, ...) {
-  va_list arglist;
-  va_start(arglist, format);
-  vprintf(format, arglist);
-  va_end(arglist);
-}
-
-static void rumble(unsigned short controllerNumber, unsigned short lowFreqMotor, unsigned short highFreqMotor) {
-  if (rumble_handler)
-    rumble_handler(controllerNumber, lowFreqMotor, highFreqMotor);
-}
-
-static void rumble_triggers(unsigned short controllerNumber, unsigned short leftTrigger, unsigned short rightTrigger) {
-  if (rumble_handler)
-    rumble_triggers_handler(controllerNumber, leftTrigger, rightTrigger);
-}
-
-static void set_motion_event_state(unsigned short controllerNumber, unsigned char motionType, unsigned short reportRateHz) {
-  if (set_motion_event_state_handler)
-    set_motion_event_state_handler(controllerNumber, motionType, reportRateHz);
-}
-
-static void set_controller_led(unsigned short controllerNumber, unsigned char r, unsigned char g, unsigned char b) {
-  if (set_controller_led_handler)
-    set_controller_led_handler(controllerNumber, r, g, b);
-}
-
-static void connection_status_update(int status) {
-  switch (status) {
-    case CONN_STATUS_OKAY:
-      printf("Connection is okay\n");
-      break;
-    case CONN_STATUS_POOR:
-      printf("Connection is poor\n");
-      break;
+  if (n3ds_connection_debug) {
+    va_list arglist;
+    va_start(arglist, format);
+    vprintf(format, arglist);
+    va_end(arglist);
   }
 }
 
-CONNECTION_LISTENER_CALLBACKS connection_callbacks = {
+static void connection_status_update(int status) {
+  if (n3ds_connection_debug) {
+    switch (status) {
+      case CONN_STATUS_OKAY:
+        printf("Connection is okay\n");
+        break;
+      case CONN_STATUS_POOR:
+        printf("Connection is poor\n");
+        break;
+    }
+  }
+}
+
+CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks = {
   .stageStarting = NULL,
   .stageComplete = NULL,
   .stageFailed = NULL,
   .connectionStarted = NULL,
   .connectionTerminated = connection_terminated,
   .logMessage = connection_log_message,
-  .rumble = rumble,
+  .rumble = NULL,
   .connectionStatusUpdate = connection_status_update,
   .setHdrMode = NULL,
-  .rumbleTriggers = rumble_triggers,
-  .setMotionEventState = set_motion_event_state,
-  .setControllerLED = set_controller_led,
+  .rumbleTriggers = NULL,
+  .setMotionEventState = NULL,
+  .setControllerLED = NULL,
 };
-
-#endif

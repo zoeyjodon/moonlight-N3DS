@@ -88,14 +88,14 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations -Wno-psabi \
 			-DVERSION_MAJOR=$(VERSION_MAJOR) -DVERSION_MINOR=$(VERSION_MINOR) -DVERSION_MICRO=$(VERSION_MICRO) \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -D__3DS__ -DHAVE_SDL -DSDL_MAIN_HANDLED -DUSE_MBEDTLS
+CFLAGS	+=	$(INCLUDE) -D__3DS__ -DUSE_MBEDTLS
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fno-exceptions -std=gnu++17
 
 ASFLAGS	:=	-g $(ARCH)
-LDFLAGS	=	-specs=3dsx.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
+LDFLAGS	=	-specs=3dsx.specs $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:= -lswresample -lavformat -lswscale -lavcodec -lavutil -lcitro2d -lcitro3d -lSDL3 -lfreetype -lpng -lbz2 -lopus -lexpat -lm -lcurl -lssl -lcrypto -lmbedtls -lmbedx509 -lmbedcrypto -lz -lctru
+LIBS	:= -lswresample -lavformat -lswscale -lavcodec -lavutil -lcitro2d -lcitro3d -lfreetype -lpng -lbz2 -lopus -lexpat -lm -lcurl -lssl -lcrypto -lmbedtls -lmbedx509 -lmbedcrypto -lz -lctru
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
@@ -246,7 +246,7 @@ endif
 #---------------------------------------------------------------------------------
 clean:
 	@echo clean ...
-	@rm -fr $(BUILD) $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(GFXBUILD)
+	@rm -fr $(BUILD) $(TARGET).cia $(TARGET).3dsx $(OUTPUT).smdh $(TARGET).elf $(GFXBUILD)
 
 #---------------------------------------------------------------------------------
 $(GFXBUILD)/%.t3x	$(BUILD)/%.h	:	%.t3s

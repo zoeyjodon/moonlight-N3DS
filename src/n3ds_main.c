@@ -20,17 +20,16 @@
 #ifdef __3DS__
 
 #include "loop.h"
-#include "connection_main.h"
 #include "platform_main.h"
 #include "config.h"
-#include "sdl_main.h"
 
+#include "n3ds/n3ds_connection.h"
 #include "n3ds/pair_record.h"
 
 #include "audio/audio.h"
 #include "video/video.h"
 
-#include "input/sdl.h"
+#include "input/n3ds_input.h"
 
 #include <3ds.h>
 
@@ -44,6 +43,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
+#include <malloc.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -52,20 +52,19 @@
 #include <openssl/rand.h>
 
 #define SOC_ALIGN       0x1000
-#define SOC_BUFFERSIZE  0x2000000
+// 0x40000 for each enet host (2 hosts total)
+// 0x208000 for each platform socket (2 sockets total)
+#define SOC_BUFFERSIZE  0x490000
 
 #define MAX_INPUT_CHAR 60
 #define MAX_APP_LIST 30
 
 static u32 *SOC_buffer = NULL;
 
-PrintConsole topScreen;
-PrintConsole bottomScreen;
+static PrintConsole topScreen;
+static PrintConsole bottomScreen;
 
-static void n3ds_exit_handler(void)
-{
-  // Allow users to decide when to exit
-  printf("\nPress any button to quit\n");
+static inline void wait_for_button() {
   while (aptMainLoop())
   {
     gfxSwapBuffers();
@@ -78,8 +77,20 @@ static void n3ds_exit_handler(void)
     if (kDown)
       break;
   }
+}
 
+static void n3ds_exit_handler(void)
+{
+  // Allow users to decide when to exit
+  printf("\nPress any button to quit\n");
+  wait_for_button();
+
+  NDMU_UnlockState();
+  NDMU_LeaveExclusiveState();
+  ndmuExit();
   irrstExit();
+  SOCU_ShutdownSockets();
+  SOCU_CloseSockets();
   socExit();
   free(SOC_buffer);
   romfsExit();
@@ -88,9 +99,9 @@ static void n3ds_exit_handler(void)
   acExit();
 }
 
-int console_selection_prompt(char* prompt, char** options, int option_count)
+static int console_selection_prompt(char* prompt, char** options, int option_count, int default_idx)
 {
-  int option_idx = 0;
+  int option_idx = default_idx;
   int last_option_idx = -1;
   while (aptMainLoop())
   {
@@ -101,7 +112,8 @@ int console_selection_prompt(char* prompt, char** options, int option_count)
         printf("%s\n", prompt);
       }
       printf("Press up/down to select\n");
-      printf("Press A to confirm\n\n");
+      printf("Press A to confirm\n");
+      printf("Press B to go back\n\n");
 
       for (int i = 0; i < option_count; i++) {
         if (i == option_idx) {
@@ -125,8 +137,12 @@ int console_selection_prompt(char* prompt, char** options, int option_count)
       consoleClear();
       return option_idx;
     }
+    if (kDown & KEY_B) {
+      consoleClear();
+      return -1;
+    }
     if (kDown & KEY_DOWN) {
-      if (option_idx < 4) {
+      if (option_idx < option_count) {
         option_idx++;
       }
     }
@@ -140,33 +156,43 @@ int console_selection_prompt(char* prompt, char** options, int option_count)
   exit(0);
 }
 
-char * prompt_for_action(PSERVER_DATA server)
+static char * prompt_for_action(PSERVER_DATA server)
 {
   if (server->paired) {
-    const char* actions[4];
-    actions[0] = "stream";
-    actions[1] = "quit stream";
-    actions[2] = "unpair";
-    actions[3] = "change server";
-    int idx = console_selection_prompt("Select an action", actions, 4);
+    char* actions[] = {
+      "stream",
+      "quit stream",
+      "stream settings",
+      "unpair",
+    };
+    int actions_len = sizeof(actions) / sizeof(actions[0]);
+    int idx = console_selection_prompt("Select an action", actions, actions_len, 0);
+    if (idx < 0) {
+      return NULL;
+    }
     return actions[idx];
   }
-  const char* actions[2];
-  actions[0] = "pair";
-  actions[1] = "change server";
-  int idx = console_selection_prompt("Select an action", actions, 2);
+  char* actions[] = {"pair"};
+  int actions_len = sizeof(actions) / sizeof(actions[0]);
+  int idx = console_selection_prompt("Select an action", actions, actions_len, 0);
+  if (idx < 0) {
+    return NULL;
+  }
   return actions[idx];
 }
 
-char * prompt_for_address()
+static char * prompt_for_address()
 {
   char* address_list[MAX_PAIRED_DEVICES + 1];
   int address_count = 0;
   list_paired_addresses(address_list, &address_count);
 
   address_list[address_count] = "new";
-  int idx = console_selection_prompt("Select a server address", address_list, address_count + 1);
-  if (strcmp(address_list[idx], "new") != 0) {
+  int idx = console_selection_prompt("Select a server address", address_list, address_count + 1, 0);
+  if (idx < 0) {
+    return NULL;
+  }
+  else if (strcmp(address_list[idx], "new") != 0) {
     return address_list[idx];
   }
 
@@ -179,24 +205,152 @@ char * prompt_for_address()
   return addr_buff;
 }
 
-void init_3ds()
+static inline char * prompt_for_boolean(char* prompt, bool default_val)
 {
+  char* options[] = {
+    "true",
+    "false",
+  };
+  int options_len = sizeof(options) / sizeof(options[0]);
+  int idx = console_selection_prompt(prompt, options, options_len, default_val ? 0 : 1);
+  if (idx < 0) {
+    idx = default_val ? 0 : 1;
+  }
+  return options[idx];
+}
+
+static void prompt_for_stream_settings(PCONFIGURATION config)
+{
+  char* setting_names[] = {
+    "width",
+    "fps",
+    "bitrate",
+    "packetsize",
+    "nosops",
+    "localaudio",
+    "quitappafter",
+    "viewonly",
+    "rotate",
+    "hwdecode",
+    "debug",
+  };
+  char argument_ids[] = {
+    'c',
+    'v',
+    'g',
+    'h',
+    'l',
+    'n',
+    '1',
+    '2',
+    '3',
+    '8',
+    'Z',
+  };
+  int settings_len = sizeof(setting_names) / sizeof(setting_names[0]);
+  char* setting_buff = malloc(MAX_INPUT_CHAR);
+  int idx = 0;
+  while (1) {
+    idx = console_selection_prompt("Select a setting", setting_names, settings_len, idx);
+    if (idx < 0) {
+      break;
+    }
+
+    SwkbdState swkbd;
+    memset(setting_buff, 0, MAX_INPUT_CHAR);
+    if (strcmp("width", setting_names[idx]) == 0) {
+      idx = config->stream.width == 400 ? 0 : 1;
+      char* width_options[] = {
+        "400",
+        "800",
+      };
+      idx = console_selection_prompt("Select a setting", width_options, 2, idx);
+      if (idx > -1) {
+        sprintf(setting_buff, "%s", width_options[idx]);
+      }
+    }
+    else if (strcmp("fps", setting_names[idx]) == 0) {
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.fps);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
+    }
+    else if (strcmp("bitrate", setting_names[idx]) == 0) {
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.bitrate);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
+    }
+    else if (strcmp("packetsize", setting_names[idx]) == 0) {
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.packetSize);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
+    }
+    else if (strcmp("nosops", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Disable sops", !config->sops);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
+    }
+    else if (strcmp("localaudio", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Enable local audio", config->localaudio);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
+    }
+    else if (strcmp("quitappafter", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Quit app after streaming", config->quitappafter);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
+    }
+    else if (strcmp("viewonly", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Disable controller input", config->viewonly);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
+    }
+    else if (strcmp("rotate", setting_names[idx]) == 0) {
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->rotate);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
+    }
+    else if (strcmp("hwdecode", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Use hardware video decoder", config->hwdecode);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
+    }
+    else if (strcmp("debug", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Enable debug logs", config->debug_level);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
+    }
+
+    parse_argument(argument_ids[idx], setting_buff, config);
+  }
+
+  // Update the config file
+  char* config_file_path = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
+  config_save(config_file_path, config);
+  free(setting_buff);
+}
+
+static void init_3ds()
+{
+  Result status = 0;
   acInit();
-  gfxInitDefault();
+  gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
   consoleInit(GFX_TOP, &topScreen);
-  consoleInit(GFX_BOTTOM, &bottomScreen);
   consoleSelect(&topScreen);
   atexit(n3ds_exit_handler);
 
   osSetSpeedupEnable(true);
-  aptSetSleepAllowed(true);
+  aptSetSleepAllowed(false);
   aptInit();
-  Result status = romfsInit();
-  if (R_FAILED(status))
-  {
-    printf("romfsInit: %08lX\n", status);
-  }
-  else printf("romfs Init Successful!\n");
 
   SOC_buffer = (u32*)memalign(SOC_ALIGN, SOC_BUFFERSIZE);
   status = socInit(SOC_buffer, SOC_BUFFERSIZE);
@@ -206,25 +360,23 @@ void init_3ds()
     exit(1);
   }
 
-  status = NDMU_EnterExclusiveState(NDM_EXCLUSIVE_STATE_INFRASTRUCTURE);
+  status = ndmuInit();
+  status |= NDMU_EnterExclusiveState(NDM_EXCLUSIVE_STATE_INFRASTRUCTURE);
+  status |= NDMU_LockState();
   if (R_FAILED(status))
   {
-    printf ("Failed to enter exclusive NDM state: %08lX\n", status);
-  }
-  status = NDMU_LockState();
-  if (R_FAILED(status))
-  {
-    printf ("Failed to lock NDM: %08lX\n", status);
-    NDMU_LeaveExclusiveState();
+    printf ("Warning: failed to enter exclusive NDM state: %08lX\n", status);
+    printf("\nPress any button to continue\n");
+    wait_for_button();
   }
 }
 
-int prompt_for_app_id(PSERVER_DATA server)
+static int prompt_for_app_id(PSERVER_DATA server)
 {
   PAPP_LIST list = NULL;
   if (gs_applist(server, &list) != GS_OK) {
     fprintf(stderr, "Can't get app list\n");
-    return;
+    return -1;
   }
 
   char* app_names[MAX_APP_LIST];
@@ -242,16 +394,27 @@ int prompt_for_app_id(PSERVER_DATA server)
     list = list->next;
   }
 
-  int id_idx = console_selection_prompt("Select an app", app_names, idx);
+  int id_idx = console_selection_prompt("Select an app", app_names, idx, 0);
+  if (id_idx == -1) {
+    return -1;
+  }
   return app_ids[id_idx];
 }
 
-static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform system, int appId) {
-  int gamepads = sdl_gamepads;
-  int gamepad_mask = 0;
-  for (int i = 0; i < gamepads; i++)
-    gamepad_mask = (gamepad_mask << 1) + 1;
+static inline void stream_loop(PCONFIGURATION config) {
+  bool done = false;
+  while(!done && aptMainLoop()) {
+    done = n3ds_connection_closed;
+    if (!config->viewonly) {
+      done |= n3dsinput_handle_event();
+    }
+    // Restrict input updates to prevent flooding the send queue
+    svcSleepThread(30 * 1000000);
+  }
+}
 
+static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
+  int gamepad_mask = 1;
   int ret = gs_start_app(server, &config->stream, appId, config->sops, config->localaudio, gamepad_mask);
   if (ret < 0) {
     if (ret == GS_NOT_SUPPORTED_4K)
@@ -266,6 +429,9 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
       fprintf(stderr, "Errorcode starting app: %d\n", ret);
     exit(-1);
   }
+
+  n3ds_audio_disabled = config->localaudio;
+  n3ds_connection_debug = config->debug_level;
 
   int drFlags = 0;
   if (config->fullscreen)
@@ -287,22 +453,44 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, enum platform sys
     printf("Ignoring invalid rotation value: %d\n", config->rotate);
   }
 
-  printf("Loading...\nStream %d x %d, %d fps, %d kbps\n", config->stream.width, config->stream.height, config->stream.fps, config->stream.bitrate);
-
-  int status = LiStartConnection(&server->serverInfo, &config->stream, &connection_callbacks, &decoder_callbacks_sdl, &audio_callbacks_sdl, NULL, drFlags, config->audio_device, 0);
-  if (status != 0) {
-    exit(status);
+  PDECODER_RENDERER_CALLBACKS video_callbacks = &decoder_callbacks_n3ds;
+  if (config->hwdecode) {
+    video_callbacks = &decoder_callbacks_n3ds_mvd;
+    // MVD requires specific width/height parameters
+    config->stream.height = 400;
+    config->stream.width = 240;
   }
 
-  consoleInit(GFX_BOTTOM, &bottomScreen);
-  consoleSelect(&bottomScreen);
-  sdl_loop();
+  printf("Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
+ viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, debug=%d\n",
+          config->stream.width,
+          config->stream.height,
+          config->stream.fps,
+          config->stream.bitrate,
+          config->sops,
+          config->localaudio,
+          config->quitappafter,
+          config->viewonly,
+          config->rotate,
+          config->stream.encryptionFlags,
+          config->hwdecode,
+          config->debug_level
+        );
+
+  int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, video_callbacks, &audio_callbacks_n3ds, NULL, drFlags, config->audio_device, 0);
+
+  if (status != 0) {
+    n3ds_connection_callbacks.connectionTerminated(status);
+    exit(status);
+  }
+  printf("Connected!\n");
+
+  stream_loop(config);
 
   LiStopConnection();
 
   if (config->quitappafter) {
-    if (config->debug_level > 0)
-      printf("Sending app quit request ...\n");
+    printf("Sending app quit request ...\n");
     gs_quit_app(server);
   }
 }
@@ -313,13 +501,11 @@ int main(int argc, char* argv[]) {
   CONFIGURATION config;
   config_parse(argc, argv, &config);
 
-  config.address = prompt_for_address();
-
   while (aptMainLoop()) {
-    char host_config_file[128];
-    sprintf(host_config_file, "hosts/%s.conf", config.address);
-    if (access(host_config_file, R_OK) != -1)
-      config_file_parse(host_config_file, &config);
+    config.address = prompt_for_address();
+    if (config.address == NULL) {
+      continue;
+    }
 
     SERVER_DATA server;
     printf("Connecting to %s...\n", config.address);
@@ -339,7 +525,8 @@ int main(int argc, char* argv[]) {
       exit(-1);
     } else if (ret != GS_OK) {
       fprintf(stderr, "Can't connect to server %s\n", config.address);
-      exit(-1);
+      wait_for_button();
+      continue;
     }
 
     if (config.debug_level > 0) {
@@ -353,80 +540,73 @@ int main(int argc, char* argv[]) {
       remove_pair_address(config.address);
     }
 
-    config.action = prompt_for_action(&server);
-    if (strcmp("change server", config.action) == 0) {
-      config.address = prompt_for_address();
-      // Skip the additional prompt for a button press
-      continue;
-    } else if (strcmp("stream", config.action) == 0) {
-      enum platform system = platform_check(config.platform);
-      if (config.debug_level > 0)
-        printf("Platform %s\n", platform_name(system));
-
-      if (system == 0) {
-        fprintf(stderr, "Platform '%s' not found\n", config.platform);
-        exit(-1);
-      } else if (system == SDL && config.audio_device != NULL) {
-        fprintf(stderr, "You can't select a audio device for SDL\n");
-        exit(-1);
-      }
-
-      int appId = prompt_for_app_id(&server);
-
-      config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
-      sdl_init(config.stream.width, config.stream.height, config.fullscreen);
-
-      if (config.viewonly) {
-        if (config.debug_level > 0)
-          printf("View-only mode enabled, no input will be sent to the host computer\n");
-      } else {
-        sdlinput_init(config.mapping);
-        rumble_handler = sdlinput_rumble;
-        rumble_triggers_handler = sdlinput_rumble_triggers;
-        set_motion_event_state_handler = sdlinput_set_motion_event_state;
-        set_controller_led_handler = sdlinput_set_controller_led;
-      }
-      stream(&server, &config, system, appId);
-      // Exit app after streaming has closed
-      exit(0);
-    } else if (strcmp("pair", config.action) == 0) {
-      char pin[5];
-      if (config.pin > 0 && config.pin <= 9999) {
-        sprintf(pin, "%04d", config.pin);
-      } else {
-        sprintf(pin, "%d%d%d%d", (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10);
-      }
-      printf("Please enter the following PIN on the target PC:\n%s\n", pin);
-      fflush(stdout);
-      if (gs_pair(&server, &pin[0]) != GS_OK) {
-        fprintf(stderr, "Failed to pair to server: %s\n", gs_error);
-      } else {
-        printf("Succesfully paired\n");
-        add_pair_address(config.address);
-      }
-    } else if (strcmp("unpair", config.action) == 0) {
-      if (gs_unpair(&server) != GS_OK) {
-        fprintf(stderr, "Failed to unpair to server: %s\n", gs_error);
-      } else {
-        printf("Succesfully unpaired\n");
-        remove_pair_address(config.address);
-      }
-    } else if (strcmp("quit stream", config.action) == 0) {
-      printf("Sending app quit request ...\n");
-      gs_quit_app(&server);
-    } else
-      fprintf(stderr, "%s is not a valid action\n", config.action);
-
-
-    printf("\nPress any button to continue\n");
-    while (aptMainLoop())
-    {
-      gfxSwapBuffers();
-      gfxFlushBuffers();
-      gspWaitForVBlank();
-      hidScanInput();
-      if (hidKeysDown())
+    while (aptMainLoop()) {
+      config.action = prompt_for_action(&server);
+      if (config.action == NULL) {
         break;
+      }
+      else if (strcmp("stream", config.action) == 0) {
+        int appId = prompt_for_app_id(&server);
+        if (appId == -1) {
+          continue;
+        }
+
+        config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
+
+        consoleClear();
+        consoleInit(GFX_BOTTOM, &bottomScreen);
+        consoleSelect(&bottomScreen);
+
+        if (config.viewonly) {
+          if (config.debug_level > 0)
+            printf("View-only mode enabled, no input will be sent to the host computer\n");
+        } else {
+          n3dsinput_init();
+        }
+        stream(&server, &config, appId);
+        // Exit app after streaming has closed
+        exit(0);
+      }
+      else if (strcmp("pair", config.action) == 0) {
+        char pin[5];
+        if (config.pin > 0 && config.pin <= 9999) {
+          sprintf(pin, "%04d", config.pin);
+        } else {
+          sprintf(pin, "%d%d%d%d", (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10, (unsigned)random() % 10);
+        }
+        printf("Please enter the following PIN on the target PC:\n%s\n", pin);
+        fflush(stdout);
+        if (gs_pair(&server, &pin[0]) != GS_OK) {
+          fprintf(stderr, "Failed to pair to server: %s\n", gs_error);
+        } else {
+          printf("Succesfully paired\n");
+          add_pair_address(config.address);
+          break;
+        }
+      }
+      else if (strcmp("stream settings", config.action) == 0) {
+        prompt_for_stream_settings(&config);
+        continue;
+      }
+      else if (strcmp("unpair", config.action) == 0) {
+        if (gs_unpair(&server) != GS_OK) {
+          fprintf(stderr, "Failed to unpair to server: %s\n", gs_error);
+        } else {
+          printf("Succesfully unpaired\n");
+          remove_pair_address(config.address);
+          break;
+        }
+      }
+      else if (strcmp("quit stream", config.action) == 0) {
+        printf("Sending app quit request ...\n");
+        gs_quit_app(&server);
+      }
+      else
+        fprintf(stderr, "%s is not a valid action\n", config.action);
+
+
+      printf("\nPress any button to continue\n");
+      wait_for_button();
     }
   }
   return 0;

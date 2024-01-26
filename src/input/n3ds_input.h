@@ -1,7 +1,7 @@
 /*
  * This file is part of Moonlight Embedded.
  *
- * Copyright (C) 2017 Iwan Timmer
+ * Copyright (C) 2015-2017 Iwan Timmer
  *
  * Moonlight is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,11 +18,6 @@
  */
 
 #include <stdbool.h>
-#include <stddef.h>
 
-int write_bool(char *path, bool val);
-int read_file(char *path, char *output, int output_len);
-bool ensure_buf_size(void **buf, size_t *buf_size, size_t required_size);
-#ifdef __3DS__
-bool ensure_linear_buf_size(void **buf, size_t *buf_size, size_t required_size);
-#endif
+void n3dsinput_init();
+int n3dsinput_handle_event();

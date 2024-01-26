@@ -21,7 +21,12 @@ RUN apt-get update && apt-get install -y \
     libc6 \
     git \
     autoconf \
-    libtool
+    libtool \
+    python3 \
+    python3-pip
+
+# Install the luma dump parser for inspecting crashes
+RUN pip install -U git+https://github.com/LumaTeam/luma3ds_exception_dump_parser.git
 
 # Install moonlight dependencies
 RUN apt-get install -y \

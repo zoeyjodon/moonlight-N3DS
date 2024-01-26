@@ -31,7 +31,7 @@ static SDL_Window *window;
 static SDL_Renderer *renderer;
 static SDL_Texture *bmp;
 
-SDL_Mutex *mutex;
+SDL_mutex *mutex;
 
 int sdlCurrentFrame, sdlNextFrame;
 
@@ -39,40 +39,32 @@ void sdl_init(int width, int height, bool fullscreen) {
   sdlCurrentFrame = sdlNextFrame = 0;
 
   if(SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
-    printf("Could not initialize SDL - %s\n", SDL_GetError());
+    fprintf(stderr, "Could not initialize SDL - %s\n", SDL_GetError());
     exit(1);
   }
 
   fullscreen_flags = fullscreen?SDL_WINDOW_FULLSCREEN:0;
-  int window_flags = fullscreen_flags;
-#ifndef __3DS__
-  window_flags |= SDL_WINDOW_OPENGL;
-#endif
-  window = SDL_CreateWindow("Moonlight", width, height, window_flags);
+  window = SDL_CreateWindow("Moonlight", SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, width, height, SDL_WINDOW_OPENGL | fullscreen_flags);
   if(!window) {
-    printf("SDL: could not create window - exiting\n");
+    fprintf(stderr, "SDL: could not create window - exiting\n");
     exit(1);
   }
 
-  renderer = SDL_CreateRenderer(window, NULL, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
+  renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
   if (!renderer) {
-    printf("Failed to initialize a hardware accelerated renderer: %s\n", SDL_GetError());
-    renderer = SDL_CreateRenderer(window, NULL, 0);
-    if (!renderer) {
-      printf("SDL_CreateRenderer failed: %s\n", SDL_GetError());
-      exit(1);
-    }
+    printf("SDL_CreateRenderer failed: %s\n", SDL_GetError());
+    exit(1);
   }
 
   bmp = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_YV12, SDL_TEXTUREACCESS_STREAMING, width, height);
   if (!bmp) {
-    printf("SDL: could not create texture - exiting\n");
+    fprintf(stderr, "SDL: could not create texture - exiting\n");
     exit(1);
   }
 
   mutex = SDL_CreateMutex();
   if (!mutex) {
-    printf("Couldn't create mutex\n");
+    fprintf(stderr, "Couldn't create mutex\n");
     exit(1);
   }
 }
@@ -83,9 +75,6 @@ void sdl_loop() {
   SDL_SetRelativeMouseMode(SDL_TRUE);
 
   while(!done && SDL_WaitEvent(&event)) {
-#ifdef __3DS__
-    done = !aptMainLoop();
-#endif
     switch (sdlinput_handle_event(window, &event)) {
     case SDL_QUIT_APPLICATION:
       done = true;
@@ -95,39 +84,37 @@ void sdl_loop() {
       SDL_SetWindowFullscreen(window, fullscreen_flags);
       break;
     case SDL_MOUSE_GRAB:
-      SDL_ShowCursor();
+      SDL_ShowCursor(SDL_ENABLE);
       SDL_SetRelativeMouseMode(SDL_TRUE);
       break;
     case SDL_MOUSE_UNGRAB:
       SDL_SetRelativeMouseMode(SDL_FALSE);
-      SDL_HideCursor();
+      SDL_ShowCursor(SDL_DISABLE);
       break;
     default:
-      if (event.type == SDL_EVENT_QUIT)
+      if (event.type == SDL_QUIT)
         done = true;
-      else if (event.type == SDL_EVENT_USER) {
+      else if (event.type == SDL_USEREVENT) {
         if (event.user.code == SDL_CODE_FRAME) {
           if (++sdlCurrentFrame <= sdlNextFrame - SDL_BUFFER_FRAMES) {
             //Skip frame
-          } else {
-            SDL_LockMutex(mutex);
+          } else if (SDL_LockMutex(mutex) == 0) {
             Uint8** data = ((Uint8**) event.user.data1);
             int* linesize = ((int*) event.user.data2);
             SDL_UpdateYUVTexture(bmp, NULL, data[0], linesize[0], data[1], linesize[1], data[2], linesize[2]);
             SDL_UnlockMutex(mutex);
             SDL_RenderClear(renderer);
-            SDL_RenderTexture(renderer, bmp, NULL, NULL);
+            SDL_RenderCopy(renderer, bmp, NULL, NULL);
             SDL_RenderPresent(renderer);
-          }
+          } else
+            fprintf(stderr, "Couldn't lock mutex\n");
         }
       }
     }
   }
 
   SDL_DestroyWindow(window);
-#ifndef __3DS__ // leave SDL running for debug after crash
   SDL_Quit();
-#endif
 }
 
 #endif /* HAVE_SDL */

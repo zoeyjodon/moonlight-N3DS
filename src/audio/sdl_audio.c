@@ -17,25 +17,20 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#ifdef HAVE_SDL
+
 #include "audio.h"
 
-#ifdef __3DS__
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_audio.h>
-#include <opus/opus_multistream.h>
-#else
 #include <SDL.h>
 #include <SDL_audio.h>
-#include <opus_multistream.h>
-#endif
 
 #include <stdio.h>
+#include <opus_multistream.h>
 
 static OpusMSDecoder* decoder;
 static short* pcmBuffer;
 static int samplesPerFrame;
 static SDL_AudioDeviceID dev;
-static SDL_AudioStream *stream;
 static int channelCount;
 
 static int sdl_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, void* context, int arFlags) {
@@ -50,19 +45,20 @@ static int sdl_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURA
 
   SDL_InitSubSystem(SDL_INIT_AUDIO);
 
-  SDL_AudioSpec want;
+  SDL_AudioSpec want, have;
   SDL_zero(want);
   want.freq = opusConfig->sampleRate;
-  want.format = SDL_AUDIO_S16LE;
+  want.format = AUDIO_S16LSB;
   want.channels = opusConfig->channelCount;
+  want.samples = 4096;
 
-  stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_OUTPUT, &want, NULL, NULL);
-  if (stream == NULL) {
+  dev = SDL_OpenAudioDevice(NULL, 0, &want, &have, 0);
+  if (dev == 0) {
     printf("Failed to open audio: %s\n", SDL_GetError());
     return -1;
+  } else {
+    SDL_PauseAudioDevice(dev, 0);  // start audio playing.
   }
-  dev = SDL_GetAudioStreamDevice(stream);
-  SDL_ResumeAudioDevice(dev);
 
   return 0;
 }
@@ -87,7 +83,7 @@ static void sdl_renderer_cleanup() {
 static void sdl_renderer_decode_and_play_sample(char* data, int length) {
   int decodeLen = opus_multistream_decode(decoder, data, length, pcmBuffer, samplesPerFrame, 0);
   if (decodeLen > 0) {
-    SDL_PutAudioStreamData(stream, pcmBuffer, decodeLen * channelCount * sizeof(short));
+    SDL_QueueAudio(dev, pcmBuffer, decodeLen * channelCount * sizeof(short));
   } else if (decodeLen < 0) {
     printf("Opus error from decode: %d\n", decodeLen);
   }
@@ -99,3 +95,5 @@ AUDIO_RENDERER_CALLBACKS audio_callbacks_sdl = {
   .decodeAndPlaySample = sdl_renderer_decode_and_play_sample,
   .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_SUPPORTS_ARBITRARY_AUDIO_DURATION,
 };
+
+#endif

@@ -36,10 +36,6 @@
 typedef bool(*ImxInit)();
 
 enum platform platform_check(char* name) {
-  #ifdef __3DS__
-    return SDL;
-  #endif
-
   bool std = strcmp(name, "auto") == 0;
   #ifdef HAVE_IMX
   if (std || strcmp(name, "imx") == 0) {

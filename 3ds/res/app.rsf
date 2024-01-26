@@ -81,7 +81,7 @@ AccessControlInfo:
   DisableDebug                  : false
   EnableForceDebug              : false
   CanWriteSharedPage            : true
-  CanUsePrivilegedPriority      : false
+  CanUsePrivilegedPriority      : true
   CanUseNonAlphabetAndNumber    : true
   PermitMainFunctionArgument    : true
   CanShareDeviceMemory          : true

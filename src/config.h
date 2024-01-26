@@ -48,9 +48,12 @@ typedef struct _CONFIGURATION {
   bool hdr;
   int pin;
   unsigned short port;
+  bool hwdecode;
 } CONFIGURATION, *PCONFIGURATION;
 
 extern bool inputAdded;
 
 bool config_file_parse(char* filename, PCONFIGURATION config);
 void config_parse(int argc, char* argv[], PCONFIGURATION config);
+void parse_argument(int c, char* value, PCONFIGURATION config);
+void config_save(char* filename, PCONFIGURATION config);
