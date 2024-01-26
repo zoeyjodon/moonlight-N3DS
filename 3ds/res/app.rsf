@@ -242,7 +242,7 @@ AccessControlInfo:
    - ptm:sysm
    - ptm:u
    - pxi:dev
-   - soc:P
+   - soc:U
    - ssl:C
    - y2r:u
 
