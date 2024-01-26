@@ -27,7 +27,7 @@
 #define QUIT_BUTTONS (PLAY_FLAG|BACK_FLAG|LB_FLAG|RB_FLAG)
 #define SUPPORTED_BUTTONS (A_FLAG|B_FLAG|X_FLAG|Y_FLAG|\
   RIGHT_FLAG|LEFT_FLAG|UP_FLAG|DOWN_FLAG|RB_FLAG|LB_FLAG|\
-  BACK_FLAG|PLAY_FLAG|SPECIAL_FLAG)
+  LS_CLK_FLAG|RS_CLK_FLAG|BACK_FLAG|PLAY_FLAG|SPECIAL_FLAG)
 #define N3DS_ANALOG_MAX 100
 #define N3DS_ANALOG_POS_FACTOR 10
 
@@ -74,7 +74,6 @@ static inline int n3ds_to_li_buttons(u32 key_n3ds) {
   li_out |= n3ds_to_li_button(key_n3ds, KEY_L, LB_FLAG);
   li_out |= n3ds_to_li_button(key_n3ds, KEY_X, X_FLAG);
   li_out |= n3ds_to_li_button(key_n3ds, KEY_Y, Y_FLAG);
-  li_out |= n3ds_to_li_button(key_n3ds, KEY_TOUCH, SPECIAL_FLAG);
   return li_out;
 }
 
@@ -116,6 +115,22 @@ static inline bool gamepad_state_changed() {
   return false;
 }
 
+static inline int touch_to_li_buttons() {
+  int buttons = 0;
+  touchPosition touch;
+  hidTouchRead(&touch);
+  if (touch.py >= 120) {
+    buttons = SPECIAL_FLAG;
+  }
+  else {
+    if (touch.px < 235)
+      buttons |= LS_CLK_FLAG;
+    if (touch.px > 104)
+      buttons |= RS_CLK_FLAG;
+  }
+  return buttons;
+}
+
 int n3dsinput_handle_event() {
   hidScanInput();
   u32 kDown = hidKeysDown();
@@ -145,6 +160,13 @@ int n3dsinput_handle_event() {
   hidCstickRead(&cstick_pos);
   gamepad_state.rightStickX = scale_n3ds_axis(cstick_pos.dx);
   gamepad_state.rightStickY = scale_n3ds_axis(cstick_pos.dy);
+
+  if (kDown & KEY_TOUCH) {
+    gamepad_state.buttons |= touch_to_li_buttons();
+  }
+  else if (kUp & KEY_TOUCH) {
+    gamepad_state.buttons &= ~(SPECIAL_FLAG|LS_CLK_FLAG|RS_CLK_FLAG);
+  }
 
   if (gamepad_state_changed()) {
     LiSendMultiControllerEvent(0, activeGamepadMask, gamepad_state.buttons, gamepad_state.leftTrigger, gamepad_state.rightTrigger, gamepad_state.leftStickX, gamepad_state.leftStickY, gamepad_state.rightStickX, gamepad_state.rightStickY);
