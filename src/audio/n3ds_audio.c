@@ -26,7 +26,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define WAVEBUF_SIZE 256
+#define WAVEBUF_SIZE 16
 bool n3ds_audio_disabled = false;
 
 static OpusMSDecoder* decoder;
