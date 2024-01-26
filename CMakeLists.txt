@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.1)
-project(moonlight-embedded VERSION 2.6.1 LANGUAGES C)
+project(moonlight-embedded VERSION 2.6.2 LANGUAGES C)
 SET(CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake")
 SET(CMAKE_C_STANDARD 99)
 include(${CMAKE_ROOT}/Modules/GNUInstallDirs.cmake)
@@ -86,6 +86,17 @@ add_subdirectory(libgamestream)
 add_executable(moonlight ${SRC_LIST})
 target_link_libraries(moonlight m)
 target_link_libraries(moonlight gamestream)
+
+if (CMAKE_SYSTEM_NAME MATCHES "FreeBSD")
+  set(ALSA_FOUND FALSE)
+  target_sources(moonlight PRIVATE ./src/audio/oss.c)
+endif()
+
+check_c_source_compiles("#include <sys/auxv.h>
+                         int main(void) { return getauxval(AT_HWCAP); }" HAVE_GETAUXVAL)
+if (HAVE_GETAUXVAL)
+  list(APPEND MOONLIGHT_DEFINITIONS HAVE_GETAUXVAL)
+endif()
 
 if (CEC_FOUND)
   list(APPEND MOONLIGHT_DEFINITIONS HAVE_LIBCEC)
