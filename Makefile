@@ -46,7 +46,7 @@ SOURCES		:=	src \
 				third_party/moonlight-common-c/enet \
 				third_party/moonlight-common-c/reedsolomon \
 				third_party/moonlight-common-c/src
-DATA		:=	data
+DATA		:=	3ds/data
 INCLUDES	:=	src \
 				libgamestream \
 				third_party/h264bitstream \

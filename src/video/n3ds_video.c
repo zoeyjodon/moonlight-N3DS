@@ -121,37 +121,37 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int widt
 
   status = Y2RU_SetSendingY(source[0], width * height, width, 0);
   if (status) {
-    printf("Y2RU_SetSendingY failed\n");
+    fprintf(stderr, "Y2RU_SetSendingY failed\n");
     goto y2ru_failed;
   }
 
   status = Y2RU_SetSendingU(source[1], width * height / 4, width / 2, 0);
   if (status) {
-    printf("Y2RU_SetSendingU failed\n");
+    fprintf(stderr, "Y2RU_SetSendingU failed\n");
     goto y2ru_failed;
   }
 
   status = Y2RU_SetSendingV(source[2], width * height / 4, width / 2, 0);
   if (status) {
-    printf("Y2RU_SetSendingV failed\n");
+    fprintf(stderr, "Y2RU_SetSendingV failed\n");
     goto y2ru_failed;
   }
 
   status = Y2RU_SetReceiving(img_buffer, width * height * px_size, 8, 0);
   if (status) {
-    printf("Y2RU_SetReceiving failed\n");
+    fprintf(stderr, "Y2RU_SetReceiving failed\n");
     goto y2ru_failed;
   }
 
   status = Y2RU_StartConversion();
   if (status) {
-    printf("Y2RU_StartConversion failed\n");
+    fprintf(stderr, "Y2RU_StartConversion failed\n");
     goto y2ru_failed;
   }
 
   status = Y2RU_GetTransferEndEvent(&conversion_finish_event_handle);
   if (status) {
-    printf("Y2RU_GetTransferEndEvent failed\n");
+    fprintf(stderr, "Y2RU_GetTransferEndEvent failed\n");
     goto y2ru_failed;
   }
 

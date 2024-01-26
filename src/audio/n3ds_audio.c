@@ -48,7 +48,7 @@ static int n3ds_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGUR
 
   if(ndspInit() != 0)
   {
-    printf("ndspInit() failed\n");
+    fprintf(stderr, "ndspInit() failed\n");
     return -1;
   }
 
@@ -101,7 +101,7 @@ static void n3ds_renderer_decode_and_play_sample(char* data, int length) {
 
   int decodeLen = opus_multistream_decode(decoder, (const unsigned char *)data, length, (opus_int16 *)audio_wave_buf[wave_buf_idx].data_vaddr, samplesPerFrame, 0);
   if (decodeLen < 0) {
-    printf("Opus error from decode: %d\n", decodeLen);
+    fprintf(stderr, "Opus error from decode: %d\n", decodeLen);
     return;
   }
   DSP_FlushDataCache(audio_wave_buf[wave_buf_idx].data_vaddr, decodeLen * channelCount * sizeof(short));
