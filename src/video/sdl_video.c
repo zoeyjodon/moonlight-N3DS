@@ -22,16 +22,11 @@
 #include "video.h"
 #include "ffmpeg.h"
 
-#include "../sdl_main.h"
+#include "../sdl.h"
 #include "../util.h"
 
-#ifdef __3DS__
-#include <SDL3/SDL.h>
-#include <SDL3/SDL_thread.h>
-#else
 #include <SDL.h>
 #include <SDL_thread.h>
-#endif
 
 #include <unistd.h>
 #include <stdbool.h>
@@ -75,7 +70,7 @@ static int sdl_submit_decode_unit(PDECODE_UNIT decodeUnit) {
     sdlNextFrame++;
 
     SDL_Event event;
-    event.type = SDL_EVENT_USER;
+    event.type = SDL_USEREVENT;
     event.user.code = SDL_CODE_FRAME;
     event.user.data1 = &frame->data;
     event.user.data2 = &frame->linesize;

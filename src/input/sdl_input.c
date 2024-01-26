@@ -17,13 +17,13 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+
 #ifdef HAVE_SDL
 
 #include "sdl.h"
 #include "../sdl_main.h"
 
 #include <Limelight.h>
-#include <stdio.h>
 
 #define ACTION_MODIFIERS (MODIFIER_SHIFT|MODIFIER_ALT|MODIFIER_CTRL)
 #define QUIT_KEY SDLK_q
@@ -48,7 +48,7 @@ typedef struct _GAMEPAD_STATE {
   short rightStickX, rightStickY;
   int buttons;
   SDL_JoystickID sdl_id;
-  SDL_Gamepad* controller;
+  SDL_GameController* controller;
 #if !SDL_VERSION_ATLEAST(2, 0, 9)
   SDL_Haptic* haptic;
   int haptic_effect_id;
@@ -74,49 +74,42 @@ static void send_controller_arrival(PGAMEPAD_STATE state) {
   unsigned char type = LI_CTYPE_UNKNOWN;
 
   for (int i = 0; i < SDL_arraysize(SDL_TO_LI_BUTTON_MAP); i++) {
-    if (SDL_GamepadHasButton(state->controller, (SDL_GamepadButton)i)) {
+    if (SDL_GameControllerHasButton(state->controller, (SDL_GameControllerButton)i)) {
         supportedButtonFlags |= SDL_TO_LI_BUTTON_MAP[i];
     }
   }
 
-  int bindings_count = 0;
-  SDL_GamepadBinding** bindings = SDL_GetGamepadBindings(state->controller, &bindings_count);
-  for (int i = 0; i < bindings_count; i++) {
-    if (bindings[i]->outputType == SDL_GAMEPAD_BINDTYPE_AXIS &&
-        ((bindings[i]->output.axis.axis == SDL_GAMEPAD_AXIS_LEFT_TRIGGER) ||
-        (bindings[i]->output.axis.axis == SDL_GAMEPAD_AXIS_RIGHT_TRIGGER))) {
-      capabilities |= LI_CCAP_ANALOG_TRIGGERS;
-      break;
-    }
-  }
-  if (SDL_GamepadHasRumble(state->controller))
+  if (SDL_GameControllerGetBindForAxis(state->controller, SDL_CONTROLLER_AXIS_TRIGGERLEFT).bindType == SDL_CONTROLLER_BINDTYPE_AXIS ||
+      SDL_GameControllerGetBindForAxis(state->controller, SDL_CONTROLLER_AXIS_TRIGGERRIGHT).bindType == SDL_CONTROLLER_BINDTYPE_AXIS)
+    capabilities |= LI_CCAP_ANALOG_TRIGGERS;
+  if (SDL_GameControllerHasRumble(state->controller))
     capabilities |= LI_CCAP_RUMBLE;
-  if (SDL_GamepadHasRumbleTriggers(state->controller))
+  if (SDL_GameControllerHasRumbleTriggers(state->controller))
     capabilities |= LI_CCAP_TRIGGER_RUMBLE;
-  if (SDL_GetNumGamepadTouchpads(state->controller) > 0)
+  if (SDL_GameControllerGetNumTouchpads(state->controller) > 0)
     capabilities |= LI_CCAP_TOUCHPAD;
-  if (SDL_GamepadHasSensor(state->controller, SDL_SENSOR_ACCEL))
+  if (SDL_GameControllerHasSensor(state->controller, SDL_SENSOR_ACCEL))
     capabilities |= LI_CCAP_ACCEL;
-  if (SDL_GamepadHasSensor(state->controller, SDL_SENSOR_GYRO))
+  if (SDL_GameControllerHasSensor(state->controller, SDL_SENSOR_GYRO))
     capabilities |= LI_CCAP_GYRO;
-  if (SDL_GamepadHasLED(state->controller))
+  if (SDL_GameControllerHasLED(state->controller))
     capabilities |= LI_CCAP_RGB_LED;
 
-  switch (SDL_GetGamepadType(state->controller)) {
-  case SDL_GAMEPAD_TYPE_XBOX360:
-  case SDL_GAMEPAD_TYPE_XBOXONE:
+  switch (SDL_GameControllerGetType(state->controller)) {
+  case SDL_CONTROLLER_TYPE_XBOX360:
+  case SDL_CONTROLLER_TYPE_XBOXONE:
     type = LI_CTYPE_XBOX;
     break;
-  case SDL_GAMEPAD_TYPE_PS3:
-  case SDL_GAMEPAD_TYPE_PS4:
-  case SDL_GAMEPAD_TYPE_PS5:
+  case SDL_CONTROLLER_TYPE_PS3:
+  case SDL_CONTROLLER_TYPE_PS4:
+  case SDL_CONTROLLER_TYPE_PS5:
     type = LI_CTYPE_PS;
     break;
-  case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_PRO:
+  case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO:
 #if SDL_VERSION_ATLEAST(2, 24, 0)
-  case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_LEFT:
-  case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT:
-  case SDL_GAMEPAD_TYPE_NINTENDO_SWITCH_JOYCON_PAIR:
+  case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_LEFT:
+  case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_RIGHT:
+  case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_JOYCON_PAIR:
 #endif
     type = LI_CTYPE_NINTENDO;
     break;
@@ -151,16 +144,15 @@ static PGAMEPAD_STATE get_gamepad(SDL_JoystickID sdl_id, bool add) {
   return &gamepads[0];
 }
 
-static void add_gamepad(SDL_JoystickID joystick_id) {
-  SDL_Gamepad* controller = SDL_OpenGamepad(joystick_id);
+static void add_gamepad(int joystick_index) {
+  SDL_GameController* controller = SDL_GameControllerOpen(joystick_index);
   if (!controller) {
-    fprintf(stderr, "Could not open gamecontroller %i: %s\n", joystick_id, SDL_GetError());
+    fprintf(stderr, "Could not open gamecontroller %i: %s\n", joystick_index, SDL_GetError());
     return;
   }
 
-  SDL_Joystick* joystick = SDL_GetGamepadJoystick(controller);
-  // Opened joystick may have a different ID
-  joystick_id = SDL_GetJoystickInstanceID(joystick);
+  SDL_Joystick* joystick = SDL_GameControllerGetJoystick(controller);
+  SDL_JoystickID joystick_id = SDL_JoystickInstanceID(joystick);
 
   // Check if we have already set up a state for this gamepad
   PGAMEPAD_STATE state = get_gamepad(joystick_id, false);
@@ -170,7 +162,7 @@ static void add_gamepad(SDL_JoystickID joystick_id) {
     // we couldn't do that during initialization (since we weren't connected yet).
     send_controller_arrival(state);
 
-    SDL_CloseGamepad(controller);
+    SDL_GameControllerClose(controller);
     return;
   }
 
@@ -206,7 +198,7 @@ static void remove_gamepad(SDL_JoystickID sdl_id) {
       }
 #endif
 
-      SDL_CloseGamepad(gamepads[i].controller);
+      SDL_GameControllerClose(gamepads[i].controller);
 
       // This will cause disconnection of the virtual controller on the host PC
       activeGamepadMask &= ~(1 << i);
@@ -222,18 +214,17 @@ static void remove_gamepad(SDL_JoystickID sdl_id) {
 void sdlinput_init(char* mappings) {
   memset(gamepads, 0, sizeof(gamepads));
 
-  SDL_InitSubSystem(SDL_INIT_GAMEPAD);
+  SDL_InitSubSystem(SDL_INIT_GAMECONTROLLER);
 #if !SDL_VERSION_ATLEAST(2, 0, 9)
   SDL_InitSubSystem(SDL_INIT_HAPTIC);
 #endif
-  SDL_AddGamepadMappingsFromFile(mappings);
+  SDL_GameControllerAddMappingsFromFile(mappings);
 
   // Add game controllers here to ensure an accurate count
   // goes to the host when starting a new session.
-  int num_joysticks;
-  SDL_JoystickID *joysticks = SDL_GetGamepads(&num_joysticks);
-  for (int i = 0; i < num_joysticks; ++i) {
-    add_gamepad(joysticks[i]);
+  for (int i = 0; i < SDL_NumJoysticks(); ++i) {
+    if (SDL_IsGameController(i))
+      add_gamepad(i);
   }
 }
 
@@ -242,26 +233,26 @@ int sdlinput_handle_event(SDL_Window* window, SDL_Event* event) {
   unsigned char touchEventType;
   PGAMEPAD_STATE gamepad;
   switch (event->type) {
-  case SDL_EVENT_MOUSE_MOTION:
+  case SDL_MOUSEMOTION:
     if (SDL_GetRelativeMouseMode())
       LiSendMouseMoveEvent(event->motion.xrel, event->motion.yrel);
-    else if (window != NULL) {
+    else {
       int w, h;
       SDL_GetWindowSize(window, &w, &h);
       LiSendMousePositionEvent(event->motion.x, event->motion.y, w, h);
     }
     break;
-  case SDL_EVENT_MOUSE_WHEEL:
+  case SDL_MOUSEWHEEL:
 #if SDL_VERSION_ATLEAST(2, 0, 18)
-    LiSendHighResHScrollEvent((short)(event->wheel.x * 120)); // WHEEL_DELTA
-    LiSendHighResScrollEvent((short)(event->wheel.y * 120)); // WHEEL_DELTA
+    LiSendHighResHScrollEvent((short)(event->wheel.preciseX * 120)); // WHEEL_DELTA
+    LiSendHighResScrollEvent((short)(event->wheel.preciseY * 120)); // WHEEL_DELTA
 #else
     LiSendHScrollEvent(event->wheel.x);
     LiSendScrollEvent(event->wheel.y);
 #endif
     break;
-  case SDL_EVENT_MOUSE_BUTTON_UP:
-  case SDL_EVENT_MOUSE_BUTTON_DOWN:
+  case SDL_MOUSEBUTTONUP:
+  case SDL_MOUSEBUTTONDOWN:
     switch (event->button.button) {
     case SDL_BUTTON_LEFT:
       button = BUTTON_LEFT;
@@ -281,11 +272,11 @@ int sdlinput_handle_event(SDL_Window* window, SDL_Event* event) {
     }
 
     if (button != 0)
-      LiSendMouseButtonEvent(event->type==SDL_EVENT_MOUSE_BUTTON_DOWN?BUTTON_ACTION_PRESS:BUTTON_ACTION_RELEASE, button);
+      LiSendMouseButtonEvent(event->type==SDL_MOUSEBUTTONDOWN?BUTTON_ACTION_PRESS:BUTTON_ACTION_RELEASE, button);
 
     return 0;
-  case SDL_EVENT_KEY_DOWN:
-  case SDL_EVENT_KEY_UP:
+  case SDL_KEYDOWN:
+  case SDL_KEYUP:
     button = event->key.keysym.sym;
     if (button >= 0x21 && button <= 0x2f)
       button = keyCodes1[button - 0x21];
@@ -323,33 +314,33 @@ int sdlinput_handle_event(SDL_Window* window, SDL_Event* event) {
     }
 
     if (modifier != 0) {
-      if (event->type==SDL_EVENT_KEY_DOWN)
+      if (event->type==SDL_KEYDOWN)
         keyboard_modifiers |= modifier;
       else
         keyboard_modifiers &= ~modifier;
     }
 
-    LiSendKeyboardEvent(0x80 << 8 | button, event->type==SDL_EVENT_KEY_DOWN?KEY_ACTION_DOWN:KEY_ACTION_UP, keyboard_modifiers);
+    LiSendKeyboardEvent(0x80 << 8 | button, event->type==SDL_KEYDOWN?KEY_ACTION_DOWN:KEY_ACTION_UP, keyboard_modifiers);
 
     // Quit the stream if all the required quit keys are down
-    if ((keyboard_modifiers & ACTION_MODIFIERS) == ACTION_MODIFIERS && event->key.keysym.sym == QUIT_KEY && event->type==SDL_EVENT_KEY_UP)
+    if ((keyboard_modifiers & ACTION_MODIFIERS) == ACTION_MODIFIERS && event->key.keysym.sym == QUIT_KEY && event->type==SDL_KEYUP)
       return SDL_QUIT_APPLICATION;
-    else if ((keyboard_modifiers & ACTION_MODIFIERS) == ACTION_MODIFIERS && event->key.keysym.sym == FULLSCREEN_KEY && event->type==SDL_EVENT_KEY_UP)
+    else if ((keyboard_modifiers & ACTION_MODIFIERS) == ACTION_MODIFIERS && event->key.keysym.sym == FULLSCREEN_KEY && event->type==SDL_KEYUP)
       return SDL_TOGGLE_FULLSCREEN;
-    else if ((keyboard_modifiers & ACTION_MODIFIERS) == ACTION_MODIFIERS && event->key.keysym.sym == UNGRAB_KEY && event->type==SDL_EVENT_KEY_UP)
+    else if ((keyboard_modifiers & ACTION_MODIFIERS) == ACTION_MODIFIERS && event->key.keysym.sym == UNGRAB_KEY && event->type==SDL_KEYUP)
       return SDL_GetRelativeMouseMode() ? SDL_MOUSE_UNGRAB : SDL_MOUSE_GRAB;
     break;
-  case SDL_EVENT_FINGER_DOWN:
-  case SDL_EVENT_FINGER_MOTION:
-  case SDL_EVENT_FINGER_UP:
+  case SDL_FINGERDOWN:
+  case SDL_FINGERMOTION:
+  case SDL_FINGERUP:
     switch (event->type) {
-    case SDL_EVENT_FINGER_DOWN:
+    case SDL_FINGERDOWN:
         touchEventType = LI_TOUCH_EVENT_DOWN;
         break;
-    case SDL_EVENT_FINGER_MOTION:
+    case SDL_FINGERMOTION:
         touchEventType = LI_TOUCH_EVENT_MOVE;
         break;
-    case SDL_EVENT_FINGER_UP:
+    case SDL_FINGERUP:
         touchEventType = LI_TOUCH_EVENT_UP;
         break;
     default:
@@ -363,97 +354,97 @@ int sdlinput_handle_event(SDL_Window* window, SDL_Event* event) {
     LiSendTouchEvent(touchEventType, event->tfinger.fingerId, event->tfinger.x, event->tfinger.y,
                      event->tfinger.pressure, 0.0f, 0.0f, LI_ROT_UNKNOWN);
     break;
-  case SDL_EVENT_GAMEPAD_AXIS_MOTION:
-    gamepad = get_gamepad(event->gaxis.which, false);
+  case SDL_CONTROLLERAXISMOTION:
+    gamepad = get_gamepad(event->caxis.which, false);
     if (!gamepad)
       return SDL_NOTHING;
-    switch (event->gaxis.axis) {
-    case SDL_GAMEPAD_AXIS_LEFTX:
-      gamepad->leftStickX = event->gaxis.value;
+    switch (event->caxis.axis) {
+    case SDL_CONTROLLER_AXIS_LEFTX:
+      gamepad->leftStickX = event->caxis.value;
       break;
-    case SDL_GAMEPAD_AXIS_LEFTY:
-      gamepad->leftStickY = -SDL_max(event->gaxis.value, (short)-32767);
+    case SDL_CONTROLLER_AXIS_LEFTY:
+      gamepad->leftStickY = -SDL_max(event->caxis.value, (short)-32767);
       break;
-    case SDL_GAMEPAD_AXIS_RIGHTX:
-      gamepad->rightStickX = event->gaxis.value;
+    case SDL_CONTROLLER_AXIS_RIGHTX:
+      gamepad->rightStickX = event->caxis.value;
       break;
-    case SDL_GAMEPAD_AXIS_RIGHTY:
-      gamepad->rightStickY = -SDL_max(event->gaxis.value, (short)-32767);
+    case SDL_CONTROLLER_AXIS_RIGHTY:
+      gamepad->rightStickY = -SDL_max(event->caxis.value, (short)-32767);
       break;
-    case SDL_GAMEPAD_AXIS_LEFT_TRIGGER:
-      gamepad->leftTrigger = (unsigned char)(event->gaxis.value * 255UL / 32767);
+    case SDL_CONTROLLER_AXIS_TRIGGERLEFT:
+      gamepad->leftTrigger = (unsigned char)(event->caxis.value * 255UL / 32767);
       break;
-    case SDL_GAMEPAD_AXIS_RIGHT_TRIGGER:
-      gamepad->rightTrigger = (unsigned char)(event->gaxis.value * 255UL / 32767);
+    case SDL_CONTROLLER_AXIS_TRIGGERRIGHT:
+      gamepad->rightTrigger = (unsigned char)(event->caxis.value * 255UL / 32767);
       break;
     default:
       return SDL_NOTHING;
     }
     LiSendMultiControllerEvent(gamepad->id, activeGamepadMask, gamepad->buttons, gamepad->leftTrigger, gamepad->rightTrigger, gamepad->leftStickX, gamepad->leftStickY, gamepad->rightStickX, gamepad->rightStickY);
     break;
-  case SDL_EVENT_GAMEPAD_BUTTON_DOWN:
-  case SDL_EVENT_GAMEPAD_BUTTON_UP:
-    gamepad = get_gamepad(event->gbutton.which, false);
+  case SDL_CONTROLLERBUTTONDOWN:
+  case SDL_CONTROLLERBUTTONUP:
+    gamepad = get_gamepad(event->cbutton.which, false);
     if (!gamepad)
       return SDL_NOTHING;
-    if (event->gbutton.button >= SDL_arraysize(SDL_TO_LI_BUTTON_MAP))
+    if (event->cbutton.button >= SDL_arraysize(SDL_TO_LI_BUTTON_MAP))
       return SDL_NOTHING;
 
-    if (event->type == SDL_EVENT_GAMEPAD_BUTTON_DOWN)
-      gamepad->buttons |= SDL_TO_LI_BUTTON_MAP[event->gbutton.button];
+    if (event->type == SDL_CONTROLLERBUTTONDOWN)
+      gamepad->buttons |= SDL_TO_LI_BUTTON_MAP[event->cbutton.button];
     else
-      gamepad->buttons &= ~SDL_TO_LI_BUTTON_MAP[event->gbutton.button];
+      gamepad->buttons &= ~SDL_TO_LI_BUTTON_MAP[event->cbutton.button];
 
     if ((gamepad->buttons & QUIT_BUTTONS) == QUIT_BUTTONS)
       return SDL_QUIT_APPLICATION;
 
     LiSendMultiControllerEvent(gamepad->id, activeGamepadMask, gamepad->buttons, gamepad->leftTrigger, gamepad->rightTrigger, gamepad->leftStickX, gamepad->leftStickY, gamepad->rightStickX, gamepad->rightStickY);
     break;
-  case SDL_EVENT_GAMEPAD_ADDED:
-    add_gamepad(event->gdevice.which);
+  case SDL_CONTROLLERDEVICEADDED:
+    add_gamepad(event->cdevice.which);
     break;
-  case SDL_EVENT_GAMEPAD_REMOVED:
-    remove_gamepad(event->gdevice.which);
+  case SDL_CONTROLLERDEVICEREMOVED:
+    remove_gamepad(event->cdevice.which);
     break;
 #if SDL_VERSION_ATLEAST(2, 0, 14)
-  case SDL_EVENT_GAMEPAD_SENSOR_UPDATE:
-    gamepad = get_gamepad(event->gsensor.which, false);
+  case SDL_CONTROLLERSENSORUPDATE:
+    gamepad = get_gamepad(event->csensor.which, false);
     if (!gamepad)
       return SDL_NOTHING;
-    switch (event->gsensor.sensor) {
+    switch (event->csensor.sensor) {
     case SDL_SENSOR_ACCEL:
-      LiSendControllerMotionEvent(gamepad->id, LI_MOTION_TYPE_ACCEL, event->gsensor.data[0], event->gsensor.data[1], event->gsensor.data[2]);
+      LiSendControllerMotionEvent(gamepad->id, LI_MOTION_TYPE_ACCEL, event->csensor.data[0], event->csensor.data[1], event->csensor.data[2]);
       break;
     case SDL_SENSOR_GYRO:
       // Convert rad/s to deg/s
       LiSendControllerMotionEvent(gamepad->id, LI_MOTION_TYPE_GYRO,
-                                  event->gsensor.data[0] * 57.2957795f,
-                                  event->gsensor.data[1] * 57.2957795f,
-                                  event->gsensor.data[2] * 57.2957795f);
+                                  event->csensor.data[0] * 57.2957795f,
+                                  event->csensor.data[1] * 57.2957795f,
+                                  event->csensor.data[2] * 57.2957795f);
       break;
     }
     break;
-  case SDL_EVENT_GAMEPAD_TOUCHPAD_DOWN:
-  case SDL_EVENT_GAMEPAD_TOUCHPAD_UP:
-  case SDL_EVENT_GAMEPAD_TOUCHPAD_MOTION:
-    gamepad = get_gamepad(event->gtouchpad.which, false);
+  case SDL_CONTROLLERTOUCHPADDOWN:
+  case SDL_CONTROLLERTOUCHPADUP:
+  case SDL_CONTROLLERTOUCHPADMOTION:
+    gamepad = get_gamepad(event->ctouchpad.which, false);
     if (!gamepad)
       return SDL_NOTHING;
     switch (event->type) {
-    case SDL_EVENT_GAMEPAD_TOUCHPAD_DOWN:
+    case SDL_CONTROLLERTOUCHPADDOWN:
       touchEventType = LI_TOUCH_EVENT_DOWN;
       break;
-    case SDL_EVENT_GAMEPAD_TOUCHPAD_UP:
+    case SDL_CONTROLLERTOUCHPADUP:
       touchEventType = LI_TOUCH_EVENT_UP;
       break;
-    case SDL_EVENT_GAMEPAD_TOUCHPAD_MOTION:
+    case SDL_CONTROLLERTOUCHPADMOTION:
       touchEventType = LI_TOUCH_EVENT_MOVE;
       break;
     default:
       return SDL_NOTHING;
     }
-    LiSendControllerTouchEvent(gamepad->id, touchEventType, event->gtouchpad.finger,
-                               event->gtouchpad.x, event->gtouchpad.y, event->gtouchpad.pressure);
+    LiSendControllerTouchEvent(gamepad->id, touchEventType, event->ctouchpad.finger,
+                               event->ctouchpad.x, event->ctouchpad.y, event->ctouchpad.pressure);
     break;
 #endif
   }
@@ -471,7 +462,7 @@ void sdlinput_rumble(unsigned short controller_id, unsigned short low_freq_motor
     return;
 
 #if SDL_VERSION_ATLEAST(2, 0, 9)
-  SDL_RumbleGamepad(state->controller, low_freq_motor, high_freq_motor, 30000);
+  SDL_GameControllerRumble(state->controller, low_freq_motor, high_freq_motor, 30000);
 #else
   SDL_Haptic* haptic = state->haptic;
   if (!haptic)
@@ -505,7 +496,7 @@ void sdlinput_rumble_triggers(unsigned short controller_id, unsigned short left_
     return;
 
 #if SDL_VERSION_ATLEAST(2, 0, 14)
-  SDL_RumbleGamepadTriggers(state->controller, left_trigger, right_trigger, 30000);
+  SDL_GameControllerRumbleTriggers(state->controller, left_trigger, right_trigger, 30000);
 #endif
 }
 
@@ -518,10 +509,10 @@ void sdlinput_set_motion_event_state(unsigned short controller_id, unsigned char
 #if SDL_VERSION_ATLEAST(2, 0, 14)
   switch (motion_type) {
   case LI_MOTION_TYPE_ACCEL:
-    SDL_SetGamepadSensorEnabled(state->controller, SDL_SENSOR_ACCEL, report_rate_hz ? SDL_TRUE : SDL_FALSE);
+    SDL_GameControllerSetSensorEnabled(state->controller, SDL_SENSOR_ACCEL, report_rate_hz ? SDL_TRUE : SDL_FALSE);
     break;
   case LI_MOTION_TYPE_GYRO:
-    SDL_SetGamepadSensorEnabled(state->controller, SDL_SENSOR_GYRO, report_rate_hz ? SDL_TRUE : SDL_FALSE);
+    SDL_GameControllerSetSensorEnabled(state->controller, SDL_SENSOR_GYRO, report_rate_hz ? SDL_TRUE : SDL_FALSE);
     break;
   }
 #endif
@@ -534,7 +525,7 @@ void sdlinput_set_controller_led(unsigned short controller_id, unsigned char r, 
     return;
 
 #if SDL_VERSION_ATLEAST(2, 0, 14)
-  SDL_SetGamepadLED(state->controller, r, g, b);
+  SDL_GameControllerSetLED(state->controller, r, g, b);
 #endif
 }
 

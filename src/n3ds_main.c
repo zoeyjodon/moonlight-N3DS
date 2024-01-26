@@ -23,11 +23,6 @@
 #include "platform_main.h"
 #include "config.h"
 
-#ifdef HAVE_SDL
-#include "sdl_main.h"
-#include "input/sdl.h"
-#endif
-
 #include "n3ds/n3ds_connection.h"
 #include "n3ds/pair_record.h"
 
@@ -57,8 +52,8 @@
 #include <openssl/rand.h>
 
 #define SOC_ALIGN       0x1000
-// 0x80000 for each enet host (2 hosts total)
-// 0x410000 for each platform socket (2 sockets total)
+// 0x40000 for each enet host (2 hosts total)
+// 0x208000 for each platform socket (2 sockets total)
 #define SOC_BUFFERSIZE  0x490000
 
 #define MAX_INPUT_CHAR 60
@@ -482,11 +477,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
           config->debug_level
         );
 
-#ifdef HAVE_SDL
-  int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, video_callbacks, &audio_callbacks_sdl, NULL, drFlags, config->audio_device, 0);
-#else
   int status = LiStartConnection(&server->serverInfo, &config->stream, &n3ds_connection_callbacks, video_callbacks, &audio_callbacks_n3ds, NULL, drFlags, config->audio_device, 0);
-#endif
 
   if (status != 0) {
     n3ds_connection_callbacks.connectionTerminated(status);
@@ -494,11 +485,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
   }
   printf("Connected!\n");
 
-#ifdef HAVE_SDL
-  sdl_loop();
-#else
   stream_loop(config);
-#endif
 
   LiStopConnection();
 
@@ -565,13 +552,6 @@ int main(int argc, char* argv[]) {
         }
 
         config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
-
-#ifdef HAVE_SDL
-        sdl_init(config.stream.width, config.stream.height, config.fullscreen);
-        if (!config.viewonly) {
-          sdlinput_init(config.mapping);
-        }
-#endif
 
         consoleClear();
         consoleInit(GFX_BOTTOM, &bottomScreen);

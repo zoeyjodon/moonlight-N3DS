@@ -27,8 +27,9 @@
 #define QUIT_BUTTONS (PLAY_FLAG|BACK_FLAG|LB_FLAG|RB_FLAG)
 #define SUPPORTED_BUTTONS (A_FLAG|B_FLAG|X_FLAG|Y_FLAG|\
   RIGHT_FLAG|LEFT_FLAG|UP_FLAG|DOWN_FLAG|RB_FLAG|LB_FLAG|\
-  BACK_FLAG|PLAY_FLAG|TOUCHPAD_FLAG)
+  BACK_FLAG|PLAY_FLAG|SPECIAL_FLAG)
 #define N3DS_ANALOG_MAX 100
+#define N3DS_ANALOG_POS_FACTOR 10
 
 typedef struct _GAMEPAD_STATE {
   unsigned char leftTrigger, rightTrigger;
@@ -92,7 +93,7 @@ static inline int scale_n3ds_axis(int axis_n3ds) {
 }
 
 static inline bool joystick_state_changed(short before, short after) {
-  return (before / 10) != (after / 10);
+  return (before / N3DS_ANALOG_POS_FACTOR) != (after / N3DS_ANALOG_POS_FACTOR);
 }
 
 static inline bool gamepad_state_changed() {

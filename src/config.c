@@ -436,7 +436,17 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->mapping = (char*) "";
   strcpy(config->key_dir, MOONLIGHT_3DS_PATH "/keys");
 
-#ifndef __3DS__
+#ifdef __3DS__
+  config->stream.width = 400;
+  config->stream.height = 240;
+  config->stream.fps = 30;
+  config->stream.encryptionFlags = ENCFLG_NONE;
+  config->hwdecode = false;
+
+  char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
+  if (config_file)
+    config_file_parse(config_file, config);
+#else
   char* config_file = get_path("moonlight.conf", "/etc");
   if (config_file)
     config_file_parse(config_file, config);
@@ -467,16 +477,6 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
     else
       sprintf(config->key_dir, "%s" DEFAULT_CACHE_DIR MOONLIGHT_PATH, pw->pw_dir);
   }
-#else
-  config->stream.width = 400;
-  config->stream.height = 240;
-  config->stream.fps = 30;
-  config->stream.encryptionFlags = ENCFLG_NONE;
-  config->hwdecode = false;
-
-  char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
-  if (config_file)
-    config_file_parse(config_file, config);
 #endif
 
   if (config->stream.bitrate == -1) {

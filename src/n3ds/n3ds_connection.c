@@ -24,10 +24,6 @@
 #include <stdarg.h>
 #include <signal.h>
 
-#ifdef HAVE_SDL
-#include <SDL3/SDL.h>
-#endif
-
 bool n3ds_connection_closed = false;
 bool n3ds_connection_debug = false;
 
@@ -53,11 +49,6 @@ static void connection_terminated(int errorCode) {
     break;
   }
 
-#ifdef HAVE_SDL
-    SDL_Event event;
-    event.type = SDL_EVENT_QUIT;
-    SDL_PushEvent(&event);
-#endif
   n3ds_connection_closed = true;
 }
 
@@ -71,13 +62,15 @@ static void connection_log_message(const char* format, ...) {
 }
 
 static void connection_status_update(int status) {
-  switch (status) {
-    case CONN_STATUS_OKAY:
-      printf("Connection is okay\n");
-      break;
-    case CONN_STATUS_POOR:
-      printf("Connection is poor\n");
-      break;
+  if (n3ds_connection_debug) {
+    switch (status) {
+      case CONN_STATUS_OKAY:
+        printf("Connection is okay\n");
+        break;
+      case CONN_STATUS_POOR:
+        printf("Connection is poor\n");
+        break;
+    }
   }
 }
 
