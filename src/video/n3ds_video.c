@@ -26,8 +26,8 @@
 #include <unistd.h>
 #include <stdbool.h>
 
-#define SLICES_PER_FRAME 4
-#define N3DS_BUFFER_FRAMES 2
+#define SLICES_PER_FRAME 1
+#define N3DS_BUFFER_FRAMES 1
 
 static void* ffmpeg_buffer;
 static size_t ffmpeg_buffer_size;
@@ -35,7 +35,7 @@ static int surface_width, surface_height, pixel_size;
 static u8* img_buffer;
 
 static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
-  if (ffmpeg_init(videoFormat, width, height, SLICE_THREADING, N3DS_BUFFER_FRAMES, SLICES_PER_FRAME) < 0) {
+  if (ffmpeg_init(videoFormat, width, height, 0, N3DS_BUFFER_FRAMES, SLICES_PER_FRAME) < 0) {
     fprintf(stderr, "Couldn't initialize video decoding\n");
     return -1;
   }
@@ -189,5 +189,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds = {
   .setup = n3ds_setup,
   .cleanup = n3ds_cleanup,
   .submitDecodeUnit = n3ds_submit_decode_unit,
-  .capabilities = CAPABILITY_SLICES_PER_FRAME(SLICES_PER_FRAME) | CAPABILITY_REFERENCE_FRAME_INVALIDATION_HEVC | CAPABILITY_REFERENCE_FRAME_INVALIDATION_AVC,
+  .capabilities = CAPABILITY_REFERENCE_FRAME_INVALIDATION_HEVC,
 };
