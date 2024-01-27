@@ -189,5 +189,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds = {
   .setup = n3ds_setup,
   .cleanup = n3ds_cleanup,
   .submitDecodeUnit = n3ds_submit_decode_unit,
-  .capabilities = CAPABILITY_REFERENCE_FRAME_INVALIDATION_HEVC,
+  .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_REFERENCE_FRAME_INVALIDATION_AVC,
 };

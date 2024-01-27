@@ -110,5 +110,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd = {
   .setup = n3ds_init,
   .cleanup = n3ds_destroy,
   .submitDecodeUnit = n3ds_submit_decode_unit,
-  .capabilities = CAPABILITY_DIRECT_SUBMIT,
+  .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_REFERENCE_FRAME_INVALIDATION_AVC,
 };
