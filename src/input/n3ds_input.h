@@ -19,5 +19,8 @@
 
 #include <stdbool.h>
 
+enum N3dsTouchType { GAMEPAD, MOUSEPAD, DEBUG_PRINT };
+
 void n3dsinput_init();
+void n3dsinput_set_touch(enum N3dsTouchType ttype);
 int n3dsinput_handle_event();

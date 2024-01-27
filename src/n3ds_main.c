@@ -30,7 +30,6 @@
 #include "video/video.h"
 
 #include "input/n3ds_input.h"
-#include "gamepad_bin.h"
 
 #include <3ds.h>
 
@@ -492,11 +491,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     printf("Connected!\n");
   }
   else {
-    gfxSetDoubleBuffering(GFX_BOTTOM, false);
-    u8* fb = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
-    memcpy(fb, gamepad_bin, gamepad_bin_size);
-    gfxFlushBuffers();
-    gfxScreenSwapBuffers(GFX_BOTTOM, false);
+    n3dsinput_set_touch(GAMEPAD);
   }
 
   stream_loop(config);
