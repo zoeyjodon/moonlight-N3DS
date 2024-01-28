@@ -53,8 +53,8 @@
 
 #define SOC_ALIGN       0x1000
 // 0x40000 for each enet host (2 hosts total)
-// 0x208000 for each platform socket (2 sockets total)
-#define SOC_BUFFERSIZE  0x490000
+// 0x40000 for each platform socket (2 sockets total)
+#define SOC_BUFFERSIZE  0x100000
 
 #define MAX_INPUT_CHAR 60
 #define MAX_APP_LIST 30
@@ -408,8 +408,7 @@ static inline void stream_loop(PCONFIGURATION config) {
     if (!config->viewonly) {
       done |= n3dsinput_handle_event();
     }
-    // Restrict input updates to prevent flooding the send queue
-    svcSleepThread(30 * 1000000);
+    hidWaitForEvent(HIDEVENT_PAD0, true);
   }
 }
 
