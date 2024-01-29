@@ -43,7 +43,7 @@ typedef struct _GAMEPAD_STATE {
   short rightStickX, rightStickY;
   int buttons, mouse_buttons;
   u16 touchpadX, touchpadY;
-  bool touchpad_active;
+  bool touchpad_active, key_active;
   enum N3dsTouchType ttype;
 } GAMEPAD_STATE;
 static GAMEPAD_STATE gamepad_state, previous_state;
@@ -191,6 +191,11 @@ static inline int touch_to_mouse_event(touchPosition touch) {
     return 0;
   }
 
+  if (touch.py >= 205 && touch.px <= 35) {
+    gamepad_state.key_active = true;
+    return 0;
+  }
+
   int mouse_buttons = BUTTON_LEFT;
   if (touch.px > 160)
     mouse_buttons = BUTTON_RIGHT;
@@ -249,11 +254,18 @@ int n3dsinput_handle_event() {
 
   if (kDown & KEY_TOUCH) {
     n3dsinput_handle_touch();
+    if (gamepad_state.key_active) {
+      LiSendKeyboardEvent(0x5B, KEY_ACTION_DOWN, 0);
+    }
   }
   else if (kUp & KEY_TOUCH) {
     gamepad_state.buttons &= ~TOUCH_GAMEPAD_BUTTONS;
     gamepad_state.mouse_buttons = 0;
     gamepad_state.touchpad_active = false;
+    if (gamepad_state.key_active) {
+      LiSendKeyboardEvent(0x5B, KEY_ACTION_UP, 0);
+      gamepad_state.key_active = false;
+    }
   }
   else if (gamepad_state.touchpad_active) {
     touchPosition touch;
