@@ -37,6 +37,8 @@
 #define N3DS_ANALOG_POS_FACTOR 5
 #define N3DS_MOUSEPAD_SENSITIVITY 2
 
+typedef void(*TouchTypeHandler)(touchPosition touch);
+
 typedef struct _GAMEPAD_STATE {
   unsigned char leftTrigger, rightTrigger;
   short leftStickX, leftStickY;
@@ -45,6 +47,7 @@ typedef struct _GAMEPAD_STATE {
   u16 touchpadX, touchpadY;
   bool touchpad_active, key_active;
   enum N3dsTouchType ttype;
+  TouchTypeHandler ttype_handler;
 } GAMEPAD_STATE;
 static GAMEPAD_STATE gamepad_state, previous_state;
 
@@ -60,47 +63,15 @@ static void remove_gamepad() {
   LiSendMultiControllerEvent(0, ~activeGamepadMask, 0, 0, 0, 0, 0, 0, 0);
 }
 
-void n3dsinput_init(char* mappings) {
+void n3dsinput_init() {
   hidInit();
   add_gamepad();
   gamepad_state.ttype = DEBUG_PRINT;
   gfxSetDoubleBuffering(GFX_BOTTOM, false);
 }
 
-void n3dsinput_set_touch(enum N3dsTouchType ttype)
-{
-  if (gamepad_state.ttype == ttype) {
-    return;
-  }
-
-  if (gamepad_state.ttype == GAMEPAD) {
-    // Clear buttons before updating
-    gamepad_state.buttons &= ~TOUCH_GAMEPAD_BUTTONS;
-  }
-
-  gamepad_state.ttype = ttype;
-  u8* gfxbtmadr = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
-  switch (gamepad_state.ttype) {
-    case GAMEPAD:
-      memcpy(gfxbtmadr, gamepad_bin, gamepad_bin_size);
-      break;
-    case MOUSEPAD:
-      memcpy(gfxbtmadr, touchpad_bin, touchpad_bin_size);
-      break;
-    default:
-	    memset(gfxbtmadr, 0, 320 * 240 * 3);
-      break;
-  }
-  gfxFlushBuffers();
-  gfxScreenSwapBuffers(GFX_BOTTOM, false);
-}
-
-static inline void n3dsinput_cycle_touch() {
-  enum N3dsTouchType new_type = gamepad_state.ttype + 1;
-  if (new_type == DEBUG_PRINT) {
-    new_type = 0;
-  }
-  n3dsinput_set_touch(new_type);
+void n3dsinput_cleanup() {
+  remove_gamepad();
 }
 
 static inline int n3ds_to_li_button(u32 key_in, u32 key_n3ds, int key_li) {
@@ -162,63 +133,86 @@ static inline bool gamepad_state_changed() {
   return false;
 }
 
-static inline bool mousepad_state_changed() {
-  return previous_state.mouse_buttons != gamepad_state.mouse_buttons;
-}
-
 static inline bool change_touchpad_pressed(touchPosition touch) {
   return touch.py >= 205 && touch.px >= 285;
 }
 
-static inline int touch_to_li_buttons(touchPosition touch) {
+static void touch_gamepad_handler(touchPosition touch) {
   if (touch.py >= 120) {
-    return SPECIAL_FLAG;
+    gamepad_state.buttons |= SPECIAL_FLAG;
+    return;
   }
 
-  int buttons = 0;
   if (touch.px < 235)
-    buttons |= LS_CLK_FLAG;
+    gamepad_state.buttons |= LS_CLK_FLAG;
   if (touch.px > 104)
-    buttons |= RS_CLK_FLAG;
-  return buttons;
+    gamepad_state.buttons |= RS_CLK_FLAG;
 }
 
-static inline int touch_to_mouse_event(touchPosition touch) {
+static void touch_mouse_handler(touchPosition touch) {
   if (touch.py < 175) {
     gamepad_state.touchpad_active = true;
     gamepad_state.touchpadX = touch.px;
     gamepad_state.touchpadY = touch.py;
-    return 0;
   }
-
-  if (touch.py >= 205 && touch.px <= 35) {
+  else if (touch.py >= 205 && touch.px <= 35) {
     gamepad_state.key_active = true;
-    return 0;
+  }
+  else if (touch.px > 160) {
+    gamepad_state.mouse_buttons = BUTTON_RIGHT;
+  }
+  else {
+    gamepad_state.mouse_buttons = BUTTON_LEFT;
+  }
+}
+
+void n3dsinput_set_touch(enum N3dsTouchType ttype)
+{
+  if (gamepad_state.ttype == ttype) {
+    return;
   }
 
-  int mouse_buttons = BUTTON_LEFT;
-  if (touch.px > 160)
-    mouse_buttons = BUTTON_RIGHT;
-  return mouse_buttons;
+  gamepad_state.ttype = ttype;
+  u8* gfxbtmadr = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+  switch (gamepad_state.ttype) {
+    case GAMEPAD:
+      memcpy(gfxbtmadr, gamepad_bin, gamepad_bin_size);
+      gamepad_state.ttype_handler = touch_gamepad_handler;
+      break;
+    case MOUSEPAD:
+      memcpy(gfxbtmadr, touchpad_bin, touchpad_bin_size);
+      gamepad_state.ttype_handler = touch_mouse_handler;
+      break;
+    default:
+	    memset(gfxbtmadr, 0, 320 * 240 * 3);
+      gamepad_state.ttype_handler = NULL;
+      break;
+  }
+  gfxFlushBuffers();
+  gfxScreenSwapBuffers(GFX_BOTTOM, false);
+}
+
+static inline void n3dsinput_cycle_touch() {
+  enum N3dsTouchType new_type = gamepad_state.ttype + 1;
+  if (new_type == DEBUG_PRINT) {
+    new_type = 0;
+  }
+  n3dsinput_set_touch(new_type);
 }
 
 static inline void n3dsinput_handle_touch() {
+  if (gamepad_state.ttype_handler == NULL) {
+    // Debug mode
+    return;
+  }
+
   touchPosition touch;
   hidTouchRead(&touch);
   if (change_touchpad_pressed(touch)) {
     n3dsinput_cycle_touch();
-    return;
   }
-
-  switch (gamepad_state.ttype) {
-    case GAMEPAD:
-      gamepad_state.buttons |= touch_to_li_buttons(touch);
-      break;
-    case MOUSEPAD:
-      gamepad_state.mouse_buttons |= touch_to_mouse_event(touch);
-      break;
-    default:
-      break;
+  else {
+    gamepad_state.ttype_handler(touch);
   }
 }
 
@@ -257,14 +251,20 @@ int n3dsinput_handle_event() {
     if (gamepad_state.key_active) {
       LiSendKeyboardEvent(0x5B, KEY_ACTION_DOWN, 0);
     }
+    else if (gamepad_state.mouse_buttons) {
+      LiSendMouseButtonEvent(BUTTON_ACTION_PRESS, gamepad_state.mouse_buttons);
+    }
   }
   else if (kUp & KEY_TOUCH) {
     gamepad_state.buttons &= ~TOUCH_GAMEPAD_BUTTONS;
-    gamepad_state.mouse_buttons = 0;
     gamepad_state.touchpad_active = false;
     if (gamepad_state.key_active) {
       LiSendKeyboardEvent(0x5B, KEY_ACTION_UP, 0);
       gamepad_state.key_active = false;
+    }
+    else if (gamepad_state.mouse_buttons) {
+      LiSendMouseButtonEvent(BUTTON_ACTION_RELEASE, gamepad_state.mouse_buttons);
+      gamepad_state.mouse_buttons = 0;
     }
   }
   else if (gamepad_state.touchpad_active) {
@@ -279,15 +279,6 @@ int n3dsinput_handle_event() {
 
   if (gamepad_state_changed()) {
     LiSendMultiControllerEvent(0, activeGamepadMask, gamepad_state.buttons, gamepad_state.leftTrigger, gamepad_state.rightTrigger, gamepad_state.leftStickX, gamepad_state.leftStickY, gamepad_state.rightStickX, gamepad_state.rightStickY);
-  }
-  if (mousepad_state_changed()) {
-    char mouse_action = BUTTON_ACTION_PRESS;
-    int mouse_button = gamepad_state.mouse_buttons;
-    if (kUp & KEY_TOUCH) {
-      mouse_action = BUTTON_ACTION_RELEASE;
-      mouse_button = previous_state.mouse_buttons;
-    }
-    LiSendMouseButtonEvent(mouse_action, mouse_button);
   }
 
   return 0;

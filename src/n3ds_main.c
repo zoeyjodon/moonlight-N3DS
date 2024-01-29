@@ -568,6 +568,10 @@ int main(int argc, char* argv[]) {
           n3dsinput_init();
         }
         stream(&server, &config, appId);
+
+        if (!config.viewonly) {
+          n3dsinput_cleanup();
+        }
         // Exit app after streaming has closed
         exit(0);
       }
