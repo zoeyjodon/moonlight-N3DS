@@ -39,6 +39,7 @@ static MVDSTD_Config mvdstd_config;
 
 static int image_width, image_height, surface_width, surface_height, pixel_size;
 static u8* img_buffer;
+static bool first_frame = true;
 
 static int n3ds_init(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
   int status = mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264, MVD_OUTPUT_YUYV422, width * height * N3DS_DEC_BUFF_SIZE, NULL);
@@ -199,6 +200,11 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   mvd_frame_set_busy(img_buffer);
   n3ds_decode(n3ds_buffer, length);
 
+  // If MVD never gets an IDR frame, everything shows up gray
+  if (first_frame) {
+    first_frame = false;
+    return DR_NEED_IDR;
+  }
   return DR_OK;
 }
 
