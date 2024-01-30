@@ -80,8 +80,8 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate, voi
   }
 
   GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
-  image_width = height;
-  image_height = width;
+  image_width = width;
+  image_height = height;
   pixel_size = gspGetBytesPerPixel(px_fmt);
   img_buffer = linearMemAlign(width * height * pixel_size, 0x80);
   if (!img_buffer) {
@@ -90,10 +90,10 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate, voi
   }
 
   ensure_linear_buf_size(&n3ds_buffer, &n3ds_buffer_size, INITIAL_DECODER_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
-  mvdstdGenerateDefaultConfig(&mvdstd_config, width, height, width, height, NULL, img_buffer, NULL);
+  mvdstdGenerateDefaultConfig(&mvdstd_config, image_width, image_height, surface_width, surface_height, NULL, img_buffer, NULL);
   MVDSTD_SetConfig(&mvdstd_config);
 
-  return init_px_to_framebuffer(surface_width, surface_height, image_height, image_width, pixel_size);
+  return init_px_to_framebuffer(surface_width, surface_height, surface_width, surface_height, pixel_size);
 }
 
 // This function must be called after
@@ -194,7 +194,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   while (!mvd_frame_ready(img_buffer)) {
     svcSleepThread(1000);
   }
-  write_yuv_to_framebuffer(gfxtopadr, img_buffer, image_width, image_height, pixel_size);
+  write_yuv_to_framebuffer(gfxtopadr, img_buffer, surface_width, surface_height, pixel_size);
   gfxScreenSwapBuffers(GFX_TOP, false);
 
   mvd_frame_set_busy(img_buffer);
