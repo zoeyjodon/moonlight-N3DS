@@ -41,10 +41,30 @@ static int image_width, image_height, surface_width, surface_height, pixel_size;
 static u8* img_buffer;
 
 static int n3ds_init(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
-  int status = mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264, MVD_OUTPUT_BGR565, width * height * N3DS_DEC_BUFF_SIZE, NULL);
+  int status = mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264, MVD_OUTPUT_YUYV422, width * height * N3DS_DEC_BUFF_SIZE, NULL);
   if (status) {
     fprintf(stderr, "mvdstdInit failed: %d\n", status);
     mvdstdExit();
+    return -1;
+  }
+
+  if(y2rInit())
+  {
+    fprintf(stderr, "Failed to initialize Y2R\n");
+    return -1;
+  }
+  Y2RU_ConversionParams y2r_parameters;
+  y2r_parameters.input_format = INPUT_YUV422_BATCH;
+  y2r_parameters.output_format = OUTPUT_RGB_16_565;
+  y2r_parameters.rotation = ROTATION_NONE;
+  y2r_parameters.block_alignment = BLOCK_LINE;
+  y2r_parameters.input_line_width = width;
+  y2r_parameters.input_lines = height;
+  y2r_parameters.standard_coefficient = COEFFICIENT_ITU_R_BT_709_SCALING;
+  y2r_parameters.alpha = 0xFF;
+  status = Y2RU_SetConversionParams(&y2r_parameters);
+  if (status) {
+    fprintf(stderr, "Failed to set Y2RU params\n");
     return -1;
   }
 
@@ -78,10 +98,48 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate, voi
 // This function must be called after
 // decoding is finished
 static void n3ds_destroy(void) {
+  y2rExit();
   mvdstdExit();
   linearFree(n3ds_buffer);
   linearFree(img_buffer);
   deinit_px_to_framebuffer();
+}
+
+static inline int write_yuv_to_framebuffer(u8 *dest, const u8 *source, int width, int height, int px_size) {
+  Handle conversion_finish_event_handle;
+  int status = 0;
+
+  status = Y2RU_SetSendingYUYV(source, width * height * 2, 800, 0);
+  if (status) {
+    fprintf(stderr, "Y2RU_SetSendingYUYV failed\n");
+    goto y2ru_failed;
+  }
+
+  status = Y2RU_SetReceiving(img_buffer, width * height * px_size, 8, 0);
+  if (status) {
+    fprintf(stderr, "Y2RU_SetReceiving failed\n");
+    goto y2ru_failed;
+  }
+
+  status = Y2RU_StartConversion();
+  if (status) {
+    fprintf(stderr, "Y2RU_StartConversion failed\n");
+    goto y2ru_failed;
+  }
+
+  status = Y2RU_GetTransferEndEvent(&conversion_finish_event_handle);
+  if (status) {
+    fprintf(stderr, "Y2RU_GetTransferEndEvent failed\n");
+    goto y2ru_failed;
+  }
+
+  svcWaitSynchronization(conversion_finish_event_handle, 20000000);//Wait up to 20ms.
+  svcCloseHandle(conversion_finish_event_handle);
+  write_px_to_framebuffer(dest, img_buffer, px_size);
+  return DR_OK;
+
+  y2ru_failed:
+  return -1;
 }
 
 static inline void mvd_frame_set_busy(unsigned char* framebuf) {
@@ -135,7 +193,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   while (!mvd_frame_ready(img_buffer)) {
     svcSleepThread(1000);
   }
-  write_px_to_framebuffer(gfxtopadr, img_buffer, pixel_size);
+  write_yuv_to_framebuffer(gfxtopadr, img_buffer, image_width, image_height, pixel_size);
   gfxScreenSwapBuffers(GFX_TOP, false);
 
   mvd_frame_set_busy(img_buffer);
