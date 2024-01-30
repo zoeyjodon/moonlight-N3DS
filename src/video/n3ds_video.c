@@ -34,6 +34,20 @@ static size_t ffmpeg_buffer_size;
 static int image_width, image_height, surface_width, surface_height, pixel_size;
 static u8* img_buffer;
 
+static int offset_lut_size;
+static int *dest_offset_lut;
+static int *src_offset_lut;
+
+static inline int get_dest_offset(int x, int y, int dest_height)
+{
+  return dest_height - y - 1 + dest_height * x;
+}
+
+static inline int get_source_offset(int x, int y, int src_width, int src_height, int dest_width, int dest_height)
+{
+  return (x * src_width / dest_width) + (y * src_height / dest_height) * src_width;
+}
+
 static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
   if (ffmpeg_init(videoFormat, width, height, 0, N3DS_BUFFER_FRAMES, SLICES_PER_FRAME) < 0) {
     fprintf(stderr, "Couldn't initialize video decoding\n");
@@ -63,7 +77,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
   }
 
   surface_height = 240;
-  if (width >= 800) {
+  if (width > 400) {
     gfxSetWide(true);
     surface_width = 800;
   }
@@ -83,38 +97,57 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
     return -1;
   }
 
-  return 0;
+  return init_px_to_framebuffer(surface_width, surface_height, image_width, image_height, pixel_size);
 }
 
 static void n3ds_cleanup() {
   ffmpeg_destroy();
   y2rExit();
   linearFree(img_buffer);
+  deinit_px_to_framebuffer();
 }
 
-static inline int get_dest_offset(int x, int y, int dest_height)
-{
-  return dest_height - y - 1 + dest_height * x;
+int init_px_to_framebuffer(int dest_width,
+                            int dest_height,
+                            int src_width,
+                            int src_height,
+                            int px_size) {
+  // Generate LUTs so we don't have to calculate pixel rotation while streaming.
+  offset_lut_size = dest_width * dest_height;
+  src_offset_lut = malloc(sizeof(int) * offset_lut_size);
+  if (!src_offset_lut) {
+    fprintf(stderr, "Out of memory!\n");
+    return -1;
+  }
+  dest_offset_lut = malloc(sizeof(int) * offset_lut_size);
+  if (!dest_offset_lut) {
+    fprintf(stderr, "Out of memory!\n");
+    return -1;
+  }
+
+  int i = 0;
+  for (int y = 0; y < dest_height; ++y) {
+    for (int x = 0; x < dest_width; ++x) {
+      src_offset_lut[i] = px_size * get_source_offset(x, y, src_width, src_height, dest_width, dest_height);
+      dest_offset_lut[i] = px_size * get_dest_offset(x, y, dest_height);
+      i++;
+    }
+  }
+  return 0;
 }
 
-static inline int get_source_offset(int x, int y, int src_width, int src_height, int dest_width, int dest_height)
-{
-  return (x * src_width / dest_width) + (y * src_height / dest_height) * src_width;
+void deinit_px_to_framebuffer() {
+  if (src_offset_lut)
+    free(src_offset_lut);
+  if (dest_offset_lut)
+    free(dest_offset_lut);
 }
 
 void write_px_to_framebuffer(uint8_t* dest,
-                             int dest_width,
-                             int dest_height,
                              uint8_t* source,
-                             int src_width,
-                             int src_height,
                              int px_size) {
-  for (int y = 0; y < dest_height; ++y) {
-    for (int x = 0; x < dest_width; ++x) {
-      int src_offset = px_size * get_source_offset(x, y, src_width, src_height, dest_width, dest_height);
-      int dst_offset = px_size * get_dest_offset(x, y, dest_height);
-      memcpy(dest + dst_offset, source + src_offset, px_size);
-    }
+  for (int i = 0; i < offset_lut_size; i++) {
+    memcpy(dest + dest_offset_lut[i], source + src_offset_lut[i], px_size);
   }
 }
 
@@ -160,7 +193,7 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 **source, int widt
 
   svcWaitSynchronization(conversion_finish_event_handle, 10000000);//Wait up to 10ms.
   svcCloseHandle(conversion_finish_event_handle);
-  write_px_to_framebuffer(dest, surface_width, surface_height, img_buffer, width, height, px_size);
+  write_px_to_framebuffer(dest, img_buffer, px_size);
   return DR_OK;
 
   y2ru_failed:

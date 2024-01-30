@@ -49,7 +49,7 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate, voi
   }
 
   surface_height = 240;
-  if (width >= 800) {
+  if (width > 400) {
     gfxSetWide(true);
     surface_width = 800;
   }
@@ -71,7 +71,8 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate, voi
   ensure_linear_buf_size(&n3ds_buffer, &n3ds_buffer_size, INITIAL_DECODER_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
   mvdstdGenerateDefaultConfig(&mvdstd_config, width, height, width, height, NULL, img_buffer, NULL);
   MVDSTD_SetConfig(&mvdstd_config);
-  return 0;
+
+  return init_px_to_framebuffer(surface_width, surface_height, image_height, image_width, pixel_size);
 }
 
 // This function must be called after
@@ -80,6 +81,30 @@ static void n3ds_destroy(void) {
   mvdstdExit();
   linearFree(n3ds_buffer);
   linearFree(img_buffer);
+  deinit_px_to_framebuffer();
+}
+
+static inline void mvd_frame_set_busy(unsigned char* framebuf) {
+  *framebuf = 0x11;
+  *(framebuf + (image_width * pixel_size - 1)) != 0x11;
+  *(framebuf + ((image_width * image_height * pixel_size) - (image_width * pixel_size))) != 0x11;
+  *(framebuf + (image_width * image_height * pixel_size - 1)) != 0x11;
+}
+
+static inline bool mvd_frame_ready(unsigned char* framebuf) {
+  if (mvdstdRenderVideoFrame(&mvdstd_config, false) != MVD_STATUS_BUSY) {
+    return true;
+  }
+
+  if(*framebuf != 0x11
+  || *(framebuf + (image_width * pixel_size - 1)) != 0x11
+  || *(framebuf + ((image_width * image_height * pixel_size) - (image_width * pixel_size))) != 0x11
+  || *(framebuf + (image_width * image_height * pixel_size - 1)) != 0x11)
+  {
+    return true;
+  }
+
+  return false;
 }
 
 // packets must be decoded in order
@@ -106,11 +131,14 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   }
   GSPGPU_FlushDataCache(n3ds_buffer, length);
 
-  // Assume the last frame is ready to display
   u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-  write_px_to_framebuffer(gfxtopadr, surface_width, surface_height, img_buffer, image_height, image_width, pixel_size);
+  while (!mvd_frame_ready(img_buffer)) {
+    svcSleepThread(1000);
+  }
+  write_px_to_framebuffer(gfxtopadr, img_buffer, pixel_size);
   gfxScreenSwapBuffers(GFX_TOP, false);
 
+  mvd_frame_set_busy(img_buffer);
   n3ds_decode(n3ds_buffer, length);
 
   return DR_OK;
