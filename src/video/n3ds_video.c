@@ -31,7 +31,7 @@
 
 static void* ffmpeg_buffer;
 static size_t ffmpeg_buffer_size;
-static int surface_width, surface_height, pixel_size;
+static int image_width, image_height, surface_width, surface_height, pixel_size;
 static u8* img_buffer;
 
 static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
@@ -62,16 +62,19 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
     return -1;
   }
 
+  surface_height = 240;
   if (width >= 800) {
     gfxSetWide(true);
+    surface_width = 800;
   }
   else {
     gfxSetWide(false);
+    surface_width = 400;
   }
 
   GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
-  surface_width = width;
-  surface_height = height;
+  image_width = width;
+  image_height = height;
   pixel_size = gspGetBytesPerPixel(px_fmt);
 
   img_buffer = linearMemAlign(width * height * pixel_size, 0x80);
@@ -179,7 +182,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
 
   AVFrame* frame = ffmpeg_get_frame(false);
   u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-  int status = write_yuv_to_framebuffer(gfxtopadr, frame->data, surface_width, surface_height, pixel_size);
+  int status = write_yuv_to_framebuffer(gfxtopadr, frame->data, image_width, image_height, pixel_size);
   gfxScreenSwapBuffers(GFX_TOP, false);
 
   return status;

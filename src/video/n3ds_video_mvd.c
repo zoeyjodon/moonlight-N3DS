@@ -37,7 +37,7 @@ static void* n3ds_buffer;
 static size_t n3ds_buffer_size;
 static MVDSTD_Config mvdstd_config;
 
-static int surface_width, surface_height, pixel_size;
+static int image_width, image_height, surface_width, surface_height, pixel_size;
 static u8* img_buffer;
 
 static int n3ds_init(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
@@ -48,9 +48,19 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate, voi
     return -1;
   }
 
+  surface_height = 240;
+  if (width >= 800) {
+    gfxSetWide(true);
+    surface_width = 800;
+  }
+  else {
+    gfxSetWide(false);
+    surface_width = 400;
+  }
+
   GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
-  surface_width = height;
-  surface_height = width;
+  image_width = height;
+  image_height = width;
   pixel_size = gspGetBytesPerPixel(px_fmt);
   img_buffer = linearMemAlign(width * height * pixel_size, 0x80);
   if (!img_buffer) {
@@ -98,7 +108,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
 
   // Assume the last frame is ready to display
   u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-  write_px_to_framebuffer(gfxtopadr, surface_width, surface_height, img_buffer, surface_height, surface_width, pixel_size);
+  write_px_to_framebuffer(gfxtopadr, surface_width, surface_height, img_buffer, image_height, image_width, pixel_size);
   gfxScreenSwapBuffers(GFX_TOP, false);
 
   n3ds_decode(n3ds_buffer, length);
@@ -110,5 +120,5 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd = {
   .setup = n3ds_init,
   .cleanup = n3ds_destroy,
   .submitDecodeUnit = n3ds_submit_decode_unit,
-  .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_REFERENCE_FRAME_INVALIDATION_AVC,
+  .capabilities = CAPABILITY_DIRECT_SUBMIT,
 };

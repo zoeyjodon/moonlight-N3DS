@@ -223,6 +223,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
 {
   char* setting_names[] = {
     "width",
+    "height",
     "fps",
     "bitrate",
     "packetsize",
@@ -236,6 +237,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
   };
   char argument_ids[] = {
     'c',
+    'd',
     'v',
     'g',
     'h',
@@ -247,7 +249,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     '8',
     'Z',
   };
-  int settings_len = sizeof(setting_names) / sizeof(setting_names[0]);
+  int settings_len = sizeof(argument_ids);
   char* setting_buff = malloc(MAX_INPUT_CHAR);
   int idx = 0;
   while (1) {
@@ -259,15 +261,16 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     SwkbdState swkbd;
     memset(setting_buff, 0, MAX_INPUT_CHAR);
     if (strcmp("width", setting_names[idx]) == 0) {
-      idx = config->stream.width == 400 ? 0 : 1;
-      char* width_options[] = {
-        "400",
-        "800",
-      };
-      idx = console_selection_prompt("Select a setting", width_options, 2, idx);
-      if (idx > -1) {
-        sprintf(setting_buff, "%s", width_options[idx]);
-      }
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.width);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
+    }
+    else if (strcmp("height", setting_names[idx]) == 0) {
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.height);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
     }
     else if (strcmp("fps", setting_names[idx]) == 0) {
       swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
@@ -452,13 +455,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     printf("Ignoring invalid rotation value: %d\n", config->rotate);
   }
 
-  PDECODER_RENDERER_CALLBACKS video_callbacks = &decoder_callbacks_n3ds;
-  if (config->hwdecode) {
-    video_callbacks = &decoder_callbacks_n3ds_mvd;
-    // MVD requires specific width/height parameters
-    config->stream.height = 400;
-    config->stream.width = 240;
-  }
+  PDECODER_RENDERER_CALLBACKS video_callbacks = config->hwdecode ? &decoder_callbacks_n3ds_mvd : &decoder_callbacks_n3ds;
 
   printf("Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
  viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, debug=%d\n",
