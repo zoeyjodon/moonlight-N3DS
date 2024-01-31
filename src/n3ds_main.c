@@ -53,8 +53,8 @@
 
 #define SOC_ALIGN       0x1000
 // 0x40000 for each enet host (2 hosts total)
-// 0x208000 for each platform socket (2 sockets total)
-#define SOC_BUFFERSIZE  0x490000
+// 0x40000 for each platform socket (2 sockets total)
+#define SOC_BUFFERSIZE  0x100000
 
 #define MAX_INPUT_CHAR 60
 #define MAX_APP_LIST 30
@@ -223,6 +223,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
 {
   char* setting_names[] = {
     "width",
+    "height",
     "fps",
     "bitrate",
     "packetsize",
@@ -236,6 +237,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
   };
   char argument_ids[] = {
     'c',
+    'd',
     'v',
     'g',
     'h',
@@ -247,7 +249,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     '8',
     'Z',
   };
-  int settings_len = sizeof(setting_names) / sizeof(setting_names[0]);
+  int settings_len = sizeof(argument_ids);
   char* setting_buff = malloc(MAX_INPUT_CHAR);
   int idx = 0;
   while (1) {
@@ -259,15 +261,16 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     SwkbdState swkbd;
     memset(setting_buff, 0, MAX_INPUT_CHAR);
     if (strcmp("width", setting_names[idx]) == 0) {
-      idx = config->stream.width == 400 ? 0 : 1;
-      char* width_options[] = {
-        "400",
-        "800",
-      };
-      idx = console_selection_prompt("Select a setting", width_options, 2, idx);
-      if (idx > -1) {
-        sprintf(setting_buff, "%s", width_options[idx]);
-      }
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.width);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
+    }
+    else if (strcmp("height", setting_names[idx]) == 0) {
+      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+      sprintf(setting_buff, "%d", config->stream.height);
+      swkbdSetInitialText(&swkbd, setting_buff);
+      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
     }
     else if (strcmp("fps", setting_names[idx]) == 0) {
       swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
@@ -343,7 +346,7 @@ static void init_3ds()
 {
   Result status = 0;
   acInit();
-  gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
+  gfxInit(GSP_RGB565_OES, GSP_BGR8_OES, false);
   consoleInit(GFX_TOP, &topScreen);
   consoleSelect(&topScreen);
   atexit(n3ds_exit_handler);
@@ -408,8 +411,7 @@ static inline void stream_loop(PCONFIGURATION config) {
     if (!config->viewonly) {
       done |= n3dsinput_handle_event();
     }
-    // Restrict input updates to prevent flooding the send queue
-    svcSleepThread(30 * 1000000);
+    hidWaitForEvent(HIDEVENT_PAD0, true);
   }
 }
 
@@ -453,13 +455,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     printf("Ignoring invalid rotation value: %d\n", config->rotate);
   }
 
-  PDECODER_RENDERER_CALLBACKS video_callbacks = &decoder_callbacks_n3ds;
-  if (config->hwdecode) {
-    video_callbacks = &decoder_callbacks_n3ds_mvd;
-    // MVD requires specific width/height parameters
-    config->stream.height = 400;
-    config->stream.width = 240;
-  }
+  PDECODER_RENDERER_CALLBACKS video_callbacks = config->hwdecode ? &decoder_callbacks_n3ds_mvd : &decoder_callbacks_n3ds;
 
   printf("Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
  viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, debug=%d\n",
@@ -483,7 +479,16 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     n3ds_connection_callbacks.connectionTerminated(status);
     exit(status);
   }
-  printf("Connected!\n");
+
+  consoleClear();
+  if (config->debug_level) {
+    consoleInit(GFX_BOTTOM, &bottomScreen);
+    consoleSelect(&bottomScreen);
+    printf("Connected!\n");
+  }
+  else {
+    n3dsinput_set_touch(GAMEPAD);
+  }
 
   stream_loop(config);
 
@@ -553,10 +558,6 @@ int main(int argc, char* argv[]) {
 
         config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
 
-        consoleClear();
-        consoleInit(GFX_BOTTOM, &bottomScreen);
-        consoleSelect(&bottomScreen);
-
         if (config.viewonly) {
           if (config.debug_level > 0)
             printf("View-only mode enabled, no input will be sent to the host computer\n");
@@ -564,6 +565,10 @@ int main(int argc, char* argv[]) {
           n3dsinput_init();
         }
         stream(&server, &config, appId);
+
+        if (!config.viewonly) {
+          n3dsinput_cleanup();
+        }
         // Exit app after streaming has closed
         exit(0);
       }

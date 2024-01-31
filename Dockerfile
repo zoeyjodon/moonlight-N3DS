@@ -23,7 +23,8 @@ RUN apt-get update && apt-get install -y \
     autoconf \
     libtool \
     python3 \
-    python3-pip
+    python3-pip \
+    imagemagick
 
 # Install the luma dump parser for inspecting crashes
 RUN pip install -U git+https://github.com/LumaTeam/luma3ds_exception_dump_parser.git

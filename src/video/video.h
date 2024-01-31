@@ -46,12 +46,14 @@ extern DECODER_RENDERER_CALLBACKS decoder_callbacks_x11_vdpau;
 #endif
 #endif
 #ifdef __3DS__
+int init_px_to_framebuffer(int dest_width,
+                            int dest_height,
+                            int src_width,
+                            int src_height,
+                            int px_size);
+void deinit_px_to_framebuffer();
 void write_px_to_framebuffer(uint8_t* dest,
-                             int dest_width,
-                             int dest_height,
                              uint8_t* source,
-                             int src_width,
-                             int src_height,
                              int px_size);
 
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds;

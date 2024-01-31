@@ -46,7 +46,7 @@ SOURCES		:=	src \
 				third_party/moonlight-common-c/enet \
 				third_party/moonlight-common-c/reedsolomon \
 				third_party/moonlight-common-c/src
-DATA		:=	data
+DATA		:=	3ds/data
 INCLUDES	:=	src \
 				libgamestream \
 				third_party/h264bitstream \
@@ -54,7 +54,7 @@ INCLUDES	:=	src \
 				third_party/moonlight-common-c/enet/include \
 				third_party/moonlight-common-c/reedsolomon \
 				third_party/moonlight-common-c/src
-GRAPHICS	:=	gfx
+GRAPHICS	:=	3ds/gfx
 GFXBUILD	:=	$(BUILD)
 # ROMFS		:=	romfs
 
@@ -125,6 +125,7 @@ SFILES		:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.s)))
 PICAFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.v.pica)))
 SHLISTFILES	:=	$(foreach dir,$(SOURCES),$(notdir $(wildcard $(dir)/*.shlist)))
 GFXFILES	:=	$(foreach dir,$(GRAPHICS),$(notdir $(wildcard $(dir)/*.t3s)))
+PNGFILES	:=	$(foreach dir,$(GRAPHICS),$(notdir $(wildcard $(dir)/*.png)))
 BINFILES	:=	$(foreach dir,$(DATA),$(notdir $(wildcard $(dir)/*.*)))
 
 #---------------------------------------------------------------------------------
@@ -158,13 +159,13 @@ export OFILES_SOURCES 	:=	$(CPPFILES:.cpp=.o) $(CFILES:.c=.o) $(SFILES:.s=.o)
 
 export OFILES_BIN	:=	$(addsuffix .o,$(BINFILES)) \
 			$(PICAFILES:.v.pica=.shbin.o) $(SHLISTFILES:.shlist=.shbin.o) \
-			$(addsuffix .o,$(T3XFILES))
+			$(addsuffix .o,$(T3XFILES)) $(PNGFILES:.png=.bgr.o)
 
 export OFILES := $(OFILES_BIN) $(OFILES_SOURCES)
 
 export HFILES	:=	$(PICAFILES:.v.pica=_shbin.h) $(SHLISTFILES:.shlist=_shbin.h) \
 			$(addsuffix .h,$(subst .,_,$(BINFILES))) \
-			$(GFXFILES:.t3s=.h)
+			$(GFXFILES:.t3s=.h) $(PNGFILES:.png=_bgr.h)
 
 export INCLUDE	:=	$(foreach dir,$(INCLUDES),-I$(CURDIR)/$(dir)) \
 			$(foreach dir,$(LIBDIRS),-I$(dir)/include) \
@@ -273,6 +274,18 @@ $(OUTPUT).elf	:	$(OFILES)
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
 	@$(bin2o)
+
+#---------------------------------------------------------------------------------
+%_bgr.h %.bgr.o: %.bgr
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@$(bin2o)
+
+#---------------------------------------------------------------------------------
+%.bgr: %.png
+#---------------------------------------------------------------------------------
+	@echo $(notdir $<)
+	@convert $< -channel B -separate $< -channel G -separate $< -channel R -separate -channel RGB -combine -rotate 90 $@
 
 #---------------------------------------------------------------------------------
 .PRECIOUS	:	%.t3x
