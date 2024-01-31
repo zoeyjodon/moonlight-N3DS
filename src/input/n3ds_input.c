@@ -184,7 +184,9 @@ void n3dsinput_set_touch(enum N3dsTouchType ttype)
       gamepad_state.ttype_handler = touch_mouse_handler;
       break;
     default:
-	    memset(gfxbtmadr, 0, 320 * 240 * 3);
+      GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_BOTTOM);
+      int pixel_size = gspGetBytesPerPixel(px_fmt);
+      memset(gfxbtmadr, 0, GSP_SCREEN_HEIGHT_BOTTOM * GSP_SCREEN_WIDTH * pixel_size);
       gamepad_state.ttype_handler = NULL;
       break;
   }

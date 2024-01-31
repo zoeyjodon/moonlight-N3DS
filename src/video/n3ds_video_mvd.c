@@ -31,6 +31,10 @@
 #include <stdbool.h>
 
 #define N3DS_DEC_BUFF_SIZE 23
+// Best performing transfer size (optimized through experimentation)
+#define N3DS_YUYV_XFER_UNIT 800
+// Wait up to 20ms for YUYV conversion to complete (optimized through experimentation)
+#define N3DS_YUYV_CONV_WAIT_NS 20000000
 
 // General decoder and renderer state
 static void* nal_unit_buffer;
@@ -76,26 +80,26 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate, voi
     return -1;
   }
 
-  surface_height = 240;
-  if (width > 400) {
+  surface_height = GSP_SCREEN_WIDTH;
+  if (width > GSP_SCREEN_HEIGHT_TOP) {
     gfxSetWide(true);
-    surface_width = 800;
+    surface_width = GSP_SCREEN_HEIGHT_TOP_2X;
   }
   else {
     gfxSetWide(false);
-    surface_width = 400;
+    surface_width = GSP_SCREEN_HEIGHT_TOP;
   }
 
   GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
   image_width = width;
   image_height = height;
   pixel_size = gspGetBytesPerPixel(px_fmt);
-  yuv_img_buffer = linearMemAlign(width * height * pixel_size, 0x80);
+  yuv_img_buffer = linearAlloc(width * height * pixel_size);
   if (!yuv_img_buffer) {
     fprintf(stderr, "Out of memory!\n");
     return -1;
   }
-  rgb_img_buffer = linearMemAlign(width * height * pixel_size, 0x80);
+  rgb_img_buffer = linearAlloc(width * height * pixel_size);
   if (!rgb_img_buffer) {
     fprintf(stderr, "Out of memory!\n");
     return -1;
@@ -120,7 +124,7 @@ static void n3ds_destroy(void) {
 }
 
 static inline int yuv_to_rgb(u8 *dest, const u8 *source, int width, int height, int px_size) {
-  int status = Y2RU_SetSendingYUYV(source, width * height * 2, 800, 0);
+  int status = Y2RU_SetSendingYUYV(source, width * height * 2, N3DS_YUYV_XFER_UNIT, 0);
   if (status) {
     fprintf(stderr, "Y2RU_SetSendingYUYV failed\n");
     goto y2ru_failed;
@@ -176,7 +180,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   if (conversion_finish_event_handle != NULL) {
     u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
 
-    svcWaitSynchronization(conversion_finish_event_handle, 20000000);//Wait up to 20ms.
+    svcWaitSynchronization(conversion_finish_event_handle, N3DS_YUYV_CONV_WAIT_NS);
     svcCloseHandle(conversion_finish_event_handle);
 
     write_px_to_framebuffer(gfxtopadr, rgb_img_buffer, pixel_size);

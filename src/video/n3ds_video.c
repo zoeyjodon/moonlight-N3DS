@@ -76,14 +76,14 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
     return -1;
   }
 
-  surface_height = 240;
-  if (width > 400) {
+  surface_height = GSP_SCREEN_WIDTH;
+  if (width > GSP_SCREEN_HEIGHT_TOP) {
     gfxSetWide(true);
-    surface_width = 800;
+    surface_width = GSP_SCREEN_HEIGHT_TOP_2X;
   }
   else {
     gfxSetWide(false);
-    surface_width = 400;
+    surface_width = GSP_SCREEN_HEIGHT_TOP;
   }
 
   GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
@@ -91,7 +91,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate, vo
   image_height = height;
   pixel_size = gspGetBytesPerPixel(px_fmt);
 
-  img_buffer = linearMemAlign(width * height * pixel_size, 0x80);
+  img_buffer = linearAlloc(width * height * pixel_size);
   if (!img_buffer) {
     fprintf(stderr, "Out of memory!\n");
     return -1;
