@@ -18,8 +18,8 @@
  */
 
 #include "n3ds_input.h"
-#include "gamepad_bin.h"
-#include "touchpad_bin.h"
+#include "gamepad_bgr.h"
+#include "touchpad_bgr.h"
 
 #include <3ds.h>
 #include <limits.h>
@@ -176,11 +176,11 @@ void n3dsinput_set_touch(enum N3dsTouchType ttype)
   u8* gfxbtmadr = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
   switch (gamepad_state.ttype) {
     case GAMEPAD:
-      memcpy(gfxbtmadr, gamepad_bin, gamepad_bin_size);
+      memcpy(gfxbtmadr, gamepad_bgr, gamepad_bgr_size);
       gamepad_state.ttype_handler = touch_gamepad_handler;
       break;
     case MOUSEPAD:
-      memcpy(gfxbtmadr, touchpad_bin, touchpad_bin_size);
+      memcpy(gfxbtmadr, touchpad_bgr, touchpad_bgr_size);
       gamepad_state.ttype_handler = touch_mouse_handler;
       break;
     default:
