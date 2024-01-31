@@ -31,15 +31,28 @@
 #include <stdbool.h>
 
 #define N3DS_DEC_BUFF_SIZE 23
+#define N3DS_BUFFER_COUNT 2
 
 // General decoder and renderer state
-static void* n3ds_buffer;
-static size_t n3ds_buffer_size;
+static void* nal_unit_buffer;
+static size_t nal_unit_buffer_size;
 static MVDSTD_Config mvdstd_config;
 
 static int image_width, image_height, surface_width, surface_height, pixel_size;
-static u8* img_buffer;
+static u8* yuv_img_buffers[N3DS_BUFFER_COUNT];
+static int yuv_in_idx, yuv_out_idx;
+static u8* rgb_img_buffers[N3DS_BUFFER_COUNT];
+static int rgb_in_idx, rgb_out_idx;
 static bool first_frame = true;
+
+static Thread yuv_thread, rgb_thread;
+static bool yuv_thread_active = true;
+static bool rgb_thread_active = true;
+static bool yuv_buffer_empty[N3DS_BUFFER_COUNT];
+static bool rgb_buffer_empty[N3DS_BUFFER_COUNT];
+
+static void yuv_processing_loop(void* context);
+static void rgb_processing_loop(void* context);
 
 static int n3ds_init(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
   int status = mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264, MVD_OUTPUT_YUYV422, width * height * N3DS_DEC_BUFF_SIZE, NULL);
@@ -83,30 +96,85 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate, voi
   image_width = width;
   image_height = height;
   pixel_size = gspGetBytesPerPixel(px_fmt);
-  img_buffer = linearMemAlign(width * height * pixel_size, 0x80);
-  if (!img_buffer) {
-    fprintf(stderr, "Out of memory!\n");
+
+  yuv_in_idx = 0;
+  yuv_out_idx = 0;
+  rgb_in_idx = 0;
+  rgb_out_idx = 0;
+  for (int i = 0; i < N3DS_BUFFER_COUNT; i++) {
+    yuv_img_buffers[i] = linearMemAlign(width * height * 2, 0x80);
+    if (!yuv_img_buffers[i]) {
+      fprintf(stderr, "Out of memory!\n");
+      return -1;
+    }
+    yuv_buffer_empty[i] = true;
+
+    rgb_img_buffers[i] = linearMemAlign(width * height * pixel_size, 0x80);
+    if (!rgb_img_buffers[i]) {
+      fprintf(stderr, "Out of memory!\n");
+      return -1;
+    }
+    rgb_buffer_empty[i] = true;
+  }
+  ensure_linear_buf_size(&nal_unit_buffer, &nal_unit_buffer_size, INITIAL_DECODER_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
+  mvdstdGenerateDefaultConfig(&mvdstd_config, image_width, image_height, surface_width, surface_height, NULL, NULL, NULL);
+  MVDSTD_SetConfig(&mvdstd_config);
+
+  status = init_px_to_framebuffer(surface_width, surface_height, surface_width, surface_height, pixel_size);
+  if (status) {
     return -1;
   }
 
-  ensure_linear_buf_size(&n3ds_buffer, &n3ds_buffer_size, INITIAL_DECODER_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
-  mvdstdGenerateDefaultConfig(&mvdstd_config, image_width, image_height, surface_width, surface_height, NULL, img_buffer, NULL);
-  MVDSTD_SetConfig(&mvdstd_config);
+  // Create the YUV processing thread
+  int priority = 0x30;
+  svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
+  yuv_thread = threadCreate(yuv_processing_loop,
+                            NULL,
+                            0x10000,
+                            priority,
+                            1,
+                            false);
+  if (yuv_thread == NULL) {
+      return -1;
+  }
 
-  return init_px_to_framebuffer(surface_width, surface_height, surface_width, surface_height, pixel_size);
+  // Create the pixel display thread
+  rgb_thread = threadCreate(rgb_processing_loop,
+                            NULL,
+                            0x10000,
+                            priority,
+                            2,
+                            false);
+  if (rgb_thread == NULL) {
+      return -1;
+  }
+  return 0;
 }
 
 // This function must be called after
 // decoding is finished
 static void n3ds_destroy(void) {
+  if (yuv_thread) {
+    yuv_thread_active = false;
+    threadJoin(yuv_thread, U64_MAX);
+    threadFree(yuv_thread);
+  }
+  if (rgb_thread) {
+    rgb_thread_active = false;
+    threadJoin(rgb_thread, U64_MAX);
+    threadFree(rgb_thread);
+  }
   y2rExit();
   mvdstdExit();
-  linearFree(n3ds_buffer);
-  linearFree(img_buffer);
+  linearFree(nal_unit_buffer);
+  for (int i = 0; i < N3DS_BUFFER_COUNT; i++) {
+    linearFree(yuv_img_buffers[i]);
+    linearFree(rgb_img_buffers[i]);
+  }
   deinit_px_to_framebuffer();
 }
 
-static inline int write_yuv_to_framebuffer(u8 *dest, const u8 *source, int width, int height, int px_size) {
+static inline int yuv_to_rgb(u8 *dest, const u8 *source, int width, int height, int px_size) {
   Handle conversion_finish_event_handle;
   int status = 0;
 
@@ -116,7 +184,7 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 *source, int width
     goto y2ru_failed;
   }
 
-  status = Y2RU_SetReceiving(img_buffer, width * height * px_size, 8, 0);
+  status = Y2RU_SetReceiving(dest, width * height * px_size, 8, 0);
   if (status) {
     fprintf(stderr, "Y2RU_SetReceiving failed\n");
     goto y2ru_failed;
@@ -136,7 +204,6 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 *source, int width
 
   svcWaitSynchronization(conversion_finish_event_handle, 20000000);//Wait up to 20ms.
   svcCloseHandle(conversion_finish_event_handle);
-  write_px_to_framebuffer(dest, img_buffer, px_size);
   return DR_OK;
 
   y2ru_failed:
@@ -145,16 +212,12 @@ static inline int write_yuv_to_framebuffer(u8 *dest, const u8 *source, int width
 
 static inline void mvd_frame_set_busy(unsigned char* framebuf) {
   *framebuf = 0x11;
-  *(framebuf + (image_width * pixel_size - 1)) != 0x11;
-  *(framebuf + ((image_width * image_height * pixel_size) - (image_width * pixel_size))) != 0x11;
-  *(framebuf + (image_width * image_height * pixel_size - 1)) != 0x11;
+  *(framebuf + (image_width * pixel_size - 1)) = 0x11;
+  *(framebuf + ((image_width * image_height * pixel_size) - (image_width * pixel_size))) = 0x11;
+  *(framebuf + (image_width * image_height * pixel_size - 1)) = 0x11;
 }
 
 static inline bool mvd_frame_ready(unsigned char* framebuf) {
-  if (mvdstdRenderVideoFrame(&mvdstd_config, false) != MVD_STATUS_BUSY) {
-    return true;
-  }
-
   if(*framebuf != 0x11
   || *(framebuf + (image_width * pixel_size - 1)) != 0x11
   || *(framebuf + ((image_width * image_height * pixel_size) - (image_width * pixel_size))) != 0x11
@@ -166,13 +229,45 @@ static inline bool mvd_frame_ready(unsigned char* framebuf) {
   return false;
 }
 
+static void rgb_processing_loop(void* context) {
+    while (rgb_thread_active) {
+      if (rgb_buffer_empty[rgb_in_idx]) {
+        svcSleepThread(20000);
+        continue;
+      }
+      u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+      write_px_to_framebuffer(gfxtopadr, rgb_img_buffers[rgb_in_idx], pixel_size);
+      rgb_buffer_empty[rgb_in_idx] = true;
+      rgb_in_idx = (rgb_in_idx + 1) % N3DS_BUFFER_COUNT;
+
+      gfxScreenSwapBuffers(GFX_TOP, false);
+    }
+}
+
+static void yuv_processing_loop(void* context) {
+    while (yuv_thread_active) {
+      if (yuv_buffer_empty[yuv_in_idx] || !rgb_buffer_empty[rgb_out_idx] || !mvd_frame_ready(yuv_img_buffers[yuv_in_idx])) {
+        svcSleepThread(20000);
+        continue;
+      }
+      yuv_to_rgb(rgb_img_buffers[rgb_out_idx], yuv_img_buffers[yuv_in_idx], surface_width, surface_height, pixel_size);
+      yuv_buffer_empty[yuv_in_idx] = true;
+      rgb_buffer_empty[rgb_out_idx] = false;
+      yuv_in_idx = (yuv_in_idx + 1) % N3DS_BUFFER_COUNT;
+      rgb_out_idx = (rgb_out_idx + 1) % N3DS_BUFFER_COUNT;
+    }
+}
+
 // packets must be decoded in order
-// indata must be inlen + AV_INPUT_BUFFER_PADDING_SIZE in length
-static inline int n3ds_decode(unsigned char* indata, int inlen) {
-  int ret = mvdstdProcessVideoFrame(indata, inlen, 1, NULL);
+// src must be src_size + AV_INPUT_BUFFER_PADDING_SIZE in length
+static inline int nal_to_yuv_decode(unsigned char* dest, unsigned char* src, int src_size) {
+  int ret = mvdstdProcessVideoFrame(src, src_size, 1, NULL);
   if(ret!=MVD_STATUS_PARAMSET && ret!=MVD_STATUS_INCOMPLETEPROCESSING)
   {
+    mvdstd_config.physaddr_outdata0 = osConvertVirtToPhys(dest);
     mvdstdRenderVideoFrame(&mvdstd_config, false);
+    yuv_buffer_empty[yuv_out_idx] = false;
+    yuv_out_idx = (yuv_out_idx + 1) % N3DS_BUFFER_COUNT;
   }
   return 0;
 }
@@ -181,24 +276,20 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
   PLENTRY entry = decodeUnit->bufferList;
   int length = 0;
 
-  ensure_linear_buf_size(&n3ds_buffer, &n3ds_buffer_size, decodeUnit->fullLength + AV_INPUT_BUFFER_PADDING_SIZE);
+  ensure_linear_buf_size(&nal_unit_buffer, &nal_unit_buffer_size, decodeUnit->fullLength + AV_INPUT_BUFFER_PADDING_SIZE);
 
   while (entry != NULL) {
-    memcpy(n3ds_buffer+length, entry->data, entry->length);
+    memcpy(nal_unit_buffer+length, entry->data, entry->length);
     length += entry->length;
     entry = entry->next;
   }
-  GSPGPU_FlushDataCache(n3ds_buffer, length);
+  GSPGPU_FlushDataCache(nal_unit_buffer, length);
 
-  u8 *gfxtopadr = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-  while (!mvd_frame_ready(img_buffer)) {
-    svcSleepThread(1000);
+  while (!yuv_buffer_empty[yuv_out_idx]) {
+    svcSleepThread(20000);
   }
-  write_yuv_to_framebuffer(gfxtopadr, img_buffer, surface_width, surface_height, pixel_size);
-  gfxScreenSwapBuffers(GFX_TOP, false);
-
-  mvd_frame_set_busy(img_buffer);
-  n3ds_decode(n3ds_buffer, length);
+  mvd_frame_set_busy(yuv_img_buffers[yuv_out_idx]);
+  nal_to_yuv_decode(yuv_img_buffers[yuv_out_idx], nal_unit_buffer, length);
 
   // If MVD never gets an IDR frame, everything shows up gray
   if (first_frame) {

@@ -35,7 +35,7 @@
 #define N3DS_ANALOG_MAX 150
 #define N3DS_C_STICK_MAX 100
 #define N3DS_ANALOG_POS_FACTOR 5
-#define N3DS_MOUSEPAD_SENSITIVITY 2
+#define N3DS_MOUSEPAD_SENSITIVITY 3
 
 typedef void(*TouchTypeHandler)(touchPosition touch);
 
