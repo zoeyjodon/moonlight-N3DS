@@ -147,7 +147,7 @@ static int console_selection_prompt(char* prompt, char** options, int option_cou
       return -1;
     }
     if (kDown & KEY_DOWN) {
-      if (option_idx < option_count) {
+      if (option_idx < option_count - 1) {
         option_idx++;
       }
     }
