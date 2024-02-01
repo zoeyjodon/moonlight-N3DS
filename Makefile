@@ -60,8 +60,8 @@ GFXBUILD	:=	$(BUILD)
 
 
 # 3dsx
-APP_TITLE	:=	moonlight
-APP_DESCRIPTION	:=	NVIDIA GameStream client
+APP_TITLE	:=	Moonlight
+APP_DESCRIPTION	:=	Moonlight Streaming client
 APP_AUTHOR	:=	zoeyjodon
 ICON		:=	3ds/res/ic_moonlight.png
 
