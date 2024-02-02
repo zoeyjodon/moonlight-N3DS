@@ -106,10 +106,10 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate, voi
   }
 
   ensure_linear_buf_size(&nal_unit_buffer, &nal_unit_buffer_size, INITIAL_DECODER_BUFFER_SIZE + AV_INPUT_BUFFER_PADDING_SIZE);
-  mvdstdGenerateDefaultConfig(&mvdstd_config, image_width, image_height, surface_width, surface_height, NULL, yuv_img_buffer, NULL);
+  mvdstdGenerateDefaultConfig(&mvdstd_config, image_width, image_height, image_width, image_height, NULL, yuv_img_buffer, NULL);
   MVDSTD_SetConfig(&mvdstd_config);
 
-  return init_px_to_framebuffer(surface_width, surface_height, surface_width, surface_height, pixel_size);
+  return init_px_to_framebuffer(surface_width, surface_height, image_width, image_height, pixel_size);
 }
 
 // This function must be called after
@@ -189,7 +189,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
 
 
   n3ds_decode(nal_unit_buffer, length);
-  yuv_to_rgb(rgb_img_buffer, yuv_img_buffer, surface_width, surface_height, pixel_size);
+  yuv_to_rgb(rgb_img_buffer, yuv_img_buffer, image_width, image_height, pixel_size);
 
   // If MVD never gets an IDR frame, everything shows up gray
   if (first_frame) {
