@@ -48,6 +48,13 @@ static u8* rgb_img_buffer;
 static bool first_frame = true;
 
 static int n3ds_init(int videoFormat, int width, int height, int redrawRate, void* context, int drFlags) {
+  bool is_new_3ds;
+  APT_CheckNew3DS(&is_new_3ds);
+  if (!is_new_3ds) {
+    fprintf(stderr, "Hardware decoding is only available on the New 3DS\n");
+    return -1;
+  }
+
   int status = mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264, MVD_OUTPUT_YUYV422, width * height * N3DS_DEC_BUFF_SIZE, NULL);
   if (status) {
     fprintf(stderr, "mvdstdInit failed: %d\n", status);
