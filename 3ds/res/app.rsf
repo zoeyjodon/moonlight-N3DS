@@ -37,38 +37,10 @@ AccessControlInfo:
   # FS:USER Archive Access Permissions
   # Uncomment as required
   FileSystemAccess:
-   - CategorySystemApplication
-   - CategoryHardwareCheck
    - CategoryFileSystemTool
    - Debug
-   - TwlCardBackup
-   - TwlNandData
-   - Boss
    - DirectSdmc
-   - Core
-   - CtrNandRo
-   - CtrNandRw
-   - CtrNandRoWrite
-   - CategorySystemSettings
-   - CardBoard
-   - ExportImportIvs
    - DirectSdmcWrite
-   - SwitchCleanup
-   - SaveDataMove
-   - Shop
-   - Shell
-   - CategoryHomeMenu
-   - SeedDB
-
-  IoAccessControl:
-   - FsMountNand
-   - FsMountNandRoWrite
-   - FsMountTwln
-   - FsMountWnand
-   - FsMountCardSpi
-   - UseSdif3
-   - CreateSeed
-   - UseCardSpi
 
   # Process Settings
   MemoryType                    : Application # Application/System/Base
@@ -217,38 +189,28 @@ AccessControlInfo:
    - ac:u
    - am:net
    - boss:U
-   - cam:u
    - cecd:u
    - cfg:nor
    - cfg:u
    - csnd:SND
    - dsp::DSP
-   - frd:u
    - fs:USER
    - gsp::Gpu
    - gsp::Lcd
    - hid:USER
    - http:C
-   - ir:rst
-   - ir:u
-   - ir:USER
-   - mic:u
    - mcu::HWC
    - mvd:STD
    - ndm:u
-   - news:u
    - nwm::EXT
    - nwm::UDS
-   - ptm:sysm
-   - ptm:u
-   - pxi:dev
    - soc:U
    - ssl:C
    - y2r:u
 
 
 SystemControlInfo:
-  SaveDataSize: 128KB
+  SaveDataSize: 0KB # Change if the app uses savedata
   RemasterVersion: 7
   StackSize: 0x40000
 
@@ -259,36 +221,20 @@ SystemControlInfo:
   # <module name>:<module titleid>
   Dependency:
     ac: 0x0004013000002402
-    #act: 0x0004013000003802
     am: 0x0004013000001502
     boss: 0x0004013000003402
-    camera: 0x0004013000001602
     cecd: 0x0004013000002602
     cfg: 0x0004013000001702
     codec: 0x0004013000001802
     csnd: 0x0004013000002702
-    dlp: 0x0004013000002802
     dsp: 0x0004013000001a02
-    friends: 0x0004013000003202
-    gpio: 0x0004013000001b02
     gsp: 0x0004013000001c02
     hid: 0x0004013000001d02
     http: 0x0004013000002902
-    i2c: 0x0004013000001e02
-    ir: 0x0004013000003302
     mcu: 0x0004013000001f02
-    mic: 0x0004013000002002
     mvd: 0x0004013020004102
     ndm: 0x0004013000002b02
-    news: 0x0004013000003502
-    #nfc: 0x0004013000004002
-    nim: 0x0004013000002c02
     nwm: 0x0004013000002d02
-    pdn: 0x0004013000002102
     ps: 0x0004013000003102
-    ptm: 0x0004013000002202
-    #qtm: 0x0004013020004202
-    ro: 0x0004013000003702
     socket: 0x0004013000002e02
-    spi: 0x0004013000002302
     ssl: 0x0004013000002f02

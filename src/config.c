@@ -355,30 +355,18 @@ void config_save(char* filename, PCONFIGURATION config) {
     exit(EXIT_FAILURE);
   }
 
-  if (config->stream.width != 1280)
-    write_config_int(fd, "width", config->stream.width);
-  if (config->stream.height != 720)
-    write_config_int(fd, "height", config->stream.height);
-  if (config->stream.fps != 60)
-    write_config_int(fd, "fps", config->stream.fps);
-  if (config->stream.bitrate != -1)
-    write_config_int(fd, "bitrate", config->stream.bitrate);
-  if (config->stream.packetSize != 1024)
-    write_config_int(fd, "packetsize", config->stream.packetSize);
-  if (!config->sops)
-    write_config_bool(fd, "sops", config->sops);
-  if (config->localaudio)
-    write_config_bool(fd, "localaudio", config->localaudio);
-  if (config->quitappafter)
-    write_config_bool(fd, "quitappafter", config->quitappafter);
-  if (config->viewonly)
-    write_config_bool(fd, "viewonly", config->viewonly);
-  if (config->rotate != 0)
-    write_config_int(fd, "rotate", config->rotate);
-  if (config->hwdecode)
-    write_config_bool(fd, "hwdecode", config->hwdecode);
-  if (config->debug_level)
-    write_config_bool(fd, "debug", config->debug_level);
+  write_config_int(fd, "width", config->stream.width);
+  write_config_int(fd, "height", config->stream.height);
+  write_config_int(fd, "fps", config->stream.fps);
+  write_config_int(fd, "bitrate", config->stream.bitrate);
+  write_config_int(fd, "packetsize", config->stream.packetSize);
+  write_config_bool(fd, "sops", config->sops);
+  write_config_bool(fd, "localaudio", config->localaudio);
+  write_config_bool(fd, "quitappafter", config->quitappafter);
+  write_config_bool(fd, "viewonly", config->viewonly);
+  write_config_int(fd, "rotate", config->rotate);
+  write_config_bool(fd, "hwdecode", config->hwdecode);
+  write_config_bool(fd, "debug", config->debug_level);
 
   if (strcmp(config->app, "Steam") != 0)
     write_config_string(fd, "app", config->app);
@@ -444,9 +432,9 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   strcpy(config->key_dir, MOONLIGHT_3DS_PATH "/keys");
 
 #ifdef __3DS__
-  config->stream.width = 800;
+  config->stream.width = 400;
   config->stream.height = 240;
-  config->stream.fps = 20;
+  config->stream.fps = 30;
   config->stream.encryptionFlags = ENCFLG_NONE;
   config->hwdecode = true;
 

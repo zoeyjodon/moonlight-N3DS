@@ -64,7 +64,13 @@ static u32 *SOC_buffer = NULL;
 static PrintConsole topScreen;
 static PrintConsole bottomScreen;
 
-static inline void wait_for_button() {
+static inline void wait_for_button(char* prompt) {
+  if (prompt == NULL) {
+    printf("\nPress any button to continue\n");
+  }
+  else {
+    printf("\n%s\n", prompt);
+  }
   while (aptMainLoop())
   {
     gfxSwapBuffers();
@@ -82,8 +88,7 @@ static inline void wait_for_button() {
 static void n3ds_exit_handler(void)
 {
   // Allow users to decide when to exit
-  printf("\nPress any button to quit\n");
-  wait_for_button();
+  wait_for_button("Press any button to quit");
 
   NDMU_UnlockState();
   NDMU_LeaveExclusiveState();
@@ -142,7 +147,7 @@ static int console_selection_prompt(char* prompt, char** options, int option_cou
       return -1;
     }
     if (kDown & KEY_DOWN) {
-      if (option_idx < option_count) {
+      if (option_idx < option_count - 1) {
         option_idx++;
       }
     }
@@ -200,6 +205,7 @@ static char * prompt_for_address()
   SwkbdState swkbd;
   char* addr_buff = malloc(MAX_INPUT_CHAR);
   swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
+  swkbdSetHintText(&swkbd, "Hostname or IP-address of host to connect to");
   swkbdInputText(&swkbd, addr_buff, MAX_INPUT_CHAR);
   addr_buff = realloc(addr_buff, strlen(addr_buff));
   return addr_buff;
@@ -231,7 +237,6 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     "localaudio",
     "quitappafter",
     "viewonly",
-    "rotate",
     "hwdecode",
     "debug",
   };
@@ -245,15 +250,23 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     'n',
     '1',
     '2',
-    '3',
     '8',
     'Z',
   };
   int settings_len = sizeof(argument_ids);
   char* setting_buff = malloc(MAX_INPUT_CHAR);
+  char* prompt_buff = malloc(200);
   int idx = 0;
   while (1) {
-    idx = console_selection_prompt("Select a setting", setting_names, settings_len, idx);
+    sprintf(prompt_buff, "Select a setting");
+    if (config->stream.width != GSP_SCREEN_HEIGHT_TOP && \
+        config->stream.width != GSP_SCREEN_HEIGHT_TOP_2X) {
+      strcat(prompt_buff, "\n\nWARNING: Using an unsupported width may cause issues (3DS supports 400 or 800)\n");
+    }
+    if (config->stream.height != GSP_SCREEN_WIDTH) {
+      strcat(prompt_buff, "\n\nWARNING: Using an unsupported height may cause issues (3DS supports 240)\n");
+    }
+    idx = console_selection_prompt(prompt_buff, setting_names, settings_len, idx);
     if (idx < 0) {
       break;
     }
@@ -314,12 +327,6 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
         sprintf(setting_buff, bool_str);
       }
     }
-    else if (strcmp("rotate", setting_names[idx]) == 0) {
-      swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
-      sprintf(setting_buff, "%d", config->rotate);
-      swkbdSetInitialText(&swkbd, setting_buff);
-      swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
-    }
     else if (strcmp("hwdecode", setting_names[idx]) == 0) {
       char* bool_str = prompt_for_boolean("Use hardware video decoder", config->hwdecode);
       if (bool_str != NULL) {
@@ -369,8 +376,7 @@ static void init_3ds()
   if (R_FAILED(status))
   {
     printf ("Warning: failed to enter exclusive NDM state: %08lX\n", status);
-    printf("\nPress any button to continue\n");
-    wait_for_button();
+    wait_for_button(NULL);
   }
 }
 
@@ -530,7 +536,7 @@ int main(int argc, char* argv[]) {
       exit(-1);
     } else if (ret != GS_OK) {
       fprintf(stderr, "Can't connect to server %s\n", config.address);
-      wait_for_button();
+      wait_for_button(NULL);
       continue;
     }
 
@@ -609,9 +615,7 @@ int main(int argc, char* argv[]) {
       else
         fprintf(stderr, "%s is not a valid action\n", config.action);
 
-
-      printf("\nPress any button to continue\n");
-      wait_for_button();
+      wait_for_button(NULL);
     }
   }
   return 0;
