@@ -4,6 +4,19 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "Build Docker",
+            "type": "shell",
+            "command": [
+                "docker",
+                "build",
+                "--network=host",
+                "-t",
+                "moonlight-n3ds",
+                "${workspaceFolder}",
+            ],
+            "problemMatcher": []
+        },
+        {
             "label": "Run Docker",
             "type": "shell",
             "command": [
