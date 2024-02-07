@@ -52,6 +52,8 @@ typedef struct _GAMEPAD_STATE {
 static GAMEPAD_STATE gamepad_state, previous_state;
 
 static const int activeGamepadMask = 1;
+static bool swap_face_buttons = false;
+static bool swap_triggers_and_shoulders = false;
 
 static void add_gamepad() {
   unsigned short capabilities = 0;
@@ -63,10 +65,12 @@ static void remove_gamepad() {
   LiSendMultiControllerEvent(0, ~activeGamepadMask, 0, 0, 0, 0, 0, 0, 0);
 }
 
-void n3dsinput_init() {
+void n3dsinput_init(bool set_face_swap, bool set_trigger_swap) {
   hidInit();
   add_gamepad();
   gamepad_state.ttype = DEBUG_PRINT;
+  swap_face_buttons = set_face_swap;
+  swap_triggers_and_shoulders = set_trigger_swap;
   gfxSetDoubleBuffering(GFX_BOTTOM, false);
 }
 
@@ -80,18 +84,30 @@ static inline int n3ds_to_li_button(u32 key_in, u32 key_n3ds, int key_li) {
 
 static inline int n3ds_to_li_buttons(u32 key_n3ds) {
   int li_out = 0;
-  li_out |= n3ds_to_li_button(key_n3ds, KEY_A, A_FLAG);
-  li_out |= n3ds_to_li_button(key_n3ds, KEY_B, B_FLAG);
+  if (swap_face_buttons) {
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_B, A_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_A, B_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_Y, X_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_X, Y_FLAG);
+  } else {
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_A, A_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_B, B_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_X, X_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_Y, Y_FLAG);
+  }
   li_out |= n3ds_to_li_button(key_n3ds, KEY_SELECT, BACK_FLAG);
   li_out |= n3ds_to_li_button(key_n3ds, KEY_START, PLAY_FLAG);
   li_out |= n3ds_to_li_button(key_n3ds, KEY_DRIGHT, RIGHT_FLAG);
   li_out |= n3ds_to_li_button(key_n3ds, KEY_DLEFT, LEFT_FLAG);
   li_out |= n3ds_to_li_button(key_n3ds, KEY_DUP, UP_FLAG);
   li_out |= n3ds_to_li_button(key_n3ds, KEY_DDOWN, DOWN_FLAG);
-  li_out |= n3ds_to_li_button(key_n3ds, KEY_R, RB_FLAG);
-  li_out |= n3ds_to_li_button(key_n3ds, KEY_L, LB_FLAG);
-  li_out |= n3ds_to_li_button(key_n3ds, KEY_X, X_FLAG);
-  li_out |= n3ds_to_li_button(key_n3ds, KEY_Y, Y_FLAG);
+  if (swap_triggers_and_shoulders) {
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_ZR, RB_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_ZL, LB_FLAG);
+  } else {
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_R, RB_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, KEY_L, LB_FLAG);
+  }
   return li_out;
 }
 
@@ -226,13 +242,23 @@ int n3dsinput_handle_event() {
 
   if (kDown) {
     gamepad_state.buttons |= n3ds_to_li_buttons(kDown);
-    gamepad_state.leftTrigger |= n3ds_to_li_trigger(kDown, KEY_ZL);
-    gamepad_state.rightTrigger |= n3ds_to_li_trigger(kDown, KEY_ZR);
+    if (swap_triggers_and_shoulders) {
+      gamepad_state.leftTrigger |= n3ds_to_li_trigger(kDown, KEY_L);
+      gamepad_state.rightTrigger |= n3ds_to_li_trigger(kDown, KEY_ZR);
+    } else {
+      gamepad_state.leftTrigger |= n3ds_to_li_trigger(kDown, KEY_ZL);
+      gamepad_state.rightTrigger |= n3ds_to_li_trigger(kDown, KEY_ZR);
+    }
   }
   if (kUp) {
     gamepad_state.buttons &= ~n3ds_to_li_buttons(kUp);
-    gamepad_state.leftTrigger &= ~n3ds_to_li_trigger(kUp, KEY_ZL);
-    gamepad_state.rightTrigger &= ~n3ds_to_li_trigger(kUp, KEY_ZR);
+    if (swap_triggers_and_shoulders) {
+      gamepad_state.leftTrigger &= n3ds_to_li_trigger(kDown, KEY_L);
+      gamepad_state.rightTrigger &= n3ds_to_li_trigger(kDown, KEY_R);
+    } else {
+      gamepad_state.leftTrigger &= n3ds_to_li_trigger(kDown, KEY_ZL);
+      gamepad_state.rightTrigger &= n3ds_to_li_trigger(kDown, KEY_ZR);
+    }
   }
 
   if ((gamepad_state.buttons & QUIT_BUTTONS) == QUIT_BUTTONS)

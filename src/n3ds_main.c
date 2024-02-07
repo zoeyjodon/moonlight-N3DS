@@ -586,7 +586,7 @@ int main(int argc, char* argv[]) {
           if (config.debug_level > 0)
             printf("View-only mode enabled, no input will be sent to the host computer\n");
         } else {
-          n3dsinput_init();
+          n3dsinput_init(config->swap_face_buttons, config->swap_triggers_and_shoulders);
         }
         stream(&server, &config, appId);
 
