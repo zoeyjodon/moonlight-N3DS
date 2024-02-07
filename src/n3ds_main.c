@@ -344,7 +344,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
       }
     }
     else if (strcmp("swaptriggersandshoulders", setting_names[idx]) == 0) {
-      char* bool_str = prompt_for_boolean("Swaps L/ZL and R/ZR for a more natural feel", config->swap_face_buttons);
+      char* bool_str = prompt_for_boolean("Swaps L/ZL and R/ZR for a more natural feel", config->swap_triggers_and_shoulders);
       if (bool_str != NULL) {
         sprintf(setting_buff, bool_str);
       }

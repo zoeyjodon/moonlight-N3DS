@@ -244,7 +244,7 @@ int n3dsinput_handle_event() {
     gamepad_state.buttons |= n3ds_to_li_buttons(kDown);
     if (swap_triggers_and_shoulders) {
       gamepad_state.leftTrigger |= n3ds_to_li_trigger(kDown, KEY_L);
-      gamepad_state.rightTrigger |= n3ds_to_li_trigger(kDown, KEY_ZR);
+      gamepad_state.rightTrigger |= n3ds_to_li_trigger(kDown, KEY_R);
     } else {
       gamepad_state.leftTrigger |= n3ds_to_li_trigger(kDown, KEY_ZL);
       gamepad_state.rightTrigger |= n3ds_to_li_trigger(kDown, KEY_ZR);
