@@ -84,6 +84,8 @@ static struct option long_options[] = {
   {"port", required_argument, NULL, '6'},
   {"hdr", no_argument, NULL, '7'},
   {"hwdecode", required_argument, NULL, '8'},
+  {"swapfacebuttons", required_argument, NULL, 'A'},
+  {"swaptriggersandshoulders", required_argument, NULL, 'B'},
   {0, 0, 0, 0},
 };
 
@@ -304,6 +306,22 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
       config->hwdecode = false;
     }
     break;
+  case 'A':
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->swap_face_buttons = true;
+    }
+    else {
+      config->swap_face_buttons = false;
+    }
+    break;
+  case 'B':
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->swap_triggers_and_shoulders = true;
+    }
+    else {
+      config->swap_triggers_and_shoulders = false;
+    }
+    break;
   case 1:
     if (config->action == NULL)
       config->action = value;
@@ -366,6 +384,8 @@ void config_save(char* filename, PCONFIGURATION config) {
   write_config_bool(fd, "viewonly", config->viewonly);
   write_config_int(fd, "rotate", config->rotate);
   write_config_bool(fd, "hwdecode", config->hwdecode);
+  write_config_bool(fd, "swapfacebuttons", config->swap_face_buttons);
+  write_config_bool(fd, "swaptriggersandshoulders", config->swap_triggers_and_shoulders);
   write_config_bool(fd, "debug", config->debug_level);
 
   if (strcmp(config->app, "Steam") != 0)
@@ -437,6 +457,8 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->stream.fps = 30;
   config->stream.encryptionFlags = ENCFLG_NONE;
   config->hwdecode = true;
+  config->swap_face_buttons = false;
+  config->swap_triggers_and_shoulders = false;
 
   char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
   if (config_file)

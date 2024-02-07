@@ -49,6 +49,8 @@ typedef struct _CONFIGURATION {
   int pin;
   unsigned short port;
   bool hwdecode;
+  bool swap_face_buttons;
+  bool swap_triggers_and_shoulders;
 } CONFIGURATION, *PCONFIGURATION;
 
 extern bool inputAdded;
