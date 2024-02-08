@@ -55,8 +55,8 @@ static const int activeGamepadMask = 1;
 
 static u32 SWAP_A = KEY_A;
 static u32 SWAP_B = KEY_B;
-static u32 SWAP_Y = KEY_X;
-static u32 SWAP_X = KEY_Y;
+static u32 SWAP_X = KEY_X;
+static u32 SWAP_Y = KEY_Y;
 
 static u32 SWAP_L = KEY_L;
 static u32 SWAP_R = KEY_R;
