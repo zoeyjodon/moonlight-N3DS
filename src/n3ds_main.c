@@ -207,7 +207,7 @@ static char * prompt_for_address()
   swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
   swkbdSetHintText(&swkbd, "Hostname or IP-address of host to connect to");
   swkbdInputText(&swkbd, addr_buff, MAX_INPUT_CHAR);
-  addr_buff = realloc(addr_buff, strlen(addr_buff));
+  addr_buff = realloc(addr_buff, strlen(addr_buff) + 1);
   return addr_buff;
 }
 
