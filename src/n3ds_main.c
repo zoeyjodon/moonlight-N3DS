@@ -450,11 +450,12 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
 
     printf(
         "Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
- viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, debug=%d\n",
+ viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, dual_screen=%d, debug=%d\n",
         config->stream.width, config->stream.height, config->stream.fps,
         config->stream.bitrate, config->sops, config->localaudio,
         config->quitappafter, config->viewonly, config->rotate,
-        config->stream.encryptionFlags, config->hwdecode, config->debug_level);
+        config->stream.encryptionFlags, config->hwdecode, config->dual_screen,
+        config->debug_level);
 
     int status = LiStartConnection(&server->serverInfo, &config->stream,
                                    &n3ds_connection_callbacks, video_callbacks,

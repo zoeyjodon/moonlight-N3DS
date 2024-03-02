@@ -92,10 +92,8 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
 
     surface_height = GSP_SCREEN_WIDTH;
     if (width > GSP_SCREEN_HEIGHT_TOP) {
-        gfxSetWide(true);
         surface_width = GSP_SCREEN_HEIGHT_TOP_2X;
     } else {
-        gfxSetWide(false);
         surface_width = GSP_SCREEN_HEIGHT_TOP;
     }
 

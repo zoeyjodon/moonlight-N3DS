@@ -88,6 +88,22 @@ static inline int get_source_offset_ds_bottom(int x, int y, int src_width,
                src_width;
 }
 
+static inline void ensure_3d_enabled() {
+    if (!gfxIs3D()) {
+        gfxSetWide(false);
+        gfxSet3D(true);
+    }
+}
+
+static inline void ensure_3d_disabled() {
+    if (gfxIs3D()) {
+        gfxSet3D(false);
+    }
+    if (surface_width == GSP_SCREEN_HEIGHT_TOP_2X) {
+        gfxSetWide(true);
+    }
+}
+
 static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
                       void *context, int drFlags) {
     if (ffmpeg_init(videoFormat, width, height, 0, N3DS_BUFFER_FRAMES,
@@ -121,11 +137,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
     surface_height = GSP_SCREEN_WIDTH;
     if (width > GSP_SCREEN_HEIGHT_TOP) {
         surface_width = GSP_SCREEN_HEIGHT_TOP_2X;
-        gfxSet3D(false);
-        gfxSetWide(true);
     } else {
-        gfxSet3D(false);
-        gfxSetWide(false);
         surface_width = GSP_SCREEN_HEIGHT_TOP;
     }
 
@@ -339,22 +351,6 @@ static inline void write_px_to_framebuffer_DS(uint8_t *source, int px_size) {
                source + src_offset_lut_ds_bottom[i], px_size);
     }
     gfxSwapBuffers();
-}
-
-static inline void ensure_3d_enabled() {
-    if (!gfxIs3D()) {
-        gfxSetWide(false);
-        gfxSet3D(true);
-    }
-}
-
-static inline void ensure_3d_disabled() {
-    if (gfxIs3D()) {
-        gfxSet3D(false);
-        if (surface_width == GSP_SCREEN_HEIGHT_TOP_2X) {
-            gfxSetWide(true);
-        }
-    }
 }
 
 void write_px_to_framebuffer(uint8_t *source, int px_size) {

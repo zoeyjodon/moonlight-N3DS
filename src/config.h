@@ -20,6 +20,7 @@
 #include <Limelight.h>
 
 #include <stdbool.h>
+#include "platform_main.h"
 
 #define MAX_INPUTS 6
 
