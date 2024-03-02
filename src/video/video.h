@@ -46,6 +46,7 @@ extern DECODER_RENDERER_CALLBACKS decoder_callbacks_x11_vdpau;
 #endif
 #endif
 #ifdef __3DS__
+extern bool enable_dual_display;
 int init_px_to_framebuffer(int dest_width, int dest_height, int src_width,
                            int src_height, int px_size);
 void deinit_px_to_framebuffer();

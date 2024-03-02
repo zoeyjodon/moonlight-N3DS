@@ -231,6 +231,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     "width",
     "height",
     "fps",
+    "dual_screen",
     "bitrate",
     "packetsize",
     "nosops",
@@ -244,6 +245,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     'c',
     'd',
     'v',
+    '9',
     'g',
     'h',
     'l',
@@ -284,6 +286,12 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
       sprintf(setting_buff, "%d", config->stream.height);
       swkbdSetInitialText(&swkbd, setting_buff);
       swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
+    }
+    else if (strcmp("dual_screen", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Enable Dual Screens", config->dual_screen);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
     }
     else if (strcmp("fps", setting_names[idx]) == 0) {
       swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
@@ -353,7 +361,7 @@ static void init_3ds()
 {
   Result status = 0;
   acInit();
-  gfxInit(GSP_RGB565_OES, GSP_BGR8_OES, false);
+  gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
   consoleInit(GFX_TOP, &topScreen);
   consoleSelect(&topScreen);
   atexit(n3ds_exit_handler);
@@ -492,7 +500,11 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     consoleSelect(&bottomScreen);
     printf("Connected!\n");
   }
+  else if (config->dual_screen) {
+    enable_dual_display = true;
+  }
   else {
+    gfxInit(GSP_RGB565_OES, GSP_BGR8_OES, false);
     n3dsinput_set_touch(GAMEPAD);
   }
 

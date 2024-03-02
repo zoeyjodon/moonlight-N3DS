@@ -84,6 +84,7 @@ static struct option long_options[] = {
   {"port", required_argument, NULL, '6'},
   {"hdr", no_argument, NULL, '7'},
   {"hwdecode", required_argument, NULL, '8'},
+  {"dual_screen", required_argument, NULL, '9'},
   {0, 0, 0, 0},
 };
 
@@ -304,6 +305,14 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
       config->hwdecode = false;
     }
     break;
+  case '9':
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->dual_screen = true;
+    }
+    else {
+      config->dual_screen = false;
+    }
+    break;
   case 1:
     if (config->action == NULL)
       config->action = value;
@@ -367,6 +376,7 @@ void config_save(char* filename, PCONFIGURATION config) {
   write_config_int(fd, "rotate", config->rotate);
   write_config_bool(fd, "hwdecode", config->hwdecode);
   write_config_bool(fd, "debug", config->debug_level);
+  write_config_bool(fd, "dual_screen", config->dual_screen);
 
   if (strcmp(config->app, "Steam") != 0)
     write_config_string(fd, "app", config->app);
@@ -437,6 +447,7 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->stream.fps = 30;
   config->stream.encryptionFlags = ENCFLG_NONE;
   config->hwdecode = true;
+  config->dual_screen = false;
 
   char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
   if (config_file)

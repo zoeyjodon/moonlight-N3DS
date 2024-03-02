@@ -49,6 +49,7 @@ typedef struct _CONFIGURATION {
   int pin;
   unsigned short port;
   bool hwdecode;
+  bool dual_screen;
 } CONFIGURATION, *PCONFIGURATION;
 
 extern bool inputAdded;

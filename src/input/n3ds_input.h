@@ -19,7 +19,7 @@
 
 #include <stdbool.h>
 
-enum N3dsTouchType { GAMEPAD, MOUSEPAD, DEBUG_PRINT };
+enum N3dsTouchType { GAMEPAD, MOUSEPAD, DISABLED };
 
 void n3dsinput_init();
 void n3dsinput_cleanup();

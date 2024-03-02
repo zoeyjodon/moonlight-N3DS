@@ -66,7 +66,7 @@ static void remove_gamepad() {
 void n3dsinput_init() {
   hidInit();
   add_gamepad();
-  gamepad_state.ttype = DEBUG_PRINT;
+  gamepad_state.ttype = DISABLED;
   gfxSetDoubleBuffering(GFX_BOTTOM, false);
 }
 
@@ -196,7 +196,7 @@ void n3dsinput_set_touch(enum N3dsTouchType ttype)
 
 static inline void n3dsinput_cycle_touch() {
   enum N3dsTouchType new_type = gamepad_state.ttype + 1;
-  if (new_type == DEBUG_PRINT) {
+  if (new_type == DISABLED) {
     new_type = 0;
   }
   n3dsinput_set_touch(new_type);
