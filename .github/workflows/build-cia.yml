@@ -62,8 +62,8 @@ jobs:
           rm -r /bannertool
       - name: Install MakeROM for CIA packaging
         run: |
-          wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.4/makerom-v0.18.4-ubuntu_x86_64.zip && \
-          unzip makerom-v0.18.4-ubuntu_x86_64.zip -d /usr/local/bin && \
+          wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.3/makerom-v0.18.3-ubuntu_x86_64.zip && \
+          unzip makerom-v0.18.3-ubuntu_x86_64.zip -d /usr/local/bin && \
           chmod +x /usr/local/bin/makerom
       - name: Install third-party libraries
         run: |
