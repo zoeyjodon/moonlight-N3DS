@@ -19,9 +19,27 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Install Moonlight Dependencies
+      - name: Install Build Dependencies
         run: |
           apt-get update && apt-get install -y \
+          build-essential \
+          curl \
+          gdb \
+          lsb-release \
+          libreadline-dev \
+          software-properties-common \
+          wget \
+          unzip \
+          libc6 \
+          git \
+          autoconf \
+          libtool \
+          python3 \
+          python3-pip \
+          imagemagick
+      - name: Install Moonlight Dependencies
+        run: |
+          apt-get install -y \
           libssl-dev \
           libopus-dev \
           libasound2-dev \
