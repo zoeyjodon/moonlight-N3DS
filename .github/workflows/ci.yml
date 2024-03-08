@@ -1,0 +1,59 @@
+name: Build CIA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'n3ds-main'
+      - 'ci-attempt-2'
+  pull_request:
+    branches:
+      - 'n3ds-main'
+
+jobs:
+  build-cia:
+    runs-on: ubuntu-latest
+    container: devkitpro/devkitarm
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+      - name: Install Moonlight Dependencies
+        run: |
+          apt-get update && apt-get install -y \
+          libssl-dev \
+          libopus-dev \
+          libasound2-dev \
+          libudev-dev \
+          libavahi-client-dev \
+          libcurl4-openssl-dev \
+          libevdev-dev \
+          libexpat1-dev \
+          libpulse-dev \
+          uuid-dev \
+          cmake \
+          gcc \
+          g++
+      - name: Install Bannertool
+        run: |
+          wget https://github.com/Epicpkmn11/bannertool/releases/download/1.2.2/bannertool.zip && \
+          unzip bannertool.zip -d /bannertool && \
+          cp /bannertool/linux-x86_64/bannertool /usr/local/bin && \
+          chmod +x /usr/local/bin/bannertool && \
+          rm -r /bannertool
+      - name: Install MakeROM for CIA packaging
+        run: |
+          wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.4/makerom-v0.18.4-ubuntu_x86_64.zip && \
+          unzip makerom-v0.18.4-ubuntu_x86_64.zip -d /usr/local/bin && \
+          chmod +x /usr/local/bin/makerom
+      - name: Install third-party libraries
+        run: |
+          source /etc/profile.d/devkit-env.sh && ./3ds/build-expat.sh
+          source /etc/profile.d/devkit-env.sh && ./3ds/build-openssl.sh
+          source /etc/profile.d/devkit-env.sh && ./3ds/build-ffmpeg.sh
+      - name: Build CIA
+        run: source /etc/profile.d/devkit-env.sh && make
+      - name: Upload CIA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.repository }}
+          path: ./*.cia
