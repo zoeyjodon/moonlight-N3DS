@@ -47,11 +47,11 @@ jobs:
           chmod +x /usr/local/bin/makerom
       - name: Install third-party libraries
         run: |
-          source /etc/profile.d/devkit-env.sh && ./3ds/build-expat.sh
-          source /etc/profile.d/devkit-env.sh && ./3ds/build-openssl.sh
-          source /etc/profile.d/devkit-env.sh && ./3ds/build-ffmpeg.sh
+          ./3ds/build-expat.sh
+          ./3ds/build-openssl.sh
+          ./3ds/build-ffmpeg.sh
       - name: Build CIA
-        run: source /etc/profile.d/devkit-env.sh && make
+        run: make
       - name: Upload CIA
         uses: actions/upload-artifact@v4
         with:
