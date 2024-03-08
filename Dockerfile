@@ -69,8 +69,8 @@ RUN wget https://github.com/Epicpkmn11/bannertool/releases/download/v1.2.2/banne
     rm -r /bannertool
 
 # Install MakeROM for CIA packaging
-RUN wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.4/makerom-v0.18.4-ubuntu_x86_64.zip && \
-    unzip makerom-v0.18.4-ubuntu_x86_64.zip -d /usr/local/bin && \
+RUN wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.3/makerom-v0.18.3-ubuntu_x86_64.zip && \
+    unzip makerom-v0.18.3-ubuntu_x86_64.zip -d /usr/local/bin && \
     chmod +x /usr/local/bin/makerom
 
 # Install custom third party libraries
