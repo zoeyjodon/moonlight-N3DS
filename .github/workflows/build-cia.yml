@@ -1,0 +1,24 @@
+name: Build CIA
+
+on:
+  workflow_dispatch:
+  push:
+  pull_request:
+
+jobs:
+  build-cia:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Build Dockerfile
+        run: docker build --network=host -t moonlight-n3ds .
+      - name: Build CIA
+        run: docker run --rm -v .:/moonlight-N3DS -w /moonlight-N3DS moonlight-n3ds:latest make
+      - name: Upload CIA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ github.event.repository.name }}
+          path: ./*.cia

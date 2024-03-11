@@ -1,5 +1,6 @@
 # docker build --network=host -t moonlight-n3ds .
-FROM ubuntu:22.04
+#FROM ubuntu:22.04
+FROM devkitpro/devkitarm:latest
 
 # Use bash instead of sh
 SHELL ["/bin/bash", "-c"]
@@ -45,32 +46,16 @@ RUN apt-get install -y \
     gcc \
     g++
 
-# Install devkitPro for 3DS
-RUN wget https://apt.devkitpro.org/install-devkitpro-pacman && \
-    chmod +x ./install-devkitpro-pacman && \
-    echo "y" | ./install-devkitpro-pacman
-RUN dkp-pacman -S 3ds-dev --noconfirm && \
-    dkp-pacman -Syu 3ds-curl --noconfirm && \
-    dkp-pacman -Syu 3ds-libarchive \
-                    3ds-jansson \
-                    3ds-libjpeg-turbo \
-                    3ds-libpng \
-                    3ds-tinyxml2 \
-                    3ds-freetype \
-                    3ds-curl \
-                    3ds-libopus \
-                    --noconfirm
-
 # Install bannertool
-RUN wget https://github.com/Steveice10/bannertool/releases/download/1.2.0/bannertool.zip && \
+RUN wget https://github.com/Epicpkmn11/bannertool/releases/download/v1.2.2/bannertool.zip && \
     unzip bannertool.zip -d /bannertool && \
     cp /bannertool/linux-x86_64/bannertool /usr/local/bin && \
     chmod +x /usr/local/bin/bannertool && \
     rm -r /bannertool
 
 # Install MakeROM for CIA packaging
-RUN wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.4/makerom-v0.18.4-ubuntu_x86_64.zip && \
-    unzip makerom-v0.18.4-ubuntu_x86_64.zip -d /usr/local/bin && \
+RUN wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.3/makerom-v0.18.3-ubuntu_x86_64.zip && \
+    unzip makerom-v0.18.3-ubuntu_x86_64.zip -d /usr/local/bin && \
     chmod +x /usr/local/bin/makerom
 
 # Install custom third party libraries
