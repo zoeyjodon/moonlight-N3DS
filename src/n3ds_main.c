@@ -238,6 +238,8 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     "quitappafter",
     "viewonly",
     "hwdecode",
+    "swapfacebuttons",
+    "swaptriggersandshoulders",
     "debug",
   };
   char argument_ids[] = {
@@ -251,6 +253,8 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     '1',
     '2',
     '8',
+    'A',
+    'B',
     'Z',
   };
   int settings_len = sizeof(argument_ids);
@@ -329,6 +333,18 @@ static void prompt_for_stream_settings(PCONFIGURATION config)
     }
     else if (strcmp("hwdecode", setting_names[idx]) == 0) {
       char* bool_str = prompt_for_boolean("Use hardware video decoder", config->hwdecode);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
+    }
+    else if (strcmp("swapfacebuttons", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Swaps A/B and X/Y to match Xbox controller layout", config->swap_face_buttons);
+      if (bool_str != NULL) {
+        sprintf(setting_buff, bool_str);
+      }
+    }
+    else if (strcmp("swaptriggersandshoulders", setting_names[idx]) == 0) {
+      char* bool_str = prompt_for_boolean("Swaps L/ZL and R/ZR for a more natural feel", config->swap_triggers_and_shoulders);
       if (bool_str != NULL) {
         sprintf(setting_buff, bool_str);
       }
@@ -464,7 +480,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
   PDECODER_RENDERER_CALLBACKS video_callbacks = config->hwdecode ? &decoder_callbacks_n3ds_mvd : &decoder_callbacks_n3ds;
 
   printf("Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
- viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, debug=%d\n",
+ viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d, debug=%d\n",
           config->stream.width,
           config->stream.height,
           config->stream.fps,
@@ -476,6 +492,8 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
           config->rotate,
           config->stream.encryptionFlags,
           config->hwdecode,
+          config->swap_face_buttons,
+          config->swap_triggers_and_shoulders,
           config->debug_level
         );
 
@@ -568,7 +586,7 @@ int main(int argc, char* argv[]) {
           if (config.debug_level > 0)
             printf("View-only mode enabled, no input will be sent to the host computer\n");
         } else {
-          n3dsinput_init();
+          n3dsinput_init(config.swap_face_buttons, config.swap_triggers_and_shoulders);
         }
         stream(&server, &config, appId);
 
