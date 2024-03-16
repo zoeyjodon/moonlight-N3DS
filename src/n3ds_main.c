@@ -330,7 +330,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
 static void init_3ds() {
     Result status = 0;
     acInit();
-    gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
+    gfxInit(GSP_RGB565_OES, GSP_BGR8_OES, false);
     consoleInit(GFX_TOP, &topScreen);
     consoleSelect(&topScreen);
     atexit(n3ds_exit_handler);
@@ -474,9 +474,10 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
         printf("Connected!\n");
     } else if (config->dual_screen) {
         enable_dual_display = true;
+        gfxExit();
+        gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
         n3dsinput_set_touch(DS_TOUCH);
     } else {
-        gfxInit(GSP_RGB565_OES, GSP_BGR8_OES, false);
         n3dsinput_set_touch(GAMEPAD);
     }
 
