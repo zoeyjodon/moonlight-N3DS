@@ -21,4 +21,5 @@
 
 extern bool n3ds_connection_closed;
 extern bool n3ds_connection_debug;
+extern bool n3ds_enable_motion;
 extern CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks;

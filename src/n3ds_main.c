@@ -220,12 +220,12 @@ static inline char *prompt_for_boolean(char *prompt, bool default_val) {
 
 static void prompt_for_stream_settings(PCONFIGURATION config) {
     char *setting_names[] = {
-        "width",        "height",     "fps",      "dual_screen",
-        "bitrate",      "packetsize", "nosops",   "localaudio",
-        "quitappafter", "viewonly",   "hwdecode", "debug",
+        "width",    "height",     "fps",    "dual_screen", "motion_controls",
+        "bitrate",  "packetsize", "nosops", "localaudio",  "quitappafter",
+        "viewonly", "hwdecode",   "debug",
     };
     char argument_ids[] = {
-        'c', 'd', 'v', '9', 'g', 'h', 'l', 'n', '1', '2', '8', 'Z',
+        'c', 'd', 'v', '9', 'e', 'g', 'h', 'l', 'n', '1', '2', '8', 'Z',
     };
     int settings_len = sizeof(argument_ids);
     char *setting_buff = malloc(MAX_INPUT_CHAR);
@@ -263,6 +263,12 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         } else if (strcmp("dual_screen", setting_names[idx]) == 0) {
             char *bool_str =
                 prompt_for_boolean("Enable Dual Screens", config->dual_screen);
+            if (bool_str != NULL) {
+                sprintf(setting_buff, bool_str);
+            }
+        } else if (strcmp("motion_controls", setting_names[idx]) == 0) {
+            char *bool_str = prompt_for_boolean("Enable Motion Controls",
+                                                config->motion_controls);
             if (bool_str != NULL) {
                 sprintf(setting_buff, bool_str);
             }
@@ -391,7 +397,7 @@ static inline void stream_loop(PCONFIGURATION config) {
         if (!config->viewonly) {
             done |= n3dsinput_handle_event();
         }
-        hidWaitForEvent(HIDEVENT_PAD0, true);
+        hidWaitForAnyEvent(true, 0, 1000000000);
     }
 }
 
@@ -444,18 +450,19 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
         printf("Ignoring invalid rotation value: %d\n", config->rotate);
     }
 
+    n3ds_enable_motion = config->motion_controls;
     PDECODER_RENDERER_CALLBACKS video_callbacks =
         config->hwdecode ? &decoder_callbacks_n3ds_mvd
                          : &decoder_callbacks_n3ds;
 
     printf(
         "Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
- viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, dual_screen=%d, debug=%d\n",
+ viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, dual_screen=%d, motion_controls=%d, debug=%d\n",
         config->stream.width, config->stream.height, config->stream.fps,
         config->stream.bitrate, config->sops, config->localaudio,
         config->quitappafter, config->viewonly, config->rotate,
         config->stream.encryptionFlags, config->hwdecode, config->dual_screen,
-        config->debug_level);
+        config->motion_controls, config->debug_level);
 
     int status = LiStartConnection(&server->serverInfo, &config->stream,
                                    &n3ds_connection_callbacks, video_callbacks,

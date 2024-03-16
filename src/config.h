@@ -51,6 +51,7 @@ typedef struct _CONFIGURATION {
   unsigned short port;
   bool hwdecode;
   bool dual_screen;
+  bool motion_controls;
 } CONFIGURATION, *PCONFIGURATION;
 
 extern bool inputAdded;

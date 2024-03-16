@@ -49,13 +49,20 @@ typedef struct _GAMEPAD_STATE {
     bool touchpad_active, key_active, ds_touch_active;
     enum N3dsTouchType ttype;
     TouchTypeHandler ttype_handler;
+    accelVector accel_vector;
+    angularRate gyro_rate;
 } GAMEPAD_STATE;
 static GAMEPAD_STATE gamepad_state, previous_state;
 
 static const int activeGamepadMask = 1;
+static float gyro_coeff = 0;
+// Note: This was found experimentally and may need a calibration option in settings
+static float accel_coeff = 52.0;
+bool enable_gyro = false;
+bool enable_accel = false;
 
 static void add_gamepad() {
-    unsigned short capabilities = 0;
+    unsigned short capabilities = LI_CCAP_ACCEL | LI_CCAP_GYRO;
     unsigned char type = LI_CTYPE_NINTENDO;
     LiSendControllerArrivalEvent(0, activeGamepadMask, type, SUPPORTED_BUTTONS,
                                  capabilities);
@@ -67,6 +74,7 @@ static void remove_gamepad() {
 
 void n3dsinput_init() {
     hidInit();
+    HIDUSER_GetGyroscopeRawToDpsCoefficient(&gyro_coeff);
     add_gamepad();
     gamepad_state.ttype = DISABLED;
     gfxSetDoubleBuffering(GFX_BOTTOM, false);
@@ -134,6 +142,24 @@ static inline bool gamepad_state_changed() {
         return true;
     }
 
+    return false;
+}
+
+static inline bool accelerometer_state_changed() {
+    if ((previous_state.accel_vector.x != gamepad_state.accel_vector.x) ||
+        (previous_state.accel_vector.y != gamepad_state.accel_vector.y) ||
+        (previous_state.accel_vector.z != gamepad_state.accel_vector.z)) {
+        return true;
+    }
+    return false;
+}
+
+static inline bool gyroscope_state_changed() {
+    if ((previous_state.gyro_rate.x != gamepad_state.gyro_rate.x) ||
+        (previous_state.gyro_rate.y != gamepad_state.gyro_rate.y) ||
+        (previous_state.gyro_rate.z != gamepad_state.gyro_rate.z)) {
+        return true;
+    }
     return false;
 }
 
@@ -307,6 +333,28 @@ int n3dsinput_handle_event() {
             gamepad_state.leftTrigger, gamepad_state.rightTrigger,
             gamepad_state.leftStickX, gamepad_state.leftStickY,
             gamepad_state.rightStickX, gamepad_state.rightStickY);
+    }
+
+    if (enable_accel) {
+        hidAccelRead(&gamepad_state.accel_vector);
+        if (accelerometer_state_changed()) {
+            LiSendControllerMotionEvent(
+                0, LI_MOTION_TYPE_ACCEL,
+                gamepad_state.accel_vector.x / accel_coeff,
+                gamepad_state.accel_vector.y / accel_coeff,
+                gamepad_state.accel_vector.z / accel_coeff);
+        }
+    }
+
+    if (enable_gyro) {
+        hidGyroRead(&gamepad_state.gyro_rate);
+        if (gyroscope_state_changed()) {
+            // Convert rad/s to deg/s
+            LiSendControllerMotionEvent(0, LI_MOTION_TYPE_GYRO,
+                                        gamepad_state.gyro_rate.x * gyro_coeff,
+                                        gamepad_state.gyro_rate.y * gyro_coeff,
+                                        gamepad_state.gyro_rate.z * gyro_coeff);
+        }
     }
 
     return 0;

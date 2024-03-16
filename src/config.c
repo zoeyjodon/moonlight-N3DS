@@ -86,6 +86,7 @@ static struct option long_options[] = {
   {"hdr", no_argument, NULL, '7'},
   {"hwdecode", required_argument, NULL, '8'},
   {"dual_screen", required_argument, NULL, '9'},
+  {"motion_controls", required_argument, NULL, 'e'},
   {0, 0, 0, 0},
 };
 
@@ -161,6 +162,14 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     break;
   case 'd':
     config->stream.height = atoi(value);
+    break;
+  case 'e':
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->motion_controls = true;
+    }
+    else {
+      config->motion_controls = false;
+    }
     break;
   case 'g':
     config->stream.bitrate = atoi(value);
@@ -378,6 +387,7 @@ void config_save(char* filename, PCONFIGURATION config) {
   write_config_bool(fd, "hwdecode", config->hwdecode);
   write_config_bool(fd, "debug", config->debug_level);
   write_config_bool(fd, "dual_screen", config->dual_screen);
+  write_config_bool(fd, "motion_controls", config->motion_controls);
 
   if (strcmp(config->app, "Steam") != 0)
     write_config_string(fd, "app", config->app);
@@ -441,6 +451,7 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->stream.encryptionFlags = ENCFLG_NONE;
   config->hwdecode = true;
   config->dual_screen = false;
+  config->motion_controls = false;
 
   char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
   if (config_file)

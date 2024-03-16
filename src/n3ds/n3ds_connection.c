@@ -18,6 +18,7 @@
  */
 
 #include "n3ds_connection.h"
+#include "../input/n3ds_input.h"
 
 #include <3ds.h>
 #include <stdio.h>
@@ -26,6 +27,7 @@
 
 bool n3ds_connection_closed = false;
 bool n3ds_connection_debug = false;
+bool n3ds_enable_motion = false;
 
 static void connection_terminated(int errorCode) {
   switch (errorCode) {
@@ -49,6 +51,8 @@ static void connection_terminated(int errorCode) {
     break;
   }
 
+  HIDUSER_DisableAccelerometer();
+  HIDUSER_DisableGyroscope();
   n3ds_connection_closed = true;
 }
 
@@ -74,6 +78,33 @@ static void connection_status_update(int status) {
   }
 }
 
+static void set_motion_event_state(unsigned short controllerNumber, unsigned char motionType, unsigned short reportRateHz) {
+  if (!n3ds_enable_motion){
+    return;
+  }
+
+  switch (motionType) {
+  case LI_MOTION_TYPE_ACCEL:
+    enable_accel = (reportRateHz > 0);
+    if (enable_accel) {
+      HIDUSER_EnableAccelerometer();
+    }
+    else {
+      HIDUSER_DisableAccelerometer();
+    }
+    break;
+  case LI_MOTION_TYPE_GYRO:
+    enable_gyro = (reportRateHz > 0);
+    if (enable_gyro) {
+      HIDUSER_EnableGyroscope();
+    }
+    else {
+      HIDUSER_DisableGyroscope();
+    }
+    break;
+  }
+}
+
 CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks = {
   .stageStarting = NULL,
   .stageComplete = NULL,
@@ -85,6 +116,6 @@ CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks = {
   .connectionStatusUpdate = connection_status_update,
   .setHdrMode = NULL,
   .rumbleTriggers = NULL,
-  .setMotionEventState = NULL,
+  .setMotionEventState = set_motion_event_state,
   .setControllerLED = NULL,
 };
