@@ -52,6 +52,8 @@ typedef struct _CONFIGURATION {
   bool hwdecode;
   bool dual_screen;
   bool motion_controls;
+  bool swap_face_buttons;
+  bool swap_triggers_and_shoulders;
 } CONFIGURATION, *PCONFIGURATION;
 
 extern bool inputAdded;

@@ -23,7 +23,7 @@ enum N3dsTouchType { GAMEPAD, MOUSEPAD, DISABLED, DS_TOUCH };
 extern bool enable_gyro;
 extern bool enable_accel;
 
-void n3dsinput_init();
+void n3dsinput_init(bool set_face_swap, bool set_trigger_swap);
 void n3dsinput_cleanup();
 void n3dsinput_set_touch(enum N3dsTouchType ttype);
 int n3dsinput_handle_event();

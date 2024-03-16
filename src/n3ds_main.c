@@ -220,12 +220,25 @@ static inline char *prompt_for_boolean(char *prompt, bool default_val) {
 
 static void prompt_for_stream_settings(PCONFIGURATION config) {
     char *setting_names[] = {
-        "width",    "height",     "fps",    "dual_screen", "motion_controls",
-        "bitrate",  "packetsize", "nosops", "localaudio",  "quitappafter",
-        "viewonly", "hwdecode",   "debug",
+        "width",
+        "height",
+        "fps",
+        "dual_screen",
+        "motion_controls",
+        "bitrate",
+        "packetsize",
+        "nosops",
+        "localaudio",
+        "quitappafter",
+        "viewonly",
+        "hwdecode",
+        "swapfacebuttons",
+        "swaptriggersandshoulders",
+        "debug",
     };
     char argument_ids[] = {
-        'c', 'd', 'v', '9', 'e', 'g', 'h', 'l', 'n', '1', '2', '8', 'Z',
+        'c', 'd', 'v', '9', 'e', 'g', 'h', 'l',
+        'n', '1', '2', '8', 'A', 'B', 'Z',
     };
     int settings_len = sizeof(argument_ids);
     char *setting_buff = malloc(MAX_INPUT_CHAR);
@@ -313,6 +326,21 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         } else if (strcmp("hwdecode", setting_names[idx]) == 0) {
             char *bool_str = prompt_for_boolean("Use hardware video decoder",
                                                 config->hwdecode);
+            if (bool_str != NULL) {
+                sprintf(setting_buff, bool_str);
+            }
+        } else if (strcmp("swapfacebuttons", setting_names[idx]) == 0) {
+            char *bool_str = prompt_for_boolean(
+                "Swaps A/B and X/Y to match Xbox controller layout",
+                config->swap_face_buttons);
+            if (bool_str != NULL) {
+                sprintf(setting_buff, bool_str);
+            }
+        } else if (strcmp("swaptriggersandshoulders", setting_names[idx]) ==
+                   0) {
+            char *bool_str = prompt_for_boolean(
+                "Swaps L/ZL and R/ZR for a more natural feel",
+                config->swap_triggers_and_shoulders);
             if (bool_str != NULL) {
                 sprintf(setting_buff, bool_str);
             }
@@ -457,12 +485,14 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
 
     printf(
         "Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
- viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, dual_screen=%d, motion_controls=%d, debug=%d\n",
+ viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d,\
+ dual_screen=%d, motion_controls=%d, debug=%d\n",
         config->stream.width, config->stream.height, config->stream.fps,
         config->stream.bitrate, config->sops, config->localaudio,
         config->quitappafter, config->viewonly, config->rotate,
-        config->stream.encryptionFlags, config->hwdecode, config->dual_screen,
-        config->motion_controls, config->debug_level);
+        config->stream.encryptionFlags, config->hwdecode,
+        config->swap_face_buttons, config->swap_triggers_and_shoulders,
+        config->dual_screen, config->motion_controls, config->debug_level);
 
     int status = LiStartConnection(&server->serverInfo, &config->stream,
                                    &n3ds_connection_callbacks, video_callbacks,
@@ -565,7 +595,8 @@ int main(int argc, char *argv[]) {
                         printf("View-only mode enabled, no input will be sent "
                                "to the host computer\n");
                 } else {
-                    n3dsinput_init();
+                    n3dsinput_init(config.swap_face_buttons,
+                                   config.swap_triggers_and_shoulders);
                 }
                 stream(&server, &config, appId);
 

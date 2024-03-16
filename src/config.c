@@ -87,6 +87,8 @@ static struct option long_options[] = {
   {"hwdecode", required_argument, NULL, '8'},
   {"dual_screen", required_argument, NULL, '9'},
   {"motion_controls", required_argument, NULL, 'e'},
+  {"swapfacebuttons", required_argument, NULL, 'A'},
+  {"swaptriggersandshoulders", required_argument, NULL, 'B'},
   {0, 0, 0, 0},
 };
 
@@ -322,6 +324,21 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     else {
       config->dual_screen = false;
     }
+  case 'A':
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->swap_face_buttons = true;
+    }
+    else {
+      config->swap_face_buttons = false;
+    }
+    break;
+  case 'B':
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->swap_triggers_and_shoulders = true;
+    }
+    else {
+      config->swap_triggers_and_shoulders = false;
+    }
     break;
   case 1:
     if (config->action == NULL)
@@ -385,6 +402,8 @@ void config_save(char* filename, PCONFIGURATION config) {
   write_config_bool(fd, "viewonly", config->viewonly);
   write_config_int(fd, "rotate", config->rotate);
   write_config_bool(fd, "hwdecode", config->hwdecode);
+  write_config_bool(fd, "swapfacebuttons", config->swap_face_buttons);
+  write_config_bool(fd, "swaptriggersandshoulders", config->swap_triggers_and_shoulders);
   write_config_bool(fd, "debug", config->debug_level);
   write_config_bool(fd, "dual_screen", config->dual_screen);
   write_config_bool(fd, "motion_controls", config->motion_controls);
@@ -452,6 +471,8 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->hwdecode = true;
   config->dual_screen = false;
   config->motion_controls = false;
+  config->swap_face_buttons = false;
+  config->swap_triggers_and_shoulders = false;
 
   char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
   if (config_file)
