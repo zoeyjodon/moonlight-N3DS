@@ -20,6 +20,7 @@
 #include "platform_main.h"
 #include "config.h"
 #include "util.h"
+#include "cpu.h"
 
 #include "input/evdev.h"
 #include "audio/audio.h"
@@ -84,6 +85,8 @@ static struct option long_options[] = {
   {"port", required_argument, NULL, '6'},
   {"hdr", no_argument, NULL, '7'},
   {"hwdecode", required_argument, NULL, '8'},
+  {"dual_screen", required_argument, NULL, '9'},
+  {"motion_controls", required_argument, NULL, 'e'},
   {"swapfacebuttons", required_argument, NULL, 'A'},
   {"swaptriggersandshoulders", required_argument, NULL, 'B'},
   {0, 0, 0, 0},
@@ -161,6 +164,14 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     break;
   case 'd':
     config->stream.height = atoi(value);
+    break;
+  case 'e':
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->motion_controls = true;
+    }
+    else {
+      config->motion_controls = false;
+    }
     break;
   case 'g':
     config->stream.bitrate = atoi(value);
@@ -306,6 +317,13 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
       config->hwdecode = false;
     }
     break;
+  case '9':
+    if ((value != NULL) && (strcmp(value, "true") == 0)) {
+      config->dual_screen = true;
+    }
+    else {
+      config->dual_screen = false;
+    }
   case 'A':
     if ((value != NULL) && (strcmp(value, "true") == 0)) {
       config->swap_face_buttons = true;
@@ -387,6 +405,8 @@ void config_save(char* filename, PCONFIGURATION config) {
   write_config_bool(fd, "swapfacebuttons", config->swap_face_buttons);
   write_config_bool(fd, "swaptriggersandshoulders", config->swap_triggers_and_shoulders);
   write_config_bool(fd, "debug", config->debug_level);
+  write_config_bool(fd, "dual_screen", config->dual_screen);
+  write_config_bool(fd, "motion_controls", config->motion_controls);
 
   if (strcmp(config->app, "Steam") != 0)
     write_config_string(fd, "app", config->app);
@@ -410,22 +430,14 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   if (has_fast_aes()) {
     config->stream.encryptionFlags = ENCFLG_ALL;
   }
+  else if (has_slow_aes()) {
+    // For extremely slow CPUs, opt out of audio encryption
+    config->stream.encryptionFlags = ENCFLG_NONE;
+    printf("Disabling encryption on low performance CPU\n");
+  }
   else {
     config->stream.encryptionFlags = ENCFLG_AUDIO;
   }
-
-#ifdef __arm__
-  char cpuinfo[4096] = {};
-  if (read_file("/proc/cpuinfo", cpuinfo, sizeof(cpuinfo) - 1) > 0) {
-    // If this is a ARMv6 CPU (like the Pi 1), we'll assume it's not
-    // powerful enough to handle audio encryption. The Pi 1 could
-    // barely handle Opus decoding alone.
-    if (strstr(cpuinfo, "ARMv6")) {
-      config->stream.encryptionFlags = ENCFLG_NONE;
-      printf("Disabling encryption on low performance CPU\n");
-    }
-  }
-#endif
 
   config->debug_level = 0;
   config->platform = "auto";
@@ -457,6 +469,8 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->stream.fps = 30;
   config->stream.encryptionFlags = ENCFLG_NONE;
   config->hwdecode = true;
+  config->dual_screen = false;
+  config->motion_controls = false;
   config->swap_face_buttons = false;
   config->swap_triggers_and_shoulders = false;
 

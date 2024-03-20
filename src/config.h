@@ -20,6 +20,7 @@
 #include <Limelight.h>
 
 #include <stdbool.h>
+#include "platform_main.h"
 
 #define MAX_INPUTS 6
 
@@ -49,6 +50,8 @@ typedef struct _CONFIGURATION {
   int pin;
   unsigned short port;
   bool hwdecode;
+  bool dual_screen;
+  bool motion_controls;
   bool swap_face_buttons;
   bool swap_triggers_and_shoulders;
 } CONFIGURATION, *PCONFIGURATION;

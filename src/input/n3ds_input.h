@@ -19,7 +19,9 @@
 
 #include <stdbool.h>
 
-enum N3dsTouchType { GAMEPAD, MOUSEPAD, DEBUG_PRINT };
+enum N3dsTouchType { GAMEPAD, MOUSEPAD, DISABLED, DS_TOUCH };
+extern bool enable_gyro;
+extern bool enable_accel;
 
 void n3dsinput_init(bool set_face_swap, bool set_trigger_swap);
 void n3dsinput_cleanup();

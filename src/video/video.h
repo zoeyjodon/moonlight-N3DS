@@ -33,7 +33,7 @@
 #define INIT_VDPAU 2
 #define INIT_VAAPI 3
 
-#define INITIAL_DECODER_BUFFER_SIZE (256*1024)
+#define INITIAL_DECODER_BUFFER_SIZE (256 * 1024)
 
 #ifdef HAVE_X11
 int x11_init(bool vdpau, bool vaapi);
@@ -46,15 +46,11 @@ extern DECODER_RENDERER_CALLBACKS decoder_callbacks_x11_vdpau;
 #endif
 #endif
 #ifdef __3DS__
-int init_px_to_framebuffer(int dest_width,
-                            int dest_height,
-                            int src_width,
-                            int src_height,
-                            int px_size);
+extern bool enable_dual_display;
+int init_px_to_framebuffer(int dest_width, int dest_height, int src_width,
+                           int src_height, int px_size);
 void deinit_px_to_framebuffer();
-void write_px_to_framebuffer(uint8_t* dest,
-                             uint8_t* source,
-                             int px_size);
+void write_px_to_framebuffer(uint8_t *source, int px_size);
 
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds;
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd;
