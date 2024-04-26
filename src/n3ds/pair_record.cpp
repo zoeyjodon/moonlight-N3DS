@@ -64,8 +64,8 @@ void add_pair_address(std::string address) {
 
   FILE* fd = fopen(address_file, "w");
   for (auto addr_string : address_list) {
-    trim(address);
-    fprintf(fd, "%s\n", address.c_str());
+    trim(addr_string);
+    fprintf(fd, "%s\n", addr_string.c_str());
   }
   fclose(fd);
 }
@@ -78,7 +78,7 @@ void remove_pair_address(std::string address) {
 
   FILE* fd = fopen(address_file, "w");
   for (auto addr_string : address_list) {
-    if (addr_string == address) {
+    if (addr_string != address) {
       trim(addr_string);
       fprintf(fd, "%s\n", addr_string.c_str());
     }
