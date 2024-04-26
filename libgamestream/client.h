@@ -28,6 +28,10 @@
 #define MIN_SUPPORTED_GFE_VERSION 3
 #define MAX_SUPPORTED_GFE_VERSION 7
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct _SERVER_DATA {
   char* gpuType;
   bool paired;
@@ -48,3 +52,7 @@ int gs_applist(PSERVER_DATA server, PAPP_LIST *app_list);
 int gs_unpair(PSERVER_DATA server);
 int gs_pair(PSERVER_DATA server, char* pin);
 int gs_quit_app(PSERVER_DATA server);
+
+#ifdef __cplusplus
+}
+#endif

@@ -24,7 +24,7 @@
 #include "platform_main.h"
 
 #include "n3ds/n3ds_connection.h"
-#include "n3ds/pair_record.h"
+#include "n3ds/pair_record.hpp"
 
 #include "audio/audio.h"
 #include "video/video.h"
@@ -39,6 +39,7 @@
 #include <discover.h>
 
 #include <arpa/inet.h>
+#include <exception>
 #include <malloc.h>
 #include <netdb.h>
 #include <netinet/in.h>
@@ -47,6 +48,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <string>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -57,7 +59,6 @@
 #define SOC_BUFFERSIZE 0x100000
 
 #define MAX_INPUT_CHAR 60
-#define MAX_APP_LIST 30
 
 static u32 *SOC_buffer = NULL;
 
@@ -101,8 +102,9 @@ static void n3ds_exit_handler(void) {
     acExit();
 }
 
-static int console_selection_prompt(char *prompt, char **options,
-                                    int option_count, int default_idx) {
+static int console_selection_prompt(char *prompt,
+                                    std::vector<std::string> options,
+                                    int default_idx) {
     int option_idx = default_idx;
     int last_option_idx = -1;
     while (aptMainLoop()) {
@@ -115,11 +117,11 @@ static int console_selection_prompt(char *prompt, char **options,
             printf("Press A to confirm\n");
             printf("Press B to go back\n\n");
 
-            for (int i = 0; i < option_count; i++) {
+            for (int i = 0; i < options.size(); i++) {
                 if (i == option_idx) {
-                    printf(">%s\n", options[i]);
+                    printf(">%s\n", options[i].c_str());
                 } else {
-                    printf("%s\n", options[i]);
+                    printf("%s\n", options[i].c_str());
                 }
             }
             last_option_idx = option_idx;
@@ -141,7 +143,7 @@ static int console_selection_prompt(char *prompt, char **options,
             return -1;
         }
         if (kDown & KEY_DOWN) {
-            if (option_idx < option_count - 1) {
+            if (option_idx < options.size() - 1) {
                 option_idx++;
             }
         } else if (kDown & KEY_UP) {
@@ -154,72 +156,78 @@ static int console_selection_prompt(char *prompt, char **options,
     exit(0);
 }
 
-static char *prompt_for_action(PSERVER_DATA server) {
+static std::string prompt_for_action(PSERVER_DATA server) {
     if (server->paired) {
-        char *actions[] = {
+        std::vector<std::string> actions = {
             "stream",
             "quit stream",
             "stream settings",
             "unpair",
         };
-        int actions_len = sizeof(actions) / sizeof(actions[0]);
-        int idx = console_selection_prompt("Select an action", actions,
-                                           actions_len, 0);
+        int idx = console_selection_prompt("Select an action", actions, 0);
         if (idx < 0) {
-            return NULL;
+            return "";
         }
         return actions[idx];
     }
-    char *actions[] = {"pair"};
-    int actions_len = sizeof(actions) / sizeof(actions[0]);
-    int idx =
-        console_selection_prompt("Select an action", actions, actions_len, 0);
+    std::vector<std::string> actions = {"pair"};
+    int idx = console_selection_prompt("Select an action", actions, 0);
     if (idx < 0) {
-        return NULL;
+        return "";
     }
     return actions[idx];
 }
 
-static char *prompt_for_address() {
-    char *address_list[MAX_PAIRED_DEVICES + 1];
-    int address_count = 0;
-    list_paired_addresses(address_list, &address_count);
-
-    address_list[address_count] = "new";
-    int idx = console_selection_prompt("Select a server address", address_list,
-                                       address_count + 1, 0);
+static std::string prompt_for_address() {
+    auto address_list = list_paired_addresses();
+    address_list.push_back("new");
+    int idx =
+        console_selection_prompt("Select a server address", address_list, 0);
     if (idx < 0) {
-        return NULL;
-    } else if (strcmp(address_list[idx], "new") != 0) {
+        return "";
+    } else if (address_list[idx] != "new") {
         return address_list[idx];
     }
 
     // Prompt users for a custom address
     SwkbdState swkbd;
-    char *addr_buff = malloc(MAX_INPUT_CHAR);
+    char *addr_buff = (char *)malloc(MAX_INPUT_CHAR);
     swkbdInit(&swkbd, SWKBD_TYPE_NORMAL, 3, -1);
     swkbdSetHintText(&swkbd, "Address of host to connect to");
     swkbdInputText(&swkbd, addr_buff, MAX_INPUT_CHAR);
-    addr_buff = realloc(addr_buff, strlen(addr_buff) + 1);
-    return addr_buff;
+    std::string addr_string = std::string(addr_buff);
+    free(addr_buff);
+    return addr_string;
 }
 
-static inline char *prompt_for_boolean(char *prompt, bool default_val) {
-    char *options[] = {
+static inline std::string prompt_for_boolean(char *prompt, bool default_val) {
+    std::vector<std::string> options = {
         "true",
         "false",
     };
-    int options_len = sizeof(options) / sizeof(options[0]);
-    int idx = console_selection_prompt(prompt, options, options_len,
-                                       default_val ? 0 : 1);
+    int idx = console_selection_prompt(prompt, options, default_val ? 0 : 1);
     if (idx < 0) {
         idx = default_val ? 0 : 1;
     }
     return options[idx];
 }
 
+static inline std::string prompt_for_string(std::string initial_text) {
+    char *setting_buff = (char *)malloc(MAX_INPUT_CHAR);
+    memset(setting_buff, 0, MAX_INPUT_CHAR);
+
+    SwkbdState swkbd;
+    swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
+    swkbdSetInitialText(&swkbd, initial_text.c_str());
+    swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
+    std::string setting_str = std::string(setting_buff);
+
+    free(setting_buff);
+    return setting_str;
+}
+
 static void prompt_for_stream_settings(PCONFIGURATION config) {
-    char *setting_names[] = {
+    std::vector<std::string> setting_names = {
         "width",
         "height",
         "fps",
@@ -240,125 +248,82 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         'c', 'd', 'v', '9', 'e', 'g', 'h', 'l',
         'n', '1', '2', '8', 'A', 'B', 'Z',
     };
-    int settings_len = sizeof(argument_ids);
-    char *setting_buff = malloc(MAX_INPUT_CHAR);
-    char *prompt_buff = malloc(200);
     int idx = 0;
     while (1) {
-        sprintf(prompt_buff, "Select a setting");
+        std::string prompt = "Select a setting";
         if (config->stream.width != GSP_SCREEN_HEIGHT_TOP &&
             config->stream.width != GSP_SCREEN_HEIGHT_TOP_2X) {
-            strcat(prompt_buff, "\n\nWARNING: Using an unsupported width may "
-                                "cause issues (3DS supports 400 or 800)\n");
+            prompt += "\n\nWARNING: Using an unsupported width may "
+                      "cause issues (3DS supports 400 or 800)\n";
         }
         if (config->stream.height != GSP_SCREEN_WIDTH) {
-            strcat(prompt_buff, "\n\nWARNING: Using an unsupported height may "
-                                "cause issues (3DS supports 240)\n");
+            prompt += "\n\nWARNING: Using an unsupported height may "
+                      "cause issues (3DS supports 240)\n";
         }
-        idx = console_selection_prompt(prompt_buff, setting_names, settings_len,
+        idx = console_selection_prompt((char *)prompt.c_str(), setting_names,
                                        idx);
         if (idx < 0) {
             break;
         }
 
-        SwkbdState swkbd;
-        memset(setting_buff, 0, MAX_INPUT_CHAR);
-        if (strcmp("width", setting_names[idx]) == 0) {
-            swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
-            sprintf(setting_buff, "%d", config->stream.width);
-            swkbdSetInitialText(&swkbd, setting_buff);
-            swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
-        } else if (strcmp("height", setting_names[idx]) == 0) {
-            swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
-            sprintf(setting_buff, "%d", config->stream.height);
-            swkbdSetInitialText(&swkbd, setting_buff);
-            swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
-        } else if (strcmp("dual_screen", setting_names[idx]) == 0) {
-            char *bool_str =
+        std::string setting_str = "";
+        if ("width" == setting_names[idx]) {
+            setting_str =
+                prompt_for_string(std::to_string(config->stream.width));
+        } else if ("height" == setting_names[idx]) {
+            std::string setting_str =
+                prompt_for_string(std::to_string(config->stream.height));
+        } else if ("dual_screen" == setting_names[idx]) {
+            setting_str =
                 prompt_for_boolean("Enable Dual Screens", config->dual_screen);
-            if (bool_str != NULL) {
-                sprintf(setting_buff, bool_str);
-            }
-        } else if (strcmp("motion_controls", setting_names[idx]) == 0) {
-            char *bool_str = prompt_for_boolean("Enable Motion Controls",
-                                                config->motion_controls);
-            if (bool_str != NULL) {
-                sprintf(setting_buff, bool_str);
-            }
-        } else if (strcmp("fps", setting_names[idx]) == 0) {
-            swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
-            sprintf(setting_buff, "%d", config->stream.fps);
-            swkbdSetInitialText(&swkbd, setting_buff);
-            swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
-        } else if (strcmp("bitrate", setting_names[idx]) == 0) {
-            swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
-            sprintf(setting_buff, "%d", config->stream.bitrate);
-            swkbdSetInitialText(&swkbd, setting_buff);
-            swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
-        } else if (strcmp("packetsize", setting_names[idx]) == 0) {
-            swkbdInit(&swkbd, SWKBD_TYPE_NUMPAD, 1, 8);
-            sprintf(setting_buff, "%d", config->stream.packetSize);
-            swkbdSetInitialText(&swkbd, setting_buff);
-            swkbdInputText(&swkbd, setting_buff, MAX_INPUT_CHAR);
-        } else if (strcmp("nosops", setting_names[idx]) == 0) {
-            char *bool_str = prompt_for_boolean("Disable sops", !config->sops);
-            if (bool_str != NULL) {
-                sprintf(setting_buff, bool_str);
-            }
-        } else if (strcmp("localaudio", setting_names[idx]) == 0) {
-            char *bool_str =
+        } else if ("motion_controls" == setting_names[idx]) {
+            setting_str = prompt_for_boolean("Enable Motion Controls",
+                                             config->motion_controls);
+        } else if ("fps" == setting_names[idx]) {
+            std::string setting_str =
+                prompt_for_string(std::to_string(config->stream.fps));
+        } else if ("bitrate" == setting_names[idx]) {
+            std::string setting_str =
+                prompt_for_string(std::to_string(config->stream.bitrate));
+        } else if ("packetsize" == setting_names[idx]) {
+            std::string setting_str =
+                prompt_for_string(std::to_string(config->stream.packetSize));
+        } else if ("nosops" == setting_names[idx]) {
+            setting_str = prompt_for_boolean("Disable sops", !config->sops);
+        } else if ("localaudio" == setting_names[idx]) {
+            setting_str =
                 prompt_for_boolean("Enable local audio", config->localaudio);
-            if (bool_str != NULL) {
-                sprintf(setting_buff, bool_str);
-            }
-        } else if (strcmp("quitappafter", setting_names[idx]) == 0) {
-            char *bool_str = prompt_for_boolean("Quit app after streaming",
-                                                config->quitappafter);
-            if (bool_str != NULL) {
-                sprintf(setting_buff, bool_str);
-            }
-        } else if (strcmp("viewonly", setting_names[idx]) == 0) {
-            char *bool_str = prompt_for_boolean("Disable controller input",
-                                                config->viewonly);
-            if (bool_str != NULL) {
-                sprintf(setting_buff, bool_str);
-            }
-        } else if (strcmp("hwdecode", setting_names[idx]) == 0) {
-            char *bool_str = prompt_for_boolean("Use hardware video decoder",
-                                                config->hwdecode);
-            if (bool_str != NULL) {
-                sprintf(setting_buff, bool_str);
-            }
-        } else if (strcmp("swapfacebuttons", setting_names[idx]) == 0) {
-            char *bool_str = prompt_for_boolean(
+        } else if ("quitappafter" == setting_names[idx]) {
+            setting_str = prompt_for_boolean("Quit app after streaming",
+                                             config->quitappafter);
+        } else if ("viewonly" == setting_names[idx]) {
+            setting_str = prompt_for_boolean("Disable controller input",
+                                             config->viewonly);
+        } else if ("hwdecode" == setting_names[idx]) {
+            setting_str = prompt_for_boolean("Use hardware video decoder",
+                                             config->hwdecode);
+        } else if ("swapfacebuttons" == setting_names[idx]) {
+            setting_str = prompt_for_boolean(
                 "Swaps A/B and X/Y to match Xbox controller layout",
                 config->swap_face_buttons);
-            if (bool_str != NULL) {
-                sprintf(setting_buff, bool_str);
-            }
-        } else if (strcmp("swaptriggersandshoulders", setting_names[idx]) ==
-                   0) {
-            char *bool_str = prompt_for_boolean(
+        } else if ("swaptriggersandshoulders" == setting_names[idx]) {
+            setting_str = prompt_for_boolean(
                 "Swaps L/ZL and R/ZR for a more natural feel",
                 config->swap_triggers_and_shoulders);
-            if (bool_str != NULL) {
-                sprintf(setting_buff, bool_str);
-            }
-        } else if (strcmp("debug", setting_names[idx]) == 0) {
-            char *bool_str =
+        } else if ("debug" == setting_names[idx]) {
+            setting_str =
                 prompt_for_boolean("Enable debug logs", config->debug_level);
-            if (bool_str != NULL) {
-                sprintf(setting_buff, bool_str);
-            }
         }
 
-        parse_argument(argument_ids[idx], setting_buff, config);
+        if (!setting_str.empty()) {
+            parse_argument(argument_ids[idx], (char *)setting_str.c_str(),
+                           config);
+        }
     }
 
     // Update the config file
     char *config_file_path = (char *)MOONLIGHT_3DS_PATH "/moonlight.conf";
     config_save(config_file_path, config);
-    free(setting_buff);
 }
 
 static void init_3ds() {
@@ -396,22 +361,16 @@ static int prompt_for_app_id(PSERVER_DATA server) {
         return -1;
     }
 
-    char *app_names[MAX_APP_LIST];
-    int app_ids[MAX_APP_LIST];
-    int idx = 0;
-    for (idx = 0; idx < MAX_APP_LIST; idx++) {
-        if (list == NULL) {
-            break;
-        }
-
-        printf("%d. %s\n", idx, list->name);
-        app_names[idx] = malloc(strlen(list->name));
-        strcpy(app_names[idx], list->name);
-        app_ids[idx] = list->id;
+    std::vector<std::string> app_names;
+    std::vector<int> app_ids;
+    while (list != NULL) {
+        printf("%d. %s\n", list->id, list->name);
+        app_names.push_back(std::string(list->name));
+        app_ids.push_back(list->id);
         list = list->next;
     }
 
-    int id_idx = console_selection_prompt("Select an app", app_names, idx, 0);
+    int id_idx = console_selection_prompt("Select an app", app_names, 0);
     if (id_idx == -1) {
         return -1;
     }
@@ -528,17 +487,18 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     }
 }
 
-int main(int argc, char *argv[]) {
+int main_loop(int argc, char *argv[]) {
     init_3ds();
 
     CONFIGURATION config;
     config_parse(argc, argv, &config);
 
     while (aptMainLoop()) {
-        config.address = prompt_for_address();
-        if (config.address == NULL) {
+        auto address_string = prompt_for_address();
+        if (address_string.empty()) {
             continue;
         }
+        config.address = (char *)address_string.c_str();
 
         SERVER_DATA server;
         printf("Connecting to %s...\n", config.address);
@@ -579,10 +539,13 @@ int main(int argc, char *argv[]) {
         }
 
         while (aptMainLoop()) {
-            config.action = prompt_for_action(&server);
-            if (config.action == NULL) {
+            std::string action = prompt_for_action(&server);
+            if (action.empty()) {
                 break;
-            } else if (strcmp("stream", config.action) == 0) {
+            }
+            config.action = (char *)action.c_str();
+
+            if (strcmp("stream", config.action) == 0) {
                 int appId = prompt_for_app_id(&server);
                 if (appId == -1) {
                     continue;
@@ -644,6 +607,25 @@ int main(int argc, char *argv[]) {
 
             wait_for_button(NULL);
         }
+    }
+    return 0;
+}
+
+int main(int argc, char *argv[]) {
+    try {
+        main_loop(argc, argv);
+    } catch (const std::exception &ex) {
+        fprintf(stderr, "Moonlight crashed with the following error: %s\n",
+                ex.what());
+        return 1;
+    } catch (const std::string &ex) {
+        fprintf(stderr,
+                "Moonlight crashed with the following error message: %s\n",
+                ex.c_str());
+        return 1;
+    } catch (...) {
+        fprintf(stderr, "Moonlight crashed with an unknown error\n");
+        return 1;
     }
     return 0;
 }

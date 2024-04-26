@@ -17,7 +17,13 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include <stdbool.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 enum N3dsTouchType { GAMEPAD, MOUSEPAD, DISABLED, DS_TOUCH };
 extern bool enable_gyro;
@@ -27,3 +33,7 @@ void n3dsinput_init(bool set_face_swap, bool set_trigger_swap);
 void n3dsinput_cleanup();
 void n3dsinput_set_touch(enum N3dsTouchType ttype);
 int n3dsinput_handle_event();
+
+#ifdef __cplusplus
+}
+#endif

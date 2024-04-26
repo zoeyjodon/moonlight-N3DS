@@ -17,9 +17,15 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#define MOONLIGHT_3DS_PATH "/3ds/moonlight"
-#define MAX_PAIRED_DEVICES 30
+#pragma once
 
-void add_pair_address(char* address);
-void remove_pair_address(char* address);
-void list_paired_addresses(char** address_list, int* address_count);
+#define MOONLIGHT_3DS_PATH "/3ds/moonlight"
+
+#ifdef __cplusplus
+#include <string>
+#include <vector>
+
+void add_pair_address(std::string address);
+void remove_pair_address(std::string address);
+std::vector<std::string> list_paired_addresses();
+#endif

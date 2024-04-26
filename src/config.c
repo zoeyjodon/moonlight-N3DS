@@ -35,7 +35,7 @@
 #include <limits.h>
 
 #ifdef __3DS__
-#include "n3ds/pair_record.h"
+#include "n3ds/pair_record.hpp"
 
 extern ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
 #endif
