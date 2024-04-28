@@ -52,7 +52,6 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <string.h>
 
 #define SOC_ALIGN 0x1000
 // 0x40000 for each enet host (2 hosts total)
@@ -275,10 +274,11 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
             config->stream.height =
                 prompt_for_int(std::to_string(config->stream.height));
         } else if ("dual_screen" == setting_names[idx]) {
-            config->dual_screen = prompt_for_boolean("Enable Dual Screens", config->dual_screen);
+            config->dual_screen =
+                prompt_for_boolean("Enable Dual Screens", config->dual_screen);
         } else if ("motion_controls" == setting_names[idx]) {
-            config->motion_controls = prompt_for_boolean("Enable Motion Controls",
-                                             config->motion_controls);
+            config->motion_controls = prompt_for_boolean(
+                "Enable Motion Controls", config->motion_controls);
         } else if ("fps" == setting_names[idx]) {
             config->stream.fps =
                 prompt_for_int(std::to_string(config->stream.fps));
@@ -294,14 +294,14 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
             config->localaudio =
                 prompt_for_boolean("Enable local audio", config->localaudio);
         } else if ("quitappafter" == setting_names[idx]) {
-            config->quitappafter = prompt_for_boolean("Quit app after streaming",
-                                             config->quitappafter);
+            config->quitappafter = prompt_for_boolean(
+                "Quit app after streaming", config->quitappafter);
         } else if ("viewonly" == setting_names[idx]) {
             config->viewonly = prompt_for_boolean("Disable controller input",
-                                             config->viewonly);
+                                                  config->viewonly);
         } else if ("hwdecode" == setting_names[idx]) {
             config->hwdecode = prompt_for_boolean("Use hardware video decoder",
-                                             config->hwdecode);
+                                                  config->hwdecode);
         } else if ("swapfacebuttons" == setting_names[idx]) {
             config->swap_face_buttons = prompt_for_boolean(
                 "Swaps A/B and X/Y to match Xbox controller layout",

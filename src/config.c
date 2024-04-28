@@ -191,8 +191,8 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     config->inputsCount++;
     inputAdded = true;
     break;
-  case 'k':
 #ifndef __3DS__
+  case 'k':
     config->mapping = get_path(value, getenv("XDG_DATA_DIRS"));
     if (config->mapping == NULL) {
       fprintf(stderr, "Unable to open custom mapping file: %s\n", value);
@@ -324,6 +324,7 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     else {
       config->dual_screen = false;
     }
+    break;
   case 'A':
     if ((value != NULL) && (strcmp(value, "true") == 0)) {
       config->swap_face_buttons = true;
@@ -349,6 +350,7 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
       perror("Too many options");
       exit(-1);
     }
+    break;
   }
 }
 
