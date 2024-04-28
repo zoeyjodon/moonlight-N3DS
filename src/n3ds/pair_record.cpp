@@ -43,7 +43,7 @@ inline void rtrim(std::string &s) {
 }
 
 // trim from both ends (in place)
-inline void trim(std::string &s) {
+void trim(std::string &s) {
     rtrim(s);
     ltrim(s);
 }

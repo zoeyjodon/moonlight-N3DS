@@ -52,6 +52,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <string.h>
 
 #define SOC_ALIGN 0x1000
 // 0x40000 for each enet host (2 hosts total)
@@ -65,11 +66,11 @@ static u32 *SOC_buffer = NULL;
 static PrintConsole topScreen;
 static PrintConsole bottomScreen;
 
-static inline void wait_for_button(char *prompt) {
-    if (prompt == NULL) {
+static inline void wait_for_button(std::string prompt = "") {
+    if (prompt.empty()) {
         printf("\nPress any button to continue\n");
     } else {
-        printf("\n%s\n", prompt);
+        printf("\n%s\n", prompt.c_str());
     }
     while (aptMainLoop()) {
         gfxSwapBuffers();
@@ -102,7 +103,7 @@ static void n3ds_exit_handler(void) {
     acExit();
 }
 
-static int console_selection_prompt(char *prompt,
+static int console_selection_prompt(std::string prompt,
                                     std::vector<std::string> options,
                                     int default_idx) {
     int option_idx = default_idx;
@@ -110,8 +111,8 @@ static int console_selection_prompt(char *prompt,
     while (aptMainLoop()) {
         if (option_idx != last_option_idx) {
             consoleClear();
-            if (prompt) {
-                printf("%s\n", prompt);
+            if (!prompt.empty()) {
+                printf("%s\n", prompt.c_str());
             }
             printf("Press up/down to select\n");
             printf("Press A to confirm\n");
@@ -197,10 +198,11 @@ static std::string prompt_for_address() {
     swkbdInputText(&swkbd, addr_buff, MAX_INPUT_CHAR);
     std::string addr_string = std::string(addr_buff);
     free(addr_buff);
+    trim(addr_string);
     return addr_string;
 }
 
-static inline std::string prompt_for_boolean(char *prompt, bool default_val) {
+static bool prompt_for_boolean(std::string prompt, bool default_val) {
     std::vector<std::string> options = {
         "true",
         "false",
@@ -209,10 +211,10 @@ static inline std::string prompt_for_boolean(char *prompt, bool default_val) {
     if (idx < 0) {
         idx = default_val ? 0 : 1;
     }
-    return options[idx];
+    return idx == 0;
 }
 
-static inline std::string prompt_for_string(std::string initial_text) {
+static int prompt_for_int(std::string initial_text) {
     char *setting_buff = (char *)malloc(MAX_INPUT_CHAR);
     memset(setting_buff, 0, MAX_INPUT_CHAR);
 
@@ -223,7 +225,8 @@ static inline std::string prompt_for_string(std::string initial_text) {
     std::string setting_str = std::string(setting_buff);
 
     free(setting_buff);
-    return setting_str;
+    trim(setting_str);
+    return std::stoi(setting_str);
 }
 
 static void prompt_for_stream_settings(PCONFIGURATION config) {
@@ -260,64 +263,56 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
             prompt += "\n\nWARNING: Using an unsupported height may "
                       "cause issues (3DS supports 240)\n";
         }
-        idx = console_selection_prompt((char *)prompt.c_str(), setting_names,
-                                       idx);
+        idx = console_selection_prompt(prompt, setting_names, idx);
         if (idx < 0) {
             break;
         }
 
-        std::string setting_str = "";
         if ("width" == setting_names[idx]) {
-            setting_str =
-                prompt_for_string(std::to_string(config->stream.width));
+            config->stream.width =
+                prompt_for_int(std::to_string(config->stream.width));
         } else if ("height" == setting_names[idx]) {
-            std::string setting_str =
-                prompt_for_string(std::to_string(config->stream.height));
+            config->stream.height =
+                prompt_for_int(std::to_string(config->stream.height));
         } else if ("dual_screen" == setting_names[idx]) {
-            setting_str =
-                prompt_for_boolean("Enable Dual Screens", config->dual_screen);
+            config->dual_screen = prompt_for_boolean("Enable Dual Screens", config->dual_screen);
         } else if ("motion_controls" == setting_names[idx]) {
-            setting_str = prompt_for_boolean("Enable Motion Controls",
+            config->motion_controls = prompt_for_boolean("Enable Motion Controls",
                                              config->motion_controls);
         } else if ("fps" == setting_names[idx]) {
-            std::string setting_str =
-                prompt_for_string(std::to_string(config->stream.fps));
+            config->stream.fps =
+                prompt_for_int(std::to_string(config->stream.fps));
         } else if ("bitrate" == setting_names[idx]) {
-            std::string setting_str =
-                prompt_for_string(std::to_string(config->stream.bitrate));
+            config->stream.bitrate =
+                prompt_for_int(std::to_string(config->stream.bitrate));
         } else if ("packetsize" == setting_names[idx]) {
-            std::string setting_str =
-                prompt_for_string(std::to_string(config->stream.packetSize));
+            config->stream.packetSize =
+                prompt_for_int(std::to_string(config->stream.packetSize));
         } else if ("nosops" == setting_names[idx]) {
-            setting_str = prompt_for_boolean("Disable sops", !config->sops);
+            config->sops = !prompt_for_boolean("Disable sops", !config->sops);
         } else if ("localaudio" == setting_names[idx]) {
-            setting_str =
+            config->localaudio =
                 prompt_for_boolean("Enable local audio", config->localaudio);
         } else if ("quitappafter" == setting_names[idx]) {
-            setting_str = prompt_for_boolean("Quit app after streaming",
+            config->quitappafter = prompt_for_boolean("Quit app after streaming",
                                              config->quitappafter);
         } else if ("viewonly" == setting_names[idx]) {
-            setting_str = prompt_for_boolean("Disable controller input",
+            config->viewonly = prompt_for_boolean("Disable controller input",
                                              config->viewonly);
         } else if ("hwdecode" == setting_names[idx]) {
-            setting_str = prompt_for_boolean("Use hardware video decoder",
+            config->hwdecode = prompt_for_boolean("Use hardware video decoder",
                                              config->hwdecode);
         } else if ("swapfacebuttons" == setting_names[idx]) {
-            setting_str = prompt_for_boolean(
+            config->swap_face_buttons = prompt_for_boolean(
                 "Swaps A/B and X/Y to match Xbox controller layout",
                 config->swap_face_buttons);
         } else if ("swaptriggersandshoulders" == setting_names[idx]) {
-            setting_str = prompt_for_boolean(
+            config->swap_triggers_and_shoulders = prompt_for_boolean(
                 "Swaps L/ZL and R/ZR for a more natural feel",
                 config->swap_triggers_and_shoulders);
         } else if ("debug" == setting_names[idx]) {
-            setting_str =
+            config->debug_level =
                 prompt_for_boolean("Enable debug logs", config->debug_level);
-        }
-
-        if (!setting_str.empty()) {
-            parse_argument(argument_ids[idx], (char *)setting_str.c_str(),
-                           config);
         }
     }
 
@@ -350,7 +345,7 @@ static void init_3ds() {
     status |= NDMU_LockState();
     if (R_FAILED(status)) {
         printf("Warning: failed to enter exclusive NDM state: %08lX\n", status);
-        wait_for_button(NULL);
+        wait_for_button();
     }
 }
 
@@ -521,7 +516,7 @@ int main_loop(int argc, char *argv[]) {
             exit(-1);
         } else if (ret != GS_OK) {
             fprintf(stderr, "Can't connect to server %s\n", config.address);
-            wait_for_button(NULL);
+            wait_for_button();
             continue;
         }
 
@@ -605,7 +600,7 @@ int main_loop(int argc, char *argv[]) {
             } else
                 fprintf(stderr, "%s is not a valid action\n", config.action);
 
-            wait_for_button(NULL);
+            wait_for_button();
         }
     }
     return 0;

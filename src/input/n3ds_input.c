@@ -25,6 +25,8 @@
 #include <Limelight.h>
 #include <limits.h>
 #include <stdio.h>
+#include <string.h>
+#include <math.h>
 
 #define QUIT_BUTTONS (PLAY_FLAG | BACK_FLAG | LB_FLAG | RB_FLAG)
 #define TOUCH_GAMEPAD_BUTTONS (SPECIAL_FLAG | LS_CLK_FLAG | RS_CLK_FLAG)
