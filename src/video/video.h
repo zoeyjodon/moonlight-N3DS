@@ -17,6 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include <Limelight.h>
 
 #include <stdbool.h>
@@ -34,6 +36,10 @@
 #define INIT_VAAPI 3
 
 #define INITIAL_DECODER_BUFFER_SIZE (256 * 1024)
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef HAVE_X11
 int x11_init(bool vdpau, bool vaapi);
@@ -57,4 +63,8 @@ extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd;
 #endif
 #ifdef HAVE_SDL
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_sdl;
+#endif
+
+#ifdef __cplusplus
+}
 #endif

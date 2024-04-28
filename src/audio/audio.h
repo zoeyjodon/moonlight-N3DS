@@ -17,9 +17,15 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include <stdbool.h>
 
 #include <Limelight.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifdef HAVE_ALSA
 extern AUDIO_RENDERER_CALLBACKS audio_callbacks_alsa;
@@ -37,4 +43,8 @@ extern AUDIO_RENDERER_CALLBACKS audio_callbacks_oss;
 #ifdef __3DS__
 extern bool n3ds_audio_disabled;
 extern AUDIO_RENDERER_CALLBACKS audio_callbacks_n3ds;
+#endif
+
+#ifdef __cplusplus
+}
 #endif

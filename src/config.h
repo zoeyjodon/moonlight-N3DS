@@ -17,12 +17,18 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include <Limelight.h>
 
 #include <stdbool.h>
 #include "platform_main.h"
 
 #define MAX_INPUTS 6
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef struct _CONFIGURATION {
   STREAM_CONFIGURATION stream;
@@ -62,3 +68,7 @@ bool config_file_parse(char* filename, PCONFIGURATION config);
 void config_parse(int argc, char* argv[], PCONFIGURATION config);
 void parse_argument(int c, char* value, PCONFIGURATION config);
 void config_save(char* filename, PCONFIGURATION config);
+
+#ifdef __cplusplus
+}
+#endif

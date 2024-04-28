@@ -17,9 +17,19 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#pragma once
+
 #include <Limelight.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 extern bool n3ds_connection_closed;
 extern bool n3ds_connection_debug;
 extern bool n3ds_enable_motion;
 extern CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks;
+
+#ifdef __cplusplus
+ }
+#endif
