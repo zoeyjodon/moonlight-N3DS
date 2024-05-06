@@ -101,12 +101,12 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     image_width = width;
     image_height = height;
     pixel_size = gspGetBytesPerPixel(px_fmt);
-    yuv_img_buffer = linearAlloc(width * height * pixel_size);
+    yuv_img_buffer = (u8*)linearAlloc(width * height * pixel_size);
     if (!yuv_img_buffer) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
     }
-    rgb_img_buffer = linearAlloc(width * height * pixel_size);
+    rgb_img_buffer = (u8*)linearAlloc(width * height * pixel_size);
     if (!rgb_img_buffer) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
@@ -116,7 +116,7 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
                            INITIAL_DECODER_BUFFER_SIZE +
                                AV_INPUT_BUFFER_PADDING_SIZE);
     mvdstdGenerateDefaultConfig(&mvdstd_config, image_width, image_height,
-                                image_width, image_height, NULL, yuv_img_buffer,
+                                image_width, image_height, NULL, (u32*)yuv_img_buffer,
                                 NULL);
     MVDSTD_SetConfig(&mvdstd_config);
 
@@ -200,7 +200,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
         write_px_to_framebuffer(rgb_img_buffer, pixel_size);
     }
 
-    n3ds_decode(nal_unit_buffer, length);
+    n3ds_decode((unsigned char*)nal_unit_buffer, length);
     yuv_to_rgb(rgb_img_buffer, yuv_img_buffer, image_width, image_height,
                pixel_size);
 

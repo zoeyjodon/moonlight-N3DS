@@ -27,6 +27,10 @@
 #define VDPAU_ACCELERATION 0x40
 #define VAAPI_ACCELERATION 0x80
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 enum decoders {SOFTWARE, VDPAU, VAAPI};
 extern enum decoders ffmpeg_decoder;
 
@@ -36,3 +40,7 @@ void ffmpeg_destroy(void);
 int ffmpeg_draw_frame(AVFrame *pict);
 AVFrame* ffmpeg_get_frame(bool native_frame);
 int ffmpeg_decode(unsigned char* indata, int inlen);
+
+#ifdef __cplusplus
+}
+#endif

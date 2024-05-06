@@ -146,7 +146,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
     image_height = height;
     pixel_size = gspGetBytesPerPixel(px_fmt);
 
-    img_buffer = linearAlloc(width * height * pixel_size);
+    img_buffer = (u8*)linearAlloc(width * height * pixel_size);
     if (!img_buffer) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
@@ -169,12 +169,12 @@ static inline int init_px_to_framebuffer_2d(int dest_width, int dest_height,
     // Generate LUTs so we don't have to calculate pixel rotation while
     // streaming.
     offset_lut_size = dest_width * dest_height;
-    src_offset_lut = malloc(sizeof(int) * offset_lut_size);
+    src_offset_lut = (int*)malloc(sizeof(int) * offset_lut_size);
     if (!src_offset_lut) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
     }
-    dest_offset_lut = malloc(sizeof(int) * offset_lut_size);
+    dest_offset_lut = (int*)malloc(sizeof(int) * offset_lut_size);
     if (!dest_offset_lut) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
@@ -199,17 +199,17 @@ static inline int init_px_to_framebuffer_3d(int dest_width, int dest_height,
     // Generate LUTs so we don't have to calculate pixel rotation while
     // streaming.
     offset_lut_size_3d = dest_width * dest_height;
-    src_offset_lut_3d_l = malloc(sizeof(int) * offset_lut_size_3d);
+    src_offset_lut_3d_l = (int*)malloc(sizeof(int) * offset_lut_size_3d);
     if (!src_offset_lut_3d_l) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
     }
-    src_offset_lut_3d_r = malloc(sizeof(int) * offset_lut_size_3d);
+    src_offset_lut_3d_r = (int*)malloc(sizeof(int) * offset_lut_size_3d);
     if (!src_offset_lut_3d_r) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
     }
-    dest_offset_lut_3d = malloc(sizeof(int) * offset_lut_size_3d);
+    dest_offset_lut_3d = (int*)malloc(sizeof(int) * offset_lut_size_3d);
     if (!dest_offset_lut_3d) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
@@ -238,17 +238,17 @@ static inline int init_px_to_framebuffer_ds(int dest_width, int dest_height,
     // Generate LUTs so we don't have to calculate pixel rotation while
     // streaming.
     offset_lut_size_ds_bottom = GSP_SCREEN_HEIGHT_BOTTOM * dest_height;
-    src_offset_lut_ds_top = malloc(sizeof(int) * offset_lut_size);
+    src_offset_lut_ds_top = (int*)malloc(sizeof(int) * offset_lut_size);
     if (!src_offset_lut_ds_top) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
     }
-    src_offset_lut_ds_bottom = malloc(sizeof(int) * offset_lut_size_ds_bottom);
+    src_offset_lut_ds_bottom = (int*)malloc(sizeof(int) * offset_lut_size_ds_bottom);
     if (!src_offset_lut_ds_bottom) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
     }
-    dest_offset_lut_ds_bottom = malloc(sizeof(int) * offset_lut_size_ds_bottom);
+    dest_offset_lut_ds_bottom = (int*)malloc(sizeof(int) * offset_lut_size_ds_bottom);
     if (!dest_offset_lut_ds_bottom) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
@@ -429,10 +429,12 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
         length += entry->length;
         entry = entry->next;
     }
-    ffmpeg_decode(ffmpeg_buffer, length);
+    ffmpeg_decode((unsigned char*)ffmpeg_buffer, length);
 
     AVFrame *frame = ffmpeg_get_frame(false);
-    int status = write_yuv_to_framebuffer(frame->data, image_width,
+    // This is where we're erroring out?
+    // I was running the SW decoder too hard. Still, we should upgrade to C++ for exception handling.
+    int status = write_yuv_to_framebuffer((const u8**)frame->data, image_width,
                                           image_height, pixel_size);
 
     return status;

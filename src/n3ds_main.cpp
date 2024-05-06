@@ -23,7 +23,7 @@
 #include "loop.h"
 #include "platform_main.h"
 
-#include "n3ds/n3ds_connection.h"
+#include "n3ds/n3ds_connection.hpp"
 #include "n3ds/pair_record.hpp"
 
 #include "audio/audio.h"

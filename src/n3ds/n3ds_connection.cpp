@@ -17,7 +17,7 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "n3ds_connection.h"
+#include "n3ds_connection.hpp"
 #include "../input/n3ds_input.h"
 
 #include <3ds.h>

@@ -260,9 +260,9 @@ void n3dsinput_set_touch(enum N3dsTouchType ttype) {
 }
 
 static inline void n3dsinput_cycle_touch() {
-    enum N3dsTouchType new_type = gamepad_state.ttype + 1;
+    enum N3dsTouchType new_type = (N3dsTouchType)(((int)gamepad_state.ttype) + 1);
     if (new_type == DISABLED) {
-        new_type = 0;
+        new_type = GAMEPAD;
     }
     n3dsinput_set_touch(new_type);
 }
