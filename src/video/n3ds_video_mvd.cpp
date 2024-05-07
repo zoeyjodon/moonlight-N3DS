@@ -18,6 +18,7 @@
  */
 
 #include "../util.h"
+#include "n3ds/N3dsRenderer.hpp"
 #include "video.h"
 
 #include <3ds.h>
@@ -25,6 +26,7 @@
 #include <Limelight.h>
 #include <libavcodec/avcodec.h>
 
+#include <memory>
 #include <pthread.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -47,6 +49,8 @@ static int image_width, image_height, surface_width, surface_height, pixel_size;
 static u8 *yuv_img_buffer;
 static u8 *rgb_img_buffer;
 static bool first_frame = true;
+
+static std::unique_ptr<IN3dsRenderer> renderer = nullptr;
 
 static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
                      void *context, int drFlags) {
@@ -101,12 +105,12 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     image_width = width;
     image_height = height;
     pixel_size = gspGetBytesPerPixel(px_fmt);
-    yuv_img_buffer = (u8*)linearAlloc(width * height * pixel_size);
+    yuv_img_buffer = (u8 *)linearAlloc(width * height * pixel_size);
     if (!yuv_img_buffer) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
     }
-    rgb_img_buffer = (u8*)linearAlloc(width * height * pixel_size);
+    rgb_img_buffer = (u8 *)linearAlloc(width * height * pixel_size);
     if (!rgb_img_buffer) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
@@ -116,12 +120,27 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
                            INITIAL_DECODER_BUFFER_SIZE +
                                AV_INPUT_BUFFER_PADDING_SIZE);
     mvdstdGenerateDefaultConfig(&mvdstd_config, image_width, image_height,
-                                image_width, image_height, NULL, (u32*)yuv_img_buffer,
-                                NULL);
+                                image_width, image_height, NULL,
+                                (u32 *)yuv_img_buffer, NULL);
     MVDSTD_SetConfig(&mvdstd_config);
 
-    return init_px_to_framebuffer(surface_width, surface_height, image_width,
-                                  image_height, pixel_size);
+    switch (N3DS_RENDER_TYPE) {
+    case (RENDER_BOTTOM):
+        renderer = std::make_unique<N3dsRendererBottom>(
+            image_width, image_height, pixel_size);
+        break;
+    case (RENDER_DUAL_SCREEN):
+        renderer = std::make_unique<N3dsRendererDualScreen>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        break;
+    default:
+        renderer = std::make_unique<N3dsRendererDefault>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        break;
+    }
+    return 0;
 }
 
 // This function must be called after
@@ -132,7 +151,7 @@ static void n3ds_destroy(void) {
     linearFree(nal_unit_buffer);
     linearFree(yuv_img_buffer);
     linearFree(rgb_img_buffer);
-    deinit_px_to_framebuffer();
+    renderer = nullptr;
 }
 
 static inline int yuv_to_rgb(u8 *dest, const u8 *source, int width, int height,
@@ -197,10 +216,10 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
                                N3DS_YUYV_CONV_WAIT_NS);
         svcCloseHandle(conversion_finish_event_handle);
 
-        write_px_to_framebuffer(rgb_img_buffer, pixel_size);
+        renderer->write_px_to_framebuffer(rgb_img_buffer, pixel_size);
     }
 
-    n3ds_decode((unsigned char*)nal_unit_buffer, length);
+    n3ds_decode((unsigned char *)nal_unit_buffer, length);
     yuv_to_rgb(rgb_img_buffer, yuv_img_buffer, image_width, image_height,
                pixel_size);
 

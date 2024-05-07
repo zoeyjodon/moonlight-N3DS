@@ -18,11 +18,13 @@
  */
 
 #include "ffmpeg.h"
+#include "n3ds/N3dsRenderer.hpp"
 #include "video.h"
 
 #include "../util.h"
 
 #include <3ds.h>
+#include <memory>
 #include <stdbool.h>
 #include <unistd.h>
 
@@ -34,75 +36,8 @@ static size_t ffmpeg_buffer_size;
 static int image_width, image_height, surface_width, surface_height, pixel_size;
 static u8 *img_buffer;
 
-static int offset_lut_size;
-static int *dest_offset_lut;
-static int *src_offset_lut;
-
-static int offset_lut_size_3d;
-static int *dest_offset_lut_3d;
-static int *src_offset_lut_3d_l;
-static int *src_offset_lut_3d_r;
-
-static int offset_lut_size_ds_bottom;
-static int *dest_offset_lut_ds_bottom;
-static int *src_offset_lut_ds_top;
-static int *src_offset_lut_ds_bottom;
-bool enable_dual_display = false;
-
-static inline int get_dest_offset(int x, int y, int dest_height) {
-    return dest_height - y - 1 + dest_height * x;
-}
-
-static inline int get_source_offset(int x, int y, int src_width, int src_height,
-                                    int dest_width, int dest_height) {
-    return (x * src_width / dest_width) +
-           (y * src_height / dest_height) * src_width;
-}
-
-static inline int get_source_offset_3d_l(int x, int y, int src_width,
-                                         int src_height, int dest_width,
-                                         int dest_height) {
-    return (x * (src_width / 2) / dest_width) +
-           (y * src_height / dest_height) * src_width;
-}
-
-static inline int get_source_offset_3d_r(int x, int y, int src_width,
-                                         int src_height, int dest_width,
-                                         int dest_height) {
-    return ((x * (src_width / 2) / dest_width) + (src_width / 2)) +
-           (y * src_height / dest_height) * src_width;
-}
-
-static inline int get_source_offset_ds_top(int x, int y, int src_width,
-                                           int src_height, int dest_width,
-                                           int dest_height) {
-    return (x * src_width / dest_width) +
-           (y * (src_height / 2) / dest_height) * src_width;
-}
-
-static inline int get_source_offset_ds_bottom(int x, int y, int src_width,
-                                              int src_height, int dest_width,
-                                              int dest_height) {
-    return (x * src_width / dest_width) +
-           ((y * (src_height / 2) / dest_height) + (src_height / 2)) *
-               src_width;
-}
-
-static inline void ensure_3d_enabled() {
-    if (!gfxIs3D()) {
-        gfxSetWide(false);
-        gfxSet3D(true);
-    }
-}
-
-static inline void ensure_3d_disabled() {
-    if (gfxIs3D()) {
-        gfxSet3D(false);
-    }
-    if (surface_width == GSP_SCREEN_HEIGHT_TOP_2X) {
-        gfxSetWide(true);
-    }
-}
+static std::unique_ptr<IN3dsRenderer> renderer = nullptr;
+enum n3ds_render_type N3DS_RENDER_TYPE = RENDER_DEFAULT;
 
 static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
                       void *context, int drFlags) {
@@ -146,224 +81,36 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
     image_height = height;
     pixel_size = gspGetBytesPerPixel(px_fmt);
 
-    img_buffer = (u8*)linearAlloc(width * height * pixel_size);
+    img_buffer = (u8 *)linearAlloc(width * height * pixel_size);
     if (!img_buffer) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
     }
 
-    return init_px_to_framebuffer(surface_width, surface_height, image_width,
-                                  image_height, pixel_size);
+    switch (N3DS_RENDER_TYPE) {
+    case (RENDER_BOTTOM):
+        renderer = std::make_unique<N3dsRendererBottom>(
+            image_width, image_height, pixel_size);
+        break;
+    case (RENDER_DUAL_SCREEN):
+        renderer = std::make_unique<N3dsRendererDualScreen>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        break;
+    default:
+        renderer = std::make_unique<N3dsRendererDefault>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        break;
+    }
+    return 0;
 }
 
 static void n3ds_cleanup() {
     ffmpeg_destroy();
     y2rExit();
     linearFree(img_buffer);
-    deinit_px_to_framebuffer();
-}
-
-static inline int init_px_to_framebuffer_2d(int dest_width, int dest_height,
-                                            int src_width, int src_height,
-                                            int px_size) {
-    // Generate LUTs so we don't have to calculate pixel rotation while
-    // streaming.
-    offset_lut_size = dest_width * dest_height;
-    src_offset_lut = (int*)malloc(sizeof(int) * offset_lut_size);
-    if (!src_offset_lut) {
-        fprintf(stderr, "Out of memory!\n");
-        return -1;
-    }
-    dest_offset_lut = (int*)malloc(sizeof(int) * offset_lut_size);
-    if (!dest_offset_lut) {
-        fprintf(stderr, "Out of memory!\n");
-        return -1;
-    }
-
-    int i = 0;
-    for (int y = 0; y < dest_height; ++y) {
-        for (int x = 0; x < dest_width; ++x) {
-            src_offset_lut[i] =
-                px_size * get_source_offset(x, y, src_width, src_height,
-                                            dest_width, dest_height);
-            dest_offset_lut[i] = px_size * get_dest_offset(x, y, dest_height);
-            i++;
-        }
-    }
-    return 0;
-}
-
-static inline int init_px_to_framebuffer_3d(int dest_width, int dest_height,
-                                            int src_width, int src_height,
-                                            int px_size) {
-    // Generate LUTs so we don't have to calculate pixel rotation while
-    // streaming.
-    offset_lut_size_3d = dest_width * dest_height;
-    src_offset_lut_3d_l = (int*)malloc(sizeof(int) * offset_lut_size_3d);
-    if (!src_offset_lut_3d_l) {
-        fprintf(stderr, "Out of memory!\n");
-        return -1;
-    }
-    src_offset_lut_3d_r = (int*)malloc(sizeof(int) * offset_lut_size_3d);
-    if (!src_offset_lut_3d_r) {
-        fprintf(stderr, "Out of memory!\n");
-        return -1;
-    }
-    dest_offset_lut_3d = (int*)malloc(sizeof(int) * offset_lut_size_3d);
-    if (!dest_offset_lut_3d) {
-        fprintf(stderr, "Out of memory!\n");
-        return -1;
-    }
-
-    int i = 0;
-    for (int y = 0; y < dest_height; ++y) {
-        for (int x = 0; x < dest_width; ++x) {
-            src_offset_lut_3d_l[i] =
-                px_size * get_source_offset_3d_l(x, y, src_width, src_height,
-                                                 dest_width, dest_height);
-            src_offset_lut_3d_r[i] =
-                px_size * get_source_offset_3d_r(x, y, src_width, src_height,
-                                                 dest_width, dest_height);
-            dest_offset_lut_3d[i] =
-                px_size * get_dest_offset(x, y, dest_height);
-            i++;
-        }
-    }
-    return 0;
-}
-
-static inline int init_px_to_framebuffer_ds(int dest_width, int dest_height,
-                                            int src_width, int src_height,
-                                            int px_size) {
-    // Generate LUTs so we don't have to calculate pixel rotation while
-    // streaming.
-    offset_lut_size_ds_bottom = GSP_SCREEN_HEIGHT_BOTTOM * dest_height;
-    src_offset_lut_ds_top = (int*)malloc(sizeof(int) * offset_lut_size);
-    if (!src_offset_lut_ds_top) {
-        fprintf(stderr, "Out of memory!\n");
-        return -1;
-    }
-    src_offset_lut_ds_bottom = (int*)malloc(sizeof(int) * offset_lut_size_ds_bottom);
-    if (!src_offset_lut_ds_bottom) {
-        fprintf(stderr, "Out of memory!\n");
-        return -1;
-    }
-    dest_offset_lut_ds_bottom = (int*)malloc(sizeof(int) * offset_lut_size_ds_bottom);
-    if (!dest_offset_lut_ds_bottom) {
-        fprintf(stderr, "Out of memory!\n");
-        return -1;
-    }
-
-    int i = 0;
-    for (int y = 0; y < dest_height; ++y) {
-        for (int x = 0; x < dest_width; ++x) {
-            src_offset_lut_ds_top[i] =
-                px_size * get_source_offset_ds_top(x, y, src_width, src_height,
-                                                   dest_width, dest_height);
-            i++;
-        }
-    }
-
-    i = 0;
-    for (int y = 0; y < dest_height; ++y) {
-        for (int x = 0; x < GSP_SCREEN_HEIGHT_BOTTOM; ++x) {
-            src_offset_lut_ds_bottom[i] =
-                px_size * get_source_offset_ds_bottom(
-                              x, y, src_width, src_height,
-                              GSP_SCREEN_HEIGHT_BOTTOM, dest_height);
-            dest_offset_lut_ds_bottom[i] =
-                px_size * get_dest_offset(x, y, dest_height);
-            i++;
-        }
-    }
-    return 0;
-}
-
-int init_px_to_framebuffer(int dest_width, int dest_height, int src_width,
-                           int src_height, int px_size) {
-    surface_width = dest_width;
-    surface_height = dest_height;
-    int ret = init_px_to_framebuffer_2d(dest_width, dest_height, src_width,
-                                        src_height, px_size);
-    if (ret == 0) {
-        ret = init_px_to_framebuffer_3d(GSP_SCREEN_HEIGHT_TOP, dest_height,
-                                        src_width, src_height, px_size);
-    }
-    if (ret == 0) {
-        ret = init_px_to_framebuffer_ds(dest_width, dest_height, src_width,
-                                        src_height, px_size);
-    }
-    return ret;
-}
-
-void deinit_px_to_framebuffer() {
-    if (src_offset_lut)
-        free(src_offset_lut);
-    if (src_offset_lut_3d_l)
-        free(src_offset_lut_3d_l);
-    if (src_offset_lut_3d_r)
-        free(src_offset_lut_3d_r);
-    if (src_offset_lut_ds_top)
-        free(src_offset_lut_ds_top);
-    if (src_offset_lut_ds_bottom)
-        free(src_offset_lut_ds_bottom);
-    if (dest_offset_lut)
-        free(dest_offset_lut);
-    if (dest_offset_lut_3d)
-        free(dest_offset_lut_3d);
-    if (dest_offset_lut_ds_bottom)
-        free(dest_offset_lut_ds_bottom);
-}
-
-static inline void write_px_to_framebuffer_2D(uint8_t *source, int px_size) {
-    u8 *dest = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-    for (int i = 0; i < offset_lut_size; i++) {
-        memcpy(dest + dest_offset_lut[i], source + src_offset_lut[i], px_size);
-    }
-    gfxScreenSwapBuffers(GFX_TOP, false);
-}
-
-static inline void write_px_to_framebuffer_3D(uint8_t *source, int px_size) {
-    u8 *dest = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-    for (int i = 0; i < offset_lut_size_3d; i++) {
-        memcpy(dest + dest_offset_lut_3d[i], source + src_offset_lut_3d_l[i],
-               px_size);
-    }
-
-    dest = gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
-    for (int i = 0; i < offset_lut_size_3d; i++) {
-        memcpy(dest + dest_offset_lut_3d[i], source + src_offset_lut_3d_r[i],
-               px_size);
-    }
-    gfxScreenSwapBuffers(GFX_TOP, true);
-}
-
-static inline void write_px_to_framebuffer_DS(uint8_t *source, int px_size) {
-    u8 *dest = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-    for (int i = 0; i < offset_lut_size; i++) {
-        memcpy(dest + dest_offset_lut[i], source + src_offset_lut_ds_top[i],
-               px_size);
-    }
-
-    dest = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
-    for (int i = 0; i < offset_lut_size_ds_bottom; i++) {
-        memcpy(dest + dest_offset_lut_ds_bottom[i],
-               source + src_offset_lut_ds_bottom[i], px_size);
-    }
-    gfxSwapBuffers();
-}
-
-void write_px_to_framebuffer(uint8_t *source, int px_size) {
-    if (enable_dual_display) {
-        ensure_3d_disabled();
-        write_px_to_framebuffer_DS(source, px_size);
-    } else if (osGet3DSliderState() > 0.0) {
-        ensure_3d_enabled();
-        write_px_to_framebuffer_3D(source, px_size);
-    } else {
-        ensure_3d_disabled();
-        write_px_to_framebuffer_2D(source, px_size);
-    }
+    renderer = nullptr;
 }
 
 static inline int write_yuv_to_framebuffer(const u8 **source, int width,
@@ -410,7 +157,7 @@ static inline int write_yuv_to_framebuffer(const u8 **source, int width,
     svcWaitSynchronization(conversion_finish_event_handle,
                            10000000); // Wait up to 10ms.
     svcCloseHandle(conversion_finish_event_handle);
-    write_px_to_framebuffer(img_buffer, px_size);
+    renderer->write_px_to_framebuffer(img_buffer, px_size);
     return DR_OK;
 
 y2ru_failed:
@@ -429,12 +176,13 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
         length += entry->length;
         entry = entry->next;
     }
-    ffmpeg_decode((unsigned char*)ffmpeg_buffer, length);
+    ffmpeg_decode((unsigned char *)ffmpeg_buffer, length);
 
     AVFrame *frame = ffmpeg_get_frame(false);
     // This is where we're erroring out?
-    // I was running the SW decoder too hard. Still, we should upgrade to C++ for exception handling.
-    int status = write_yuv_to_framebuffer((const u8**)frame->data, image_width,
+    // I was running the SW decoder too hard. Still, we should upgrade to C++
+    // for exception handling.
+    int status = write_yuv_to_framebuffer((const u8 **)frame->data, image_width,
                                           image_height, pixel_size);
 
     return status;

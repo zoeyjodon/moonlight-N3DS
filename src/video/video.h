@@ -52,12 +52,8 @@ extern DECODER_RENDERER_CALLBACKS decoder_callbacks_x11_vdpau;
 #endif
 #endif
 #ifdef __3DS__
-extern bool enable_dual_display;
-int init_px_to_framebuffer(int dest_width, int dest_height, int src_width,
-                           int src_height, int px_size);
-void deinit_px_to_framebuffer();
-void write_px_to_framebuffer(uint8_t *source, int px_size);
-
+enum n3ds_render_type { RENDER_DEFAULT, RENDER_BOTTOM, RENDER_DUAL_SCREEN };
+extern enum n3ds_render_type N3DS_RENDER_TYPE;
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds;
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd;
 #endif

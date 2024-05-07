@@ -40,6 +40,7 @@ SOURCES		:=	src \
 				src/audio/ \
 				src/input/ \
 				src/video/ \
+				src/video/n3ds \
 				libgamestream \
 				third_party/h264bitstream \
 				third_party/libuuid \

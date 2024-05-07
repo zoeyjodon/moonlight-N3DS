@@ -213,6 +213,19 @@ static bool prompt_for_boolean(std::string prompt, bool default_val) {
     return idx == 0;
 }
 
+static int prompt_for_display_type(int default_val) {
+    std::vector<std::string> options = {
+        "top",
+        "bottom",
+        "dual screen (stretch)",
+    };
+    int idx = console_selection_prompt("Which screen should be used to display the stream?", options, default_val);
+    if (idx < 0) {
+        return default_val;
+    }
+    return idx;
+}
+
 static int prompt_for_int(std::string initial_text) {
     char *setting_buff = (char *)malloc(MAX_INPUT_CHAR);
     memset(setting_buff, 0, MAX_INPUT_CHAR);
@@ -233,7 +246,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         "width",
         "height",
         "fps",
-        "dual_screen",
+        "display_type",
         "motion_controls",
         "bitrate",
         "packetsize",
@@ -245,10 +258,6 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         "swapfacebuttons",
         "swaptriggersandshoulders",
         "debug",
-    };
-    char argument_ids[] = {
-        'c', 'd', 'v', '9', 'e', 'g', 'h', 'l',
-        'n', '1', '2', '8', 'A', 'B', 'Z',
     };
     int idx = 0;
     while (1) {
@@ -273,9 +282,9 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         } else if ("height" == setting_names[idx]) {
             config->stream.height =
                 prompt_for_int(std::to_string(config->stream.height));
-        } else if ("dual_screen" == setting_names[idx]) {
-            config->dual_screen =
-                prompt_for_boolean("Enable Dual Screens", config->dual_screen);
+        } else if ("display_type" == setting_names[idx]) {
+            config->display_type =
+                prompt_for_display_type(config->display_type);
         } else if ("motion_controls" == setting_names[idx]) {
             config->motion_controls = prompt_for_boolean(
                 "Enable Motion Controls", config->motion_controls);
@@ -411,6 +420,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
 
     n3ds_audio_disabled = config->localaudio;
     n3ds_connection_debug = config->debug_level;
+    N3DS_RENDER_TYPE = static_cast<n3ds_render_type>(config->display_type);
 
     int drFlags = 0;
     if (config->fullscreen)
@@ -440,13 +450,13 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     printf(
         "Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
  viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d,\
- dual_screen=%d, motion_controls=%d, debug=%d\n",
+ display_type=%d, motion_controls=%d, debug=%d\n",
         config->stream.width, config->stream.height, config->stream.fps,
         config->stream.bitrate, config->sops, config->localaudio,
         config->quitappafter, config->viewonly, config->rotate,
         config->stream.encryptionFlags, config->hwdecode,
         config->swap_face_buttons, config->swap_triggers_and_shoulders,
-        config->dual_screen, config->motion_controls, config->debug_level);
+        config->display_type, config->motion_controls, config->debug_level);
 
     int status = LiStartConnection(&server->serverInfo, &config->stream,
                                    &n3ds_connection_callbacks, video_callbacks,
@@ -463,8 +473,11 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
         consoleInit(GFX_BOTTOM, &bottomScreen);
         consoleSelect(&bottomScreen);
         printf("Connected!\n");
-    } else if (config->dual_screen) {
-        enable_dual_display = true;
+    } else if (config->display_type == RENDER_DUAL_SCREEN) {
+        gfxExit();
+        gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
+        n3dsinput_set_touch(DS_TOUCH);
+    } else if (config->display_type == RENDER_BOTTOM) {
         gfxExit();
         gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
         n3dsinput_set_touch(DS_TOUCH);
