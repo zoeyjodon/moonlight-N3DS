@@ -18,7 +18,9 @@
  */
 
 #include "N3dsRenderer.hpp"
+#include "vshader_shbin.h"
 
+#include <3ds.h>
 #include <cstdlib>
 #include <cstring>
 #include <stdbool.h>
@@ -124,7 +126,8 @@ inline void N3dsRendererDefault::init_px_to_framebuffer_3d(int dest_width,
 N3dsRendererDefault::N3dsRendererDefault(int dest_width, int dest_height,
                                          int src_width, int src_height,
                                          int px_size)
-    : IN3dsRenderer(dest_width) {
+    : N3dsRendererBase(dest_width, dest_height, src_width, src_height,
+                       px_size) {
     init_px_to_framebuffer_2d(dest_width, dest_height, src_width, src_height,
                               px_size);
     init_px_to_framebuffer_3d(GSP_SCREEN_HEIGHT_TOP, dest_height, src_width,
@@ -144,17 +147,9 @@ N3dsRendererDefault::~N3dsRendererDefault() {
         free(dest_offset_lut_3d);
 }
 
-inline void N3dsRendererDefault::write_px_to_framebuffer_2D(uint8_t *source,
-                                                            int px_size) {
-    u8 *dest = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-    for (int i = 0; i < offset_lut_size; i++) {
-        memcpy(dest + dest_offset_lut[i], source + src_offset_lut[i], px_size);
-    }
-    gfxScreenSwapBuffers(GFX_TOP, false);
-}
-
-inline void N3dsRendererDefault::write_px_to_framebuffer_3D(uint8_t *source,
-                                                            int px_size) {
+inline void
+N3dsRendererDefault::write_px_to_framebuffer_3D(uint8_t *__restrict source,
+                                                int px_size) {
     u8 *dest = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
     for (int i = 0; i < offset_lut_size_3d; i++) {
         memcpy(dest + dest_offset_lut_3d[i], source + src_offset_lut_3d_l[i],
@@ -176,6 +171,8 @@ void N3dsRendererDefault::write_px_to_framebuffer(uint8_t *source,
         write_px_to_framebuffer_3D(source, px_size);
     } else {
         ensure_3d_disabled();
-        write_px_to_framebuffer_2D(source, px_size);
+        u8 *dest = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+        u8 *dest_debug = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+        write_px_to_framebuffer_gpu(source, dest, dest_debug, px_size);
     }
 }

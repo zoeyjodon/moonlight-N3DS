@@ -103,7 +103,8 @@ inline void N3dsRendererDualScreen::init_px_to_framebuffer_ds(int dest_width,
 N3dsRendererDualScreen::N3dsRendererDualScreen(int dest_width, int dest_height,
                                                int src_width, int src_height,
                                                int px_size)
-    : IN3dsRenderer(dest_width) {
+    : N3dsRendererBase(dest_width, dest_height, src_width, src_height,
+                       px_size) {
     ensure_3d_disabled();
     init_px_to_framebuffer_ds(dest_width, dest_height, src_width, src_height,
                               px_size);

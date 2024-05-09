@@ -20,30 +20,43 @@
 #include <3ds.h>
 #include <Limelight.h>
 
-class IN3dsRenderer {
+#define MOON_CTR_VIDEO_TEX_W 1024
+#define MOON_CTR_VIDEO_TEX_H 512
+#define CMDLIST_SZ 0x800
+
+class N3dsRendererBase {
   public:
-    IN3dsRenderer(int surface_width_in) { surface_width = surface_width_in; }
+    N3dsRendererBase(int surface_width_in, int surface_height_in,
+                     int image_width_in, int image_height_in, int pixel_size);
+    ~N3dsRendererBase();
     virtual void write_px_to_framebuffer(uint8_t *source, int px_size) = 0;
+
+  public:
+    u64 perf_frame_target_ticks = SYSCLOCK_ARM11 * ((double)(1.0 / 60.0));
+    u64 perf_decode_ticks;
+    u64 perf_fbcopy_ticks;
+
+  protected:
+    inline void draw_perf_counters(uint8_t *__restrict dest, int px_size);
+    void write_px_to_framebuffer_gpu(uint8_t *__restrict source,
+                                     uint8_t *__restrict dest,
+                                     uint8_t *__restrict dest_debug,
+                                     int px_size);
+    void ensure_3d_enabled();
+    void ensure_3d_disabled();
+    inline void write24(u8 *p, u32 val);
 
   protected:
     int surface_width;
-    void ensure_3d_enabled() {
-        if (!gfxIs3D()) {
-            gfxSetWide(false);
-            gfxSet3D(true);
-        }
-    }
-    void ensure_3d_disabled() {
-        if (gfxIs3D()) {
-            gfxSet3D(false);
-        }
-        if (surface_width == GSP_SCREEN_HEIGHT_TOP_2X) {
-            gfxSetWide(true);
-        }
-    }
+    int surface_height;
+    int image_width;
+    int image_height;
+    u32 *cmdlist = NULL;
+    void *vramFb = NULL;
+    void *vramTex = NULL;
 };
 
-class N3dsRendererDefault : public IN3dsRenderer {
+class N3dsRendererDefault : public N3dsRendererBase {
   public:
     N3dsRendererDefault(int dest_width, int dest_height, int src_width,
                         int src_height, int px_size);
@@ -68,8 +81,11 @@ class N3dsRendererDefault : public IN3dsRenderer {
                                           int src_width, int src_height,
                                           int px_size);
 
-    inline void write_px_to_framebuffer_2D(uint8_t *source, int px_size);
-    inline void write_px_to_framebuffer_3D(uint8_t *source, int px_size);
+    inline void write_px_to_framebuffer_2D(uint8_t *__restrict source,
+                                           uint8_t *__restrict scratch,
+                                           int px_size);
+    inline void write_px_to_framebuffer_3D(uint8_t *__restrict source,
+                                           int px_size);
 
   private:
     int offset_lut_size;
@@ -82,24 +98,14 @@ class N3dsRendererDefault : public IN3dsRenderer {
     int *src_offset_lut_3d_r;
 };
 
-class N3dsRendererBottom : public IN3dsRenderer {
+class N3dsRendererBottom : public N3dsRendererBase {
   public:
     N3dsRendererBottom(int src_width, int src_height, int px_size);
     ~N3dsRendererBottom();
     void write_px_to_framebuffer(uint8_t *source, int px_size);
-
-  private:
-    inline int get_dest_offset(int x, int y, int dest_height);
-    inline int get_source_offset(int x, int y, int src_width, int src_height,
-                                 int dest_width, int dest_height);
-
-  private:
-    int offset_lut_size;
-    int *dest_offset_lut;
-    int *src_offset_lut;
 };
 
-class N3dsRendererDualScreen : public IN3dsRenderer {
+class N3dsRendererDualScreen : public N3dsRendererBase {
   public:
     N3dsRendererDualScreen(int dest_width, int dest_height, int src_width,
                            int src_height, int px_size);

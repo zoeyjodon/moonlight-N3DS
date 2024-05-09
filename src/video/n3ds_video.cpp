@@ -34,9 +34,9 @@
 static void *ffmpeg_buffer;
 static size_t ffmpeg_buffer_size;
 static int image_width, image_height, surface_width, surface_height, pixel_size;
-static u8 *img_buffer;
+static u8 *rgb_img_buffer;
 
-static std::unique_ptr<IN3dsRenderer> renderer = nullptr;
+static std::unique_ptr<N3dsRendererBase> renderer = nullptr;
 enum n3ds_render_type N3DS_RENDER_TYPE = RENDER_DEFAULT;
 
 static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
@@ -80,9 +80,9 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
     image_width = width;
     image_height = height;
     pixel_size = gspGetBytesPerPixel(px_fmt);
-
-    img_buffer = (u8 *)linearAlloc(width * height * pixel_size);
-    if (!img_buffer) {
+    rgb_img_buffer = (u8 *)linearAlloc(MOON_CTR_VIDEO_TEX_W *
+                                       MOON_CTR_VIDEO_TEX_H * pixel_size);
+    if (!rgb_img_buffer) {
         fprintf(stderr, "Out of memory!\n");
         return -1;
     }
@@ -109,7 +109,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
 static void n3ds_cleanup() {
     ffmpeg_destroy();
     y2rExit();
-    linearFree(img_buffer);
+    linearFree(rgb_img_buffer);
     renderer = nullptr;
 }
 
@@ -136,7 +136,7 @@ static inline int write_yuv_to_framebuffer(const u8 **source, int width,
         goto y2ru_failed;
     }
 
-    status = Y2RU_SetReceiving(img_buffer, width * height * px_size, 8, 0);
+    status = Y2RU_SetReceiving(rgb_img_buffer, width * height * px_size, 8, 0);
     if (status) {
         fprintf(stderr, "Y2RU_SetReceiving failed\n");
         goto y2ru_failed;
@@ -157,7 +157,7 @@ static inline int write_yuv_to_framebuffer(const u8 **source, int width,
     svcWaitSynchronization(conversion_finish_event_handle,
                            10000000); // Wait up to 10ms.
     svcCloseHandle(conversion_finish_event_handle);
-    renderer->write_px_to_framebuffer(img_buffer, px_size);
+    renderer->write_px_to_framebuffer(rgb_img_buffer, px_size);
     return DR_OK;
 
 y2ru_failed:
@@ -179,9 +179,6 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
     ffmpeg_decode((unsigned char *)ffmpeg_buffer, length);
 
     AVFrame *frame = ffmpeg_get_frame(false);
-    // This is where we're erroring out?
-    // I was running the SW decoder too hard. Still, we should upgrade to C++
-    // for exception handling.
     int status = write_yuv_to_framebuffer((const u8 **)frame->data, image_width,
                                           image_height, pixel_size);
 
