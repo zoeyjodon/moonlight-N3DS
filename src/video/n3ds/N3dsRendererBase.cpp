@@ -29,14 +29,14 @@
 
 N3dsRendererBase::N3dsRendererBase(int surface_width_in, int surface_height_in,
                                    int image_width_in, int image_height_in,
-                                   int pixel_size)
+                                   int pixel_size, bool debug_in)
     : surface_width(surface_width_in), surface_height(surface_height_in),
-      image_width(image_width_in), image_height(image_height_in) {
+      image_width(image_width_in), image_height(image_height_in),
+      debug(debug_in), px_size(pixel_size) {
     cmdlist = (u32 *)linearAlloc(CMDLIST_SZ * 4);
-    vramFb = vramAlloc(surface_width * surface_height * pixel_size);
+    vramFb = vramAlloc(surface_width * surface_height * px_size);
     // Needs to be able to hold an 800x480
-    vramTex =
-        vramAlloc(MOON_CTR_VIDEO_TEX_W * MOON_CTR_VIDEO_TEX_H * pixel_size);
+    vramTex = vramAlloc(MOON_CTR_VIDEO_TEX_W * MOON_CTR_VIDEO_TEX_H * px_size);
 }
 
 N3dsRendererBase::~N3dsRendererBase() {
@@ -67,8 +67,7 @@ inline void N3dsRendererBase::write24(u8 *p, u32 val) {
     p[2] = val >> 16;
 }
 
-inline void N3dsRendererBase::draw_perf_counters(uint8_t *__restrict dest,
-                                                 int px_size) {
+inline void N3dsRendererBase::draw_perf_counters(uint8_t *__restrict dest) {
     // Use a line going across the first scanline (left) for the perf counters.
     // Clear to black
     memset(dest, 0, GSP_SCREEN_WIDTH * 3);
@@ -100,9 +99,12 @@ inline void N3dsRendererBase::draw_perf_counters(uint8_t *__restrict dest,
 
 void N3dsRendererBase::write_px_to_framebuffer_gpu(
     uint8_t *__restrict source, uint8_t *__restrict dest,
-    uint8_t *__restrict dest_debug, int px_size) {
-    // TODO: Do nothing when GPU right is lost. Currently hangs when going to
+    uint8_t *__restrict dest_debug) {
+    // Do nothing when GPU right is lost, otherwise we hang when going to
     // the home menu.
+    if (!gspHasGpuRight()) {
+        return;
+    }
 
     u64 start_ticks = svcGetSystemTick();
 
@@ -333,7 +335,7 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(
     perf_fbcopy_ticks = svcGetSystemTick() - start_ticks;
 
     // TODO: Add config option to enable/disable this
-    draw_perf_counters(dest_debug, px_size);
-
-    gfxSwapBuffers();
+    if (debug) {
+        draw_perf_counters(dest_debug);
+    }
 }

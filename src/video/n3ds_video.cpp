@@ -98,7 +98,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
             pixel_size);
         break;
     default:
-        renderer = std::make_unique<N3dsRendererDefault>(
+        renderer = std::make_unique<N3dsRendererTop>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
         break;
@@ -157,7 +157,7 @@ static inline int write_yuv_to_framebuffer(const u8 **source, int width,
     svcWaitSynchronization(conversion_finish_event_handle,
                            10000000); // Wait up to 10ms.
     svcCloseHandle(conversion_finish_event_handle);
-    renderer->write_px_to_framebuffer(rgb_img_buffer, px_size);
+    renderer->write_px_to_framebuffer(rgb_img_buffer);
     return DR_OK;
 
 y2ru_failed:

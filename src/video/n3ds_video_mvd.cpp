@@ -105,7 +105,7 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
             pixel_size);
         break;
     default:
-        renderer = std::make_unique<N3dsRendererDefault>(
+        renderer = std::make_unique<N3dsRendererTop>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
         break;
@@ -152,7 +152,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
     n3ds_decode((unsigned char *)nal_unit_buffer, length);
     renderer->perf_decode_ticks = svcGetSystemTick() - start_ticks;
 
-    renderer->write_px_to_framebuffer(rgb_img_buffer, pixel_size);
+    renderer->write_px_to_framebuffer(rgb_img_buffer);
 
     // If MVD never gets an IDR frame, everything shows up gray
     if (first_frame) {
