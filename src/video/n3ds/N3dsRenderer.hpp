@@ -22,6 +22,8 @@
 
 #define MOON_CTR_VIDEO_TEX_W 1024
 #define MOON_CTR_VIDEO_TEX_H 512
+// TODO: No idea why, but this seems to be the magic number to make dual screen offsets work
+#define MOON_CTR_VIDEO_TEX_H_OFFSET 32
 #define CMDLIST_SZ 0x800
 
 class N3dsRendererBase {
