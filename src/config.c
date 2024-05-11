@@ -466,9 +466,9 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   strcpy(config->key_dir, MOONLIGHT_3DS_PATH "/keys");
 
 #ifdef __3DS__
-  config->stream.width = 400;
-  config->stream.height = 240;
-  config->stream.fps = 30;
+  config->stream.width = 800;
+  config->stream.height = 480;
+  config->stream.fps = 60;
   config->stream.encryptionFlags = ENCFLG_NONE;
   config->hwdecode = true;
   config->display_type = 0;

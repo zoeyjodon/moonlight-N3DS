@@ -28,7 +28,7 @@
 
 class N3dsRendererBase {
   public:
-    N3dsRendererBase(int surface_width_in, int surface_height_in,
+    N3dsRendererBase(gfxScreen_t screen_in, int surface_width_in, int surface_height_in,
                      int image_width_in, int image_height_in, int pixel_size,
                      bool debug_in = false);
     ~N3dsRendererBase();
@@ -40,15 +40,14 @@ class N3dsRendererBase {
     u64 perf_fbcopy_ticks;
 
   protected:
-    inline void draw_perf_counters(uint8_t *__restrict dest);
-    void write_px_to_framebuffer_gpu(uint8_t *__restrict source,
-                                     uint8_t *__restrict dest,
-                                     uint8_t *__restrict dest_debug);
+    inline void draw_perf_counters();
+    void write_px_to_framebuffer_gpu(uint8_t *__restrict source);
     void ensure_3d_enabled();
     void ensure_3d_disabled();
     inline void write24(u8 *p, u32 val);
 
   protected:
+    gfxScreen_t screen;
     int surface_width;
     int surface_height;
     int image_width;
@@ -66,26 +65,6 @@ class N3dsRendererTop : public N3dsRendererBase {
                     int src_height, int px_size, bool debug_in = false);
     ~N3dsRendererTop();
     void write_px_to_framebuffer(uint8_t *source);
-
-  private:
-    inline int get_dest_offset(int x, int y, int dest_height);
-    inline int get_source_offset_3d_l(int x, int y, int src_width,
-                                      int src_height, int dest_width,
-                                      int dest_height);
-    inline int get_source_offset_3d_r(int x, int y, int src_width,
-                                      int src_height, int dest_width,
-                                      int dest_height);
-
-    inline void init_px_to_framebuffer_3d(int dest_width, int dest_height,
-                                          int src_width, int src_height);
-
-    inline void write_px_to_framebuffer_3D(uint8_t *__restrict source);
-
-  private:
-    int offset_lut_size_3d;
-    int *dest_offset_lut_3d;
-    int *src_offset_lut_3d_l;
-    int *src_offset_lut_3d_r;
 };
 
 class N3dsRendererBottom : public N3dsRendererBase {

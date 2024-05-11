@@ -27,12 +27,13 @@
 #include <stdexcept>
 #include <unistd.h>
 
-N3dsRendererBase::N3dsRendererBase(int surface_width_in, int surface_height_in,
-                                   int image_width_in, int image_height_in,
-                                   int pixel_size, bool debug_in)
-    : surface_width(surface_width_in), surface_height(surface_height_in),
-      image_width(image_width_in), image_height(image_height_in),
-      debug(debug_in), px_size(pixel_size) {
+N3dsRendererBase::N3dsRendererBase(gfxScreen_t screen_in, int surface_width_in,
+                                   int surface_height_in, int image_width_in,
+                                   int image_height_in, int pixel_size,
+                                   bool debug_in)
+    : screen(screen_in), surface_width(surface_width_in),
+      surface_height(surface_height_in), image_width(image_width_in),
+      image_height(image_height_in), debug(debug_in), px_size(pixel_size) {
     cmdlist = (u32 *)linearAlloc(CMDLIST_SZ * 4);
     vramFb = vramAlloc(surface_width * surface_height * px_size);
     // Needs to be able to hold an 800x480
@@ -67,7 +68,9 @@ inline void N3dsRendererBase::write24(u8 *p, u32 val) {
     p[2] = val >> 16;
 }
 
-inline void N3dsRendererBase::draw_perf_counters(uint8_t *__restrict dest) {
+inline void N3dsRendererBase::draw_perf_counters() {
+    u8 *dest = gfxGetFramebuffer(screen, GFX_LEFT, NULL, NULL);
+
     // Use a line going across the first scanline (left) for the perf counters.
     // Clear to black
     memset(dest, 0, GSP_SCREEN_WIDTH * 3);
@@ -97,9 +100,7 @@ inline void N3dsRendererBase::draw_perf_counters(uint8_t *__restrict dest) {
     PERF_DRAW(0, 0, 255, 0);
 }
 
-void N3dsRendererBase::write_px_to_framebuffer_gpu(
-    uint8_t *__restrict source, uint8_t *__restrict dest,
-    uint8_t *__restrict dest_debug) {
+void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
     // Do nothing when GPU right is lost, otherwise we hang when going to
     // the home menu.
     if (!gspHasGpuRight()) {
@@ -321,21 +322,48 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(
     gspWaitForEvent(GSPGPU_EVENT_P3D, 0);
 
     // Copy into framebuffer, untiled
+    if ((screen == GFX_TOP) && gfxIs3D()) {
+        // Left
+        u32 *dest_left =
+            (u32 *)gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+        auto surface_width_3d = surface_width / 2;
+        GX_DisplayTransfer(
+            (u32 *)vramFb, GX_BUFFER_DIM(surface_height, surface_width_3d),
+            dest_left, GX_BUFFER_DIM(surface_height, surface_width_3d),
+            GX_TRANSFER_OUT_TILED(0) |
+                GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB565) |
+                GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB565) |
+                GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
 
-    GX_DisplayTransfer(
-        (u32 *)vramFb, GX_BUFFER_DIM(surface_height, surface_width),
-        (u32 *)dest, GX_BUFFER_DIM(surface_height, surface_width),
-        GX_TRANSFER_OUT_TILED(0) |
-            GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB565) |
-            GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB565) |
-            GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
-
+        // Right
+        u32 *dest_right =
+            (u32 *)gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
+        auto surface_offset_3d =
+            surface_height * surface_width * px_size / (sizeof(u32) * 2);
+        GX_DisplayTransfer((u32 *)vramFb + surface_offset_3d,
+                           GX_BUFFER_DIM(surface_height, surface_width_3d),
+                           dest_right,
+                           GX_BUFFER_DIM(surface_height, surface_width_3d),
+                           GX_TRANSFER_OUT_TILED(0) |
+                               GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB565) |
+                               GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB565) |
+                               GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
+    } else {
+        u32 *dest = (u32 *)gfxGetFramebuffer(screen, GFX_LEFT, NULL, NULL);
+        GX_DisplayTransfer((u32 *)vramFb,
+                           GX_BUFFER_DIM(surface_height, surface_width), dest,
+                           GX_BUFFER_DIM(surface_height, surface_width),
+                           GX_TRANSFER_OUT_TILED(0) |
+                               GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB565) |
+                               GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB565) |
+                               GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
+    }
     gspWaitForEvent(GSPGPU_EVENT_PPF, 0);
 
     perf_fbcopy_ticks = svcGetSystemTick() - start_ticks;
-
-    // TODO: Add config option to enable/disable this
     if (debug) {
-        draw_perf_counters(dest_debug);
+        draw_perf_counters();
     }
+
+    gfxScreenSwapBuffers(screen, true);
 }

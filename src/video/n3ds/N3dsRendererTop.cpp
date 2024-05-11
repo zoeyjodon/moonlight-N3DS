@@ -27,106 +27,18 @@
 #include <stdexcept>
 #include <unistd.h>
 
-inline int N3dsRendererTop::get_dest_offset(int x, int y, int dest_height) {
-    return dest_height - y - 1 + dest_height * x;
-}
-
-inline int N3dsRendererTop::get_source_offset_3d_l(int x, int y, int src_width,
-                                                   int src_height,
-                                                   int dest_width,
-                                                   int dest_height) {
-    return (x * (src_width / 2) / dest_width) +
-           (y * src_height / dest_height) * src_width;
-}
-
-inline int N3dsRendererTop::get_source_offset_3d_r(int x, int y, int src_width,
-                                                   int src_height,
-                                                   int dest_width,
-                                                   int dest_height) {
-    return ((x * (src_width / 2) / dest_width) + (src_width / 2)) +
-           (y * src_height / dest_height) * src_width;
-}
-
-inline void N3dsRendererTop::init_px_to_framebuffer_3d(int dest_width,
-                                                       int dest_height,
-                                                       int src_width,
-                                                       int src_height) {
-    // Generate LUTs so we don't have to calculate pixel rotation while
-    // streaming.
-    offset_lut_size_3d = dest_width * dest_height;
-    src_offset_lut_3d_l = (int *)malloc(sizeof(int) * offset_lut_size_3d);
-    if (!src_offset_lut_3d_l) {
-        throw std::runtime_error("Out of memory!\n");
-    }
-    src_offset_lut_3d_r = (int *)malloc(sizeof(int) * offset_lut_size_3d);
-    if (!src_offset_lut_3d_r) {
-        throw std::runtime_error("Out of memory!\n");
-    }
-    dest_offset_lut_3d = (int *)malloc(sizeof(int) * offset_lut_size_3d);
-    if (!dest_offset_lut_3d) {
-        throw std::runtime_error("Out of memory!\n");
-    }
-
-    int i = 0;
-    for (int y = 0; y < dest_height; ++y) {
-        for (int x = 0; x < dest_width; ++x) {
-            src_offset_lut_3d_l[i] =
-                px_size * get_source_offset_3d_l(x, y, src_width, src_height,
-                                                 dest_width, dest_height);
-            src_offset_lut_3d_r[i] =
-                px_size * get_source_offset_3d_r(x, y, src_width, src_height,
-                                                 dest_width, dest_height);
-            dest_offset_lut_3d[i] =
-                px_size * get_dest_offset(x, y, dest_height);
-            i++;
-        }
-    }
-}
-
 N3dsRendererTop::N3dsRendererTop(int dest_width, int dest_height, int src_width,
                                  int src_height, int px_size, bool debug_in)
-    : N3dsRendererBase(dest_width, dest_height, src_width, src_height, px_size,
-                       debug_in) {
-    init_px_to_framebuffer_3d(GSP_SCREEN_HEIGHT_TOP, dest_height, src_width,
-                              src_height);
-}
+    : N3dsRendererBase(GFX_TOP, dest_width, dest_height, src_width, src_height,
+                       px_size, debug_in) {}
 
-N3dsRendererTop::~N3dsRendererTop() {
-    if (src_offset_lut_3d_l)
-        free(src_offset_lut_3d_l);
-    if (src_offset_lut_3d_r)
-        free(src_offset_lut_3d_r);
-    if (dest_offset_lut_3d)
-        free(dest_offset_lut_3d);
-}
-
-inline void
-N3dsRendererTop::write_px_to_framebuffer_3D(uint8_t *__restrict source) {
-    u8 *dest = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-    for (int i = 0; i < offset_lut_size_3d; i++) {
-        memcpy(dest + dest_offset_lut_3d[i], source + src_offset_lut_3d_l[i],
-               px_size);
-    }
-
-    dest = gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
-    for (int i = 0; i < offset_lut_size_3d; i++) {
-        memcpy(dest + dest_offset_lut_3d[i], source + src_offset_lut_3d_r[i],
-               px_size);
-    }
-}
+N3dsRendererTop::~N3dsRendererTop() = default;
 
 void N3dsRendererTop::write_px_to_framebuffer(uint8_t *source) {
     if (osGet3DSliderState() > 0.0) {
         ensure_3d_enabled();
-        write_px_to_framebuffer_3D(source);
     } else {
         ensure_3d_disabled();
-        u8 *dest = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-        u8 *dest_debug = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
-        write_px_to_framebuffer_gpu(source, dest, dest_debug);
     }
-    gfxScreenSwapBuffers(GFX_TOP, true);
-    if (debug) {
-        gfxScreenSwapBuffers(GFX_BOTTOM, true);
-    }
+    write_px_to_framebuffer_gpu(source);
 }
