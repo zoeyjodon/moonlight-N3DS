@@ -219,7 +219,9 @@ static int prompt_for_display_type(int default_val) {
         "bottom",
         "dual screen (stretch)",
     };
-    int idx = console_selection_prompt("Which screen should be used to display the stream?", options, default_val);
+    int idx = console_selection_prompt(
+        "Which screen should be used to display the stream?", options,
+        default_val);
     if (idx < 0) {
         return default_val;
     }
@@ -262,14 +264,14 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
     int idx = 0;
     while (1) {
         std::string prompt = "Select a setting";
-        if (config->stream.width != GSP_SCREEN_HEIGHT_TOP &&
-            config->stream.width != GSP_SCREEN_HEIGHT_TOP_2X) {
+        if (config->stream.width % GSP_SCREEN_HEIGHT_TOP &&
+            config->stream.width % GSP_SCREEN_HEIGHT_BOTTOM) {
             prompt += "\n\nWARNING: Using an unsupported width may "
-                      "cause issues (3DS supports 400 or 800)\n";
+                      "cause issues (3DS supports multiples of 400 or 320)\n";
         }
-        if (config->stream.height != GSP_SCREEN_WIDTH) {
+        if (config->stream.height % GSP_SCREEN_WIDTH) {
             prompt += "\n\nWARNING: Using an unsupported height may "
-                      "cause issues (3DS supports 240)\n";
+                      "cause issues (3DS supports multiples of 240)\n";
         }
         idx = console_selection_prompt(prompt, setting_names, idx);
         if (idx < 0) {
