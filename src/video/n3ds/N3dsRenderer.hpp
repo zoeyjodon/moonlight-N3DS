@@ -22,14 +22,16 @@
 
 #define MOON_CTR_VIDEO_TEX_W 1024
 #define MOON_CTR_VIDEO_TEX_H 512
-// TODO: No idea why, but this seems to be the magic number to make dual screen offsets work
+// TODO: No idea why, but this seems to be the magic number to make dual screen
+// offsets work
 #define MOON_CTR_VIDEO_TEX_H_OFFSET 32
 #define CMDLIST_SZ 0x800
 
 class N3dsRendererBase {
   public:
-    N3dsRendererBase(gfxScreen_t screen_in, int surface_width_in, int surface_height_in,
-                     int image_width_in, int image_height_in, int pixel_size,
+    N3dsRendererBase(gfxScreen_t screen_in, int surface_width_in,
+                     int surface_height_in, int image_width_in,
+                     int image_height_in, int pixel_size,
                      bool debug_in = false);
     ~N3dsRendererBase();
     virtual void write_px_to_framebuffer(uint8_t *source) = 0;
@@ -75,15 +77,27 @@ class N3dsRendererBottom : public N3dsRendererBase {
     void write_px_to_framebuffer(uint8_t *source);
 };
 
-class N3dsRendererDualScreen : public N3dsRendererBase {
+class N3dsRendererDualScreenStretch : public N3dsRendererBase {
   public:
-    N3dsRendererDualScreen(int dest_width, int dest_height, int src_width,
-                           int src_height, int px_size);
-    ~N3dsRendererDualScreen();
+    N3dsRendererDualScreenStretch(int dest_width, int dest_height,
+                                  int src_width, int src_height, int px_size);
+    ~N3dsRendererDualScreenStretch();
     void write_px_to_framebuffer(uint8_t *source);
 
   private:
     int source_offset;
+    N3dsRendererTop top_renderer;
+    N3dsRendererBottom bottom_renderer;
+};
+
+class N3dsRendererDualScreenMirror : public N3dsRendererBase {
+  public:
+    N3dsRendererDualScreenMirror(int dest_width, int dest_height, int src_width,
+                                 int src_height, int px_size);
+    ~N3dsRendererDualScreenMirror();
+    void write_px_to_framebuffer(uint8_t *source);
+
+  private:
     N3dsRendererTop top_renderer;
     N3dsRendererBottom bottom_renderer;
 };

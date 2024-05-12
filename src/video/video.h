@@ -54,7 +54,12 @@ extern DECODER_RENDERER_CALLBACKS decoder_callbacks_x11_vdpau;
 #ifdef __3DS__
 #include <3ds/types.h>
 
-enum n3ds_render_type { RENDER_DEFAULT, RENDER_BOTTOM, RENDER_DUAL_SCREEN };
+enum n3ds_render_type {
+    RENDER_DEFAULT,
+    RENDER_BOTTOM,
+    RENDER_DUAL_SCREEN_STRETCH,
+    RENDER_DUAL_SCREEN_MIRROR
+};
 extern enum n3ds_render_type N3DS_RENDER_TYPE;
 
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds;

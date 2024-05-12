@@ -25,9 +25,8 @@
 #include <stdexcept>
 #include <unistd.h>
 
-N3dsRendererDualScreen::N3dsRendererDualScreen(int dest_width, int dest_height,
-                                               int src_width, int src_height,
-                                               int px_size)
+N3dsRendererDualScreenStretch::N3dsRendererDualScreenStretch(
+    int dest_width, int dest_height, int src_width, int src_height, int px_size)
     : N3dsRendererBase(GFX_TOP, dest_width, dest_height, src_width, src_height,
                        px_size),
       source_offset(MOON_CTR_VIDEO_TEX_W *
@@ -36,12 +35,9 @@ N3dsRendererDualScreen::N3dsRendererDualScreen(int dest_width, int dest_height,
       top_renderer(dest_width, dest_height, src_width, src_height / 2, px_size),
       bottom_renderer(src_width, src_height / 2, px_size) {}
 
-N3dsRendererDualScreen::~N3dsRendererDualScreen() = default;
+N3dsRendererDualScreenStretch::~N3dsRendererDualScreenStretch() = default;
 
-void N3dsRendererDualScreen::write_px_to_framebuffer(uint8_t *source) {
-
+void N3dsRendererDualScreenStretch::write_px_to_framebuffer(uint8_t *source) {
     top_renderer.write_px_to_framebuffer(source);
-    // TODO: Seems like we're only capturing some weird chunk of the bottom
-    // screen. Maybe there are more hardcoded values that need changed?
     bottom_renderer.write_px_to_framebuffer(source + source_offset);
 }

@@ -92,8 +92,13 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
         renderer = std::make_unique<N3dsRendererBottom>(
             image_width, image_height, pixel_size);
         break;
-    case (RENDER_DUAL_SCREEN):
-        renderer = std::make_unique<N3dsRendererDualScreen>(
+    case (RENDER_DUAL_SCREEN_STRETCH):
+        renderer = std::make_unique<N3dsRendererDualScreenStretch>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        break;
+    case (RENDER_DUAL_SCREEN_MIRROR):
+        renderer = std::make_unique<N3dsRendererDualScreenMirror>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
         break;

@@ -218,6 +218,7 @@ static int prompt_for_display_type(int default_val) {
         "top",
         "bottom",
         "dual screen (stretch)",
+        "dual screen (mirror)",
     };
     int idx = console_selection_prompt(
         "Which screen should be used to display the stream?", options,
@@ -552,11 +553,12 @@ int main_loop(int argc, char *argv[]) {
                 if (config.debug_level) {
                     consoleInit(GFX_BOTTOM, &bottomScreen);
                     consoleSelect(&bottomScreen);
-                } else if (config.display_type == RENDER_DUAL_SCREEN) {
+                } else if (config.display_type == RENDER_DUAL_SCREEN_STRETCH) {
                     gfxExit();
                     gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
                     touch_type = DS_TOUCH;
-                } else if (config.display_type == RENDER_BOTTOM) {
+                } else if (config.display_type == RENDER_BOTTOM ||
+                           config.display_type == RENDER_DUAL_SCREEN_MIRROR) {
                     gfxExit();
                     gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
                     touch_type = ABSOLUTE_TOUCH;
