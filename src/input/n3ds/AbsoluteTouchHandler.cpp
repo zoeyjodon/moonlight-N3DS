@@ -21,8 +21,9 @@
 #include <Limelight.h>
 
 void AbsoluteTouchHandler::_handle_touch_down(touchPosition touch) {
-    LiSendMousePositionEvent(touch.px, touch.py + GSP_SCREEN_WIDTH,
-                             GSP_SCREEN_HEIGHT_BOTTOM, 2 * GSP_SCREEN_WIDTH);
+    LiSendMousePositionEvent(touch.px, touch.py + y_offset,
+                             GSP_SCREEN_HEIGHT_BOTTOM,
+                             y_scale * GSP_SCREEN_WIDTH);
     LiSendMouseButtonEvent(BUTTON_ACTION_PRESS, BUTTON_LEFT);
 }
 
@@ -31,7 +32,7 @@ void AbsoluteTouchHandler::_handle_touch_up(touchPosition touch) {
 }
 
 void AbsoluteTouchHandler::_handle_touch_hold(touchPosition touch) {
-    LiSendMousePositionEvent(touch.px, touch.py + GSP_SCREEN_WIDTH,
-                                GSP_SCREEN_HEIGHT_BOTTOM,
-                                2 * GSP_SCREEN_WIDTH);
+    LiSendMousePositionEvent(touch.px, touch.py + y_offset,
+                             GSP_SCREEN_HEIGHT_BOTTOM,
+                             y_scale * GSP_SCREEN_WIDTH);
 }

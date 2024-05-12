@@ -40,8 +40,11 @@ inline void N3dsTouchscreenInput::init_touch_handler() {
     case MOUSEPAD:
         handler = std::make_unique<MouseTouchHandler>();
         break;
+    case ABSOLUTE_TOUCH:
+        handler = std::make_unique<AbsoluteTouchHandler>(0, 1);
+        break;
     case DS_TOUCH:
-        handler = std::make_unique<AbsoluteTouchHandler>();
+        handler = std::make_unique<AbsoluteTouchHandler>(GSP_SCREEN_WIDTH, 2);
         break;
     default:
         handler = nullptr;

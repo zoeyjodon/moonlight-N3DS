@@ -20,7 +20,7 @@
 #include <3ds.h>
 #include <memory>
 
-enum N3dsTouchType { DISABLED, GAMEPAD, MOUSEPAD, DS_TOUCH };
+enum N3dsTouchType { DISABLED, GAMEPAD, MOUSEPAD, ABSOLUTE_TOUCH, DS_TOUCH };
 typedef struct _GAMEPAD_STATE {
     unsigned char leftTrigger, rightTrigger;
     short leftStickX, leftStickY;
@@ -75,12 +75,18 @@ class MouseTouchHandler : public TouchHandlerBase {
 };
 
 class AbsoluteTouchHandler : public TouchHandlerBase {
+  public:
+    AbsoluteTouchHandler(int y_offset_in, int y_scale_in)
+        : y_offset(y_offset_in), y_scale(y_scale_in){};
+
   private:
     void _handle_touch_down(touchPosition touch);
     void _handle_touch_up(touchPosition touch);
     void _handle_touch_hold(touchPosition touch);
 
   private:
+    int y_offset = 0;
+    int y_scale = 1;
     int previous_x = 0;
     int previous_y = 0;
 };

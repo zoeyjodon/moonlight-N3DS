@@ -559,7 +559,7 @@ int main_loop(int argc, char *argv[]) {
                 } else if (config.display_type == RENDER_BOTTOM) {
                     gfxExit();
                     gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
-                    touch_type = DS_TOUCH;
+                    touch_type = ABSOLUTE_TOUCH;
                 } else {
                     touch_type = GAMEPAD;
                 }
