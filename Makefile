@@ -39,6 +39,7 @@ SOURCES		:=	src \
 				src/n3ds/ \
 				src/audio/ \
 				src/input/ \
+				src/input/n3ds \
 				src/video/ \
 				src/video/n3ds \
 				libgamestream \

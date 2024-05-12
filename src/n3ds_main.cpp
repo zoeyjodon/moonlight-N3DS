@@ -29,7 +29,7 @@
 #include "audio/audio.h"
 #include "video/video.h"
 
-#include "input/n3ds_input.h"
+#include "input/n3ds_input.hpp"
 
 #include <3ds.h>
 
@@ -470,23 +470,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
         exit(status);
     }
 
-    consoleClear();
-    if (config->debug_level) {
-        consoleInit(GFX_BOTTOM, &bottomScreen);
-        consoleSelect(&bottomScreen);
-        printf("Connected!\n");
-    } else if (config->display_type == RENDER_DUAL_SCREEN) {
-        gfxExit();
-        gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
-        n3dsinput_set_touch(DS_TOUCH);
-    } else if (config->display_type == RENDER_BOTTOM) {
-        gfxExit();
-        gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
-        n3dsinput_set_touch(DS_TOUCH);
-    } else {
-        n3dsinput_set_touch(GAMEPAD);
-    }
-
+    printf("Connected!\n");
     stream_loop(config);
 
     LiStopConnection();
@@ -563,12 +547,29 @@ int main_loop(int argc, char *argv[]) {
 
                 config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
 
+                consoleClear();
+                N3dsTouchType touch_type = DISABLED;
+                if (config.debug_level) {
+                    consoleInit(GFX_BOTTOM, &bottomScreen);
+                    consoleSelect(&bottomScreen);
+                } else if (config.display_type == RENDER_DUAL_SCREEN) {
+                    gfxExit();
+                    gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
+                    touch_type = DS_TOUCH;
+                } else if (config.display_type == RENDER_BOTTOM) {
+                    gfxExit();
+                    gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
+                    touch_type = DS_TOUCH;
+                } else {
+                    touch_type = GAMEPAD;
+                }
+
                 if (config.viewonly) {
                     if (config.debug_level > 0)
                         printf("View-only mode enabled, no input will be sent "
                                "to the host computer\n");
                 } else {
-                    n3dsinput_init(config.swap_face_buttons,
+                    n3dsinput_init(touch_type, config.swap_face_buttons,
                                    config.swap_triggers_and_shoulders);
                 }
                 stream(&server, &config, appId);

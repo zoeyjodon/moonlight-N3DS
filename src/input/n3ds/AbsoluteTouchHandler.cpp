@@ -17,23 +17,21 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#pragma once
+#include "N3dsTouchscreenInput.hpp"
+#include <Limelight.h>
 
-#include <stdbool.h>
-
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-enum N3dsTouchType { GAMEPAD, MOUSEPAD, DISABLED, DS_TOUCH };
-extern bool enable_gyro;
-extern bool enable_accel;
-
-void n3dsinput_init(bool set_face_swap, bool set_trigger_swap);
-void n3dsinput_cleanup();
-void n3dsinput_set_touch(enum N3dsTouchType ttype);
-int n3dsinput_handle_event();
-
-#ifdef __cplusplus
+void AbsoluteTouchHandler::_handle_touch_down(touchPosition touch) {
+    LiSendMousePositionEvent(touch.px, touch.py + GSP_SCREEN_WIDTH,
+                             GSP_SCREEN_HEIGHT_BOTTOM, 2 * GSP_SCREEN_WIDTH);
+    LiSendMouseButtonEvent(BUTTON_ACTION_PRESS, BUTTON_LEFT);
 }
-#endif
+
+void AbsoluteTouchHandler::_handle_touch_up(touchPosition touch) {
+    LiSendMouseButtonEvent(BUTTON_ACTION_RELEASE, BUTTON_LEFT);
+}
+
+void AbsoluteTouchHandler::_handle_touch_hold(touchPosition touch) {
+    LiSendMousePositionEvent(touch.px, touch.py + GSP_SCREEN_WIDTH,
+                                GSP_SCREEN_HEIGHT_BOTTOM,
+                                2 * GSP_SCREEN_WIDTH);
+}

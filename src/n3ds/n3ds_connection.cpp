@@ -18,7 +18,7 @@
  */
 
 #include "n3ds_connection.hpp"
-#include "../input/n3ds_input.h"
+#include "../input/n3ds_input.hpp"
 
 #include <3ds.h>
 #include <stdio.h>
