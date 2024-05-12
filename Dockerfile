@@ -62,6 +62,7 @@ RUN wget https://github.com/3DSGuy/Project_CTR/releases/download/makerom-v0.18.3
 COPY . /moonlight-N3DS
 
 RUN source /etc/profile.d/devkit-env.sh && /moonlight-N3DS/3ds/build-expat.sh
+RUN source /etc/profile.d/devkit-env.sh && /moonlight-N3DS/3ds/build-openssl.sh
 RUN source /etc/profile.d/devkit-env.sh && /moonlight-N3DS/3ds/build-ffmpeg.sh
 RUN rm -rf /moonlight-N3DS
 

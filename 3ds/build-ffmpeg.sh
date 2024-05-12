@@ -10,7 +10,7 @@ cd $FFMPEG_DIR
 
 ./configure --enable-cross-compile --cross-prefix=/opt/devkitpro/devkitARM/bin/arm-none-eabi- --prefix=/opt/devkitpro/extra_lib \
             --cpu=armv6k --arch=arm --target-os=linux \
-            --extra-cflags="-mfloat-abi=hard -mtune=mpcore -mtp=cp15 -D_POSIX_THREADS -I/opt/devkitpro/extra_lib/include -Wno-incompatible-pointer-types" \
+            --extra-cflags="-mfloat-abi=hard -mtune=mpcore -mtp=cp15 -D_POSIX_THREADS -I/opt/devkitpro/extra_lib/include" \
             --extra-ldflags="-mfloat-abi=hard -L/opt/devkitpro/extra_lib/lib"\
              --disable-filters --disable-devices --disable-bsfs --disable-parsers \
              --disable-hwaccels --disable-debug --disable-stripping --disable-programs \
