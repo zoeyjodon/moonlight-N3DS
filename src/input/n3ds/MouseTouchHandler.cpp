@@ -37,9 +37,6 @@ void MouseTouchHandler::_handle_touch_down(touchPosition touch) {
     if (touch.py < 175) {
         previous_x = touch.px;
         previous_y = touch.py;
-    } else if (touch.py >= 205 && touch.px <= 35) {
-        special_key = true;
-        LiSendKeyboardEvent(0x5B, KEY_ACTION_DOWN, 0);
     } else if (touch.px > 160) {
         mouse_button = BUTTON_RIGHT;
         LiSendMouseButtonEvent(BUTTON_ACTION_PRESS, BUTTON_RIGHT);
@@ -52,11 +49,8 @@ void MouseTouchHandler::_handle_touch_down(touchPosition touch) {
 void MouseTouchHandler::_handle_touch_up(touchPosition touch) {
     if (mouse_button > -1) {
         LiSendMouseButtonEvent(BUTTON_ACTION_RELEASE, mouse_button);
-    } else if (special_key) {
-        LiSendKeyboardEvent(0x5B, KEY_ACTION_UP, 0);
     }
     mouse_button = -1;
-    special_key = false;
     previous_x = -1;
     previous_y = -1;
 }

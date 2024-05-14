@@ -17,10 +17,18 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "keycode_map.hpp"
 #include <3ds.h>
 #include <memory>
 
-enum N3dsTouchType { DISABLED, GAMEPAD, MOUSEPAD, ABSOLUTE_TOUCH, DS_TOUCH };
+enum N3dsTouchType {
+    DISABLED,
+    GAMEPAD,
+    MOUSEPAD,
+    KEYBOARD,
+    ABSOLUTE_TOUCH,
+    DS_TOUCH
+};
 typedef struct _GAMEPAD_STATE {
     unsigned char leftTrigger, rightTrigger;
     short leftStickX, leftStickY;
@@ -69,9 +77,33 @@ class MouseTouchHandler : public TouchHandlerBase {
 
   private:
     int mouse_button = -1;
-    bool special_key = false;
     int previous_x = 0;
     int previous_y = 0;
+};
+
+class KeyboardTouchHandler : public TouchHandlerBase {
+  public:
+    KeyboardTouchHandler();
+
+  private:
+    void _handle_touch_down(touchPosition touch);
+    void _handle_touch_up(touchPosition touch);
+    void _handle_touch_hold(touchPosition touch);
+
+    void reset_shift_state();
+    keycode_info get_keycode(touchPosition touch);
+    void set_screen(const uint8_t *bgr_buffer, int bgr_size);
+    void handle_default();
+    void handle_shift();
+    void handle_caps();
+    void handle_alt();
+
+  private:
+    keycode_info active_keycode{-1, false};
+    bool alt_active = false;
+    bool shift_active = false;
+    bool caps_active = false;
+    std::map<int, keycode_info> *selected_keycodes = nullptr;
 };
 
 class AbsoluteTouchHandler : public TouchHandlerBase {
@@ -101,9 +133,9 @@ class N3dsTouchscreenInput {
 
   private:
     inline void init_touch_handler();
-    inline void n3dsinput_cycle_touch();
     inline void n3dsinput_set_touch(enum N3dsTouchType ttype);
-    inline bool change_touchpad_pressed(touchPosition touch);
+    inline bool next_touchpad_pressed(touchPosition touch);
+    inline bool previous_touchpad_pressed(touchPosition touch);
 
   private:
     GAMEPAD_STATE *gamepad_state;

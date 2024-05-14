@@ -11,9 +11,9 @@ cd $OPENSSL_DIR
 
 ./Configure 3ds \
     no-threads no-shared no-asm no-ui-console no-unit-test no-tests no-buildtest-c++ no-external-tests no-autoload-config \
-    --with-rand-seed=os -static
-make build_generated
-make libssl.a libcrypto.a
+    --with-rand-seed=os -static -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-int-conversion
+make build_generated -j$(nproc)
+make libssl.a libcrypto.a -j$(nproc)
 
 # Install the library files
 cp libssl.a $DEVKITPRO/portlibs/3ds/lib/

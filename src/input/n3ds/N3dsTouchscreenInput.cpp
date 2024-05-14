@@ -25,11 +25,52 @@ N3dsTouchscreenInput::N3dsTouchscreenInput(GAMEPAD_STATE *gamepad_in,
     init_touch_handler();
 };
 
-inline bool N3dsTouchscreenInput::change_touchpad_pressed(touchPosition touch) {
-    if (touch_type == DS_TOUCH) {
+inline bool N3dsTouchscreenInput::next_touchpad_pressed(touchPosition touch) {
+    if (touch_type == DISABLED || touch_type == ABSOLUTE_TOUCH ||
+        touch_type == DS_TOUCH) {
         return false;
     }
-    return touch.py >= 205 && touch.px >= 285;
+    if (touch.py >= 205 && touch.px >= 285) {
+        switch (touch_type) {
+        case GAMEPAD:
+            touch_type = MOUSEPAD;
+            break;
+        case MOUSEPAD:
+            touch_type = KEYBOARD;
+            break;
+        case KEYBOARD:
+            touch_type = GAMEPAD;
+            break;
+        }
+        init_touch_handler();
+        return true;
+    }
+    return false;
+}
+
+inline bool
+N3dsTouchscreenInput::previous_touchpad_pressed(touchPosition touch) {
+    if (touch_type == DISABLED || touch_type == ABSOLUTE_TOUCH ||
+        touch_type == DS_TOUCH) {
+        return false;
+    }
+
+    if (touch.py >= 205 && touch.px <= 35) {
+        switch (touch_type) {
+        case GAMEPAD:
+            touch_type = KEYBOARD;
+            break;
+        case MOUSEPAD:
+            touch_type = GAMEPAD;
+            break;
+        case KEYBOARD:
+            touch_type = MOUSEPAD;
+            break;
+        }
+        init_touch_handler();
+        return true;
+    }
+    return false;
 }
 
 inline void N3dsTouchscreenInput::init_touch_handler() {
@@ -39,6 +80,9 @@ inline void N3dsTouchscreenInput::init_touch_handler() {
         break;
     case MOUSEPAD:
         handler = std::make_unique<MouseTouchHandler>();
+        break;
+    case KEYBOARD:
+        handler = std::make_unique<KeyboardTouchHandler>();
         break;
     case ABSOLUTE_TOUCH:
         handler = std::make_unique<AbsoluteTouchHandler>(0, 1);
@@ -52,19 +96,6 @@ inline void N3dsTouchscreenInput::init_touch_handler() {
     }
 }
 
-inline void N3dsTouchscreenInput::n3dsinput_cycle_touch() {
-    switch (touch_type) {
-    case GAMEPAD:
-        touch_type = MOUSEPAD;
-        init_touch_handler();
-        break;
-    case MOUSEPAD:
-        touch_type = GAMEPAD;
-        init_touch_handler();
-        break;
-    }
-}
-
 void N3dsTouchscreenInput::n3dsinput_handle_touch(u32 kDown, u32 kUp) {
     if (!handler) {
         return;
@@ -73,9 +104,8 @@ void N3dsTouchscreenInput::n3dsinput_handle_touch(u32 kDown, u32 kUp) {
     touchPosition touch;
     hidTouchRead(&touch);
     if (kDown & KEY_TOUCH) {
-        if (change_touchpad_pressed(touch)) {
-            n3dsinput_cycle_touch();
-        } else {
+        if (!next_touchpad_pressed(touch) &&
+            !previous_touchpad_pressed(touch)) {
             handler->handle_touch_down(touch);
         }
     } else if (kUp & KEY_TOUCH) {

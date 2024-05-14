@@ -90,7 +90,8 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations -Wno-psabi \
 			-DVERSION_MAJOR=$(VERSION_MAJOR) -DVERSION_MINOR=$(VERSION_MINOR) -DVERSION_MICRO=$(VERSION_MICRO) \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -D__3DS__ -DUSE_MBEDTLS
+# TODO: Reenable build warnings and actually address them
+CFLAGS	+=	$(INCLUDE) -D__3DS__ -DUSE_MBEDTLS -Wno-implicit-function-declaration -Wno-incompatible-pointer-types
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fexceptions -std=gnu++17
 
