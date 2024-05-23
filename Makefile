@@ -288,7 +288,7 @@ $(OUTPUT).elf	:	$(OFILES)
 %.bgr: %.png
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
-	@convert $< -channel B -separate $< -channel G -separate $< -channel R -separate -channel RGB -combine -rotate 90 $@
+	@convert $< -colorspace RGB -rotate 90 $@
 
 #---------------------------------------------------------------------------------
 .PRECIOUS	:	%.t3x

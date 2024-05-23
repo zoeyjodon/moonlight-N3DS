@@ -275,8 +275,8 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
                                     3);                                        \
     }
 
-    float sw = image_width / 1024.0f;
-    float sh = image_height / 512.0f;
+    float sw = image_width / ((float)MOON_CTR_VIDEO_TEX_W);
+    float sh = image_height / ((float)MOON_CTR_VIDEO_TEX_H);
 
     // float hw = 2.0f / surface_height;
     float hh = 2.0f / surface_width;

@@ -20,10 +20,12 @@
 #include "N3dsTouchscreenInput.hpp"
 #include "keyboard_alt_bgr.h"
 #include "keyboard_bgr.h"
-#include "keyboard_caps_bgr.h"
-#include "keyboard_shift_bgr.h"
+#include "keyboard_lock_bgr.h"
+#include "keyboard_temp_bgr.h"
 #include <Limelight.h>
 #include <cstring>
+
+const static int KEY_PX_SIZE = 3;
 
 KeyboardTouchHandler::KeyboardTouchHandler()
     : selected_keycodes(&default_keycodes) {
@@ -39,43 +41,70 @@ void KeyboardTouchHandler::set_screen(const uint8_t *bgr_buffer, int bgr_size) {
     gfxScreenSwapBuffers(GFX_BOTTOM, false);
 }
 
-void KeyboardTouchHandler::reset_shift_state() {
-    shift_active = false;
-    caps_active = false;
+// TODO: Add function to change a single key.
+// Changing the whole section doesn't work for the alt keyboard.
+void KeyboardTouchHandler::set_screen_key(KeyInfo &key_info) {
+    u8 *gfxbtmadr = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+
+    const uint8_t *bgr_buffer;
+    switch (key_info.state) {
+    case (KEY_TEMPORARY):
+        bgr_buffer = keyboard_temp_bgr;
+        break;
+    case (KEY_LOCKED):
+        bgr_buffer = keyboard_lock_bgr;
+        break;
+    default:
+        bgr_buffer = keyboard_bgr;
+        break;
+    }
+
+    for (int x = key_info.min_x; x < key_info.max_x; x++) {
+        int bgr_offset =
+            ((GSP_SCREEN_WIDTH * x) + (GSP_SCREEN_WIDTH - key_info.max_y)) *
+            KEY_PX_SIZE;
+        int bgr_size = (key_info.max_y - key_info.min_y) * KEY_PX_SIZE;
+        memcpy(gfxbtmadr + bgr_offset, bgr_buffer + bgr_offset, bgr_size);
+    }
+
+    gfxFlushBuffers();
+    gfxScreenSwapBuffers(GFX_BOTTOM, false);
 }
 
 void KeyboardTouchHandler::handle_default() {
     set_screen(keyboard_bgr, keyboard_bgr_size);
     selected_keycodes = &default_keycodes;
-    reset_shift_state();
+    alt_keyboard_active = false;
+    set_screen_key(shift_info);
+    set_screen_key(ctrl_info);
+    set_screen_key(alt_info);
 }
 
-void KeyboardTouchHandler::handle_shift() {
-    if (caps_active) {
-        handle_default();
-    } else if (shift_active) {
-        handle_caps();
-    } else {
-        set_screen(keyboard_shift_bgr, keyboard_shift_bgr_size);
-        shift_active = true;
+void KeyboardTouchHandler::cycle_key_state(KeyInfo &key_info) {
+    switch (key_info.state) {
+    case (KEY_TEMPORARY):
+        key_info.state = KEY_LOCKED;
+        break;
+    case (KEY_LOCKED):
+        key_info.state = KEY_DISABLED;
+        break;
+    default:
+        key_info.state = KEY_TEMPORARY;
+        break;
     }
+    set_screen_key(key_info);
 }
 
-void KeyboardTouchHandler::handle_caps() {
-    set_screen(keyboard_caps_bgr, keyboard_caps_bgr_size);
-    reset_shift_state();
-    caps_active = true;
-}
-
-void KeyboardTouchHandler::handle_alt() {
-    if (alt_active) {
+void KeyboardTouchHandler::handle_alt_keyboard() {
+    if (alt_keyboard_active) {
         handle_default();
-        alt_active = false;
     } else {
         set_screen(keyboard_alt_bgr, keyboard_alt_bgr_size);
         selected_keycodes = &alt_keycodes;
-        reset_shift_state();
-        alt_active = true;
+        alt_keyboard_active = true;
+        set_screen_key(shift_info);
+        set_screen_key(ctrl_info);
+        set_screen_key(alt_info);
     }
 }
 
@@ -98,22 +127,31 @@ keycode_info KeyboardTouchHandler::get_keycode(touchPosition touch) {
     return {-1, false};
 }
 
+int KeyboardTouchHandler::get_key_mod() {
+    int modifiers = 0;
+    modifiers |=
+        (shift_info.state != KEY_DISABLED || active_keycode.require_shift)
+            ? MODIFIER_SHIFT
+            : 0;
+    modifiers |= (ctrl_info.state != KEY_DISABLED) ? MODIFIER_CTRL : 0;
+    modifiers |= (alt_info.state != KEY_DISABLED) ? MODIFIER_ALT : 0;
+    return modifiers;
+}
+
 void KeyboardTouchHandler::_handle_touch_down(touchPosition touch) {
     active_keycode = get_keycode(touch);
     if (active_keycode.code == KEYBOARD_SWITCH_KC) {
-        handle_alt();
+        handle_alt_keyboard();
     } else if (active_keycode.code > KEYBOARD_SWITCH_KC) {
         if (active_keycode.code == SHIFT_KC) {
-            handle_shift();
-            active_keycode = {-1, false};
-        } else {
-            int modifiers =
-                (shift_active || caps_active || active_keycode.require_shift)
-                    ? MODIFIER_SHIFT
-                    : 0;
-            LiSendKeyboardEvent(active_keycode.code, KEY_ACTION_DOWN,
-                                modifiers);
+            cycle_key_state(shift_info);
+        } else if (active_keycode.code == CTRL_KC) {
+            cycle_key_state(ctrl_info);
+        } else if (active_keycode.code == ALT_KC) {
+            cycle_key_state(alt_info);
         }
+        int modifiers = get_key_mod();
+        LiSendKeyboardEvent(active_keycode.code, KEY_ACTION_DOWN, modifiers);
     }
 }
 
@@ -122,13 +160,23 @@ void KeyboardTouchHandler::_handle_touch_up(touchPosition touch) {
         return;
     }
 
-    int modifiers =
-        (shift_active || caps_active || active_keycode.require_shift)
-            ? MODIFIER_SHIFT
-            : 0;
+    int modifiers = get_key_mod();
     LiSendKeyboardEvent(active_keycode.code, KEY_ACTION_UP, modifiers);
-    if (shift_active) {
-        handle_default();
+
+    if (active_keycode.code != SHIFT_KC && active_keycode.code != CTRL_KC &&
+        active_keycode.code != ALT_KC) {
+        if (shift_info.state == KEY_TEMPORARY) {
+            shift_info.state = KEY_DISABLED;
+            set_screen_key(shift_info);
+        }
+        if (ctrl_info.state == KEY_TEMPORARY) {
+            ctrl_info.state = KEY_DISABLED;
+            set_screen_key(ctrl_info);
+        }
+        if (alt_info.state == KEY_TEMPORARY) {
+            alt_info.state = KEY_DISABLED;
+            set_screen_key(alt_info);
+        }
     }
     active_keycode = {-1, false};
 }

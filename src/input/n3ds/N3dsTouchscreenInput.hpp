@@ -81,6 +81,15 @@ class MouseTouchHandler : public TouchHandlerBase {
     int previous_y = 0;
 };
 
+enum KeyState { KEY_DISABLED, KEY_TEMPORARY, KEY_LOCKED };
+struct KeyInfo {
+    KeyState state = KEY_DISABLED;
+    int min_x;
+    int max_x;
+    int min_y;
+    int max_y;
+};
+
 class KeyboardTouchHandler : public TouchHandlerBase {
   public:
     KeyboardTouchHandler();
@@ -90,19 +99,20 @@ class KeyboardTouchHandler : public TouchHandlerBase {
     void _handle_touch_up(touchPosition touch);
     void _handle_touch_hold(touchPosition touch);
 
-    void reset_shift_state();
     keycode_info get_keycode(touchPosition touch);
     void set_screen(const uint8_t *bgr_buffer, int bgr_size);
+    void set_screen_key(KeyInfo &key_info);
     void handle_default();
-    void handle_shift();
-    void handle_caps();
-    void handle_alt();
+    void cycle_key_state(KeyInfo &key_info);
+    void handle_alt_keyboard();
+    int get_key_mod();
 
   private:
     keycode_info active_keycode{-1, false};
-    bool alt_active = false;
-    bool shift_active = false;
-    bool caps_active = false;
+    KeyInfo shift_info = {KEY_DISABLED, 0, 48, 136, 169};
+    KeyInfo ctrl_info = {KEY_DISABLED, 64, 127, 0, 37};
+    KeyInfo alt_info = {KEY_DISABLED, 128, 192, 0, 37};
+    bool alt_keyboard_active = false;
     std::map<int, keycode_info> *selected_keycodes = nullptr;
 };
 

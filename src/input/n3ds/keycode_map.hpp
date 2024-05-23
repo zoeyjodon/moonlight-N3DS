@@ -93,12 +93,13 @@ struct keycode_info {
 
 const short KEYBOARD_SWITCH_KC = 0;
 const short SHIFT_KC = 0xA0;
-const short CAPS_KC = 0x14;
+const short CTRL_KC = 0xA2;
+const short ALT_KC = 0xA4;
 static std::map<int, keycode_info> default_keycodes{
     {0, {0x1B, false}},                // VK_ESCAPE
-    {1, {0xA2, false}},                // VK_CONTROL Left control
-    {2, {0xA4, false}},                // VK_ALT Left alt
-    {3, {0x2D, false}},                // VK_INSERT
+    {1, {CTRL_KC, false}},             // VK_CONTROL Left control
+    {2, {ALT_KC, false}},              // VK_ALT Left alt
+    {3, {0x09, false}},                // VK_TAB
     {4, {0x2E, false}},                // VK_DELETE
     {5, {0x31, false}},                // VK_1
     {6, {0x32, false}},                // VK_2
@@ -146,49 +147,49 @@ static std::map<int, keycode_info> default_keycodes{
 };
 
 static std::map<int, keycode_info> alt_keycodes{
-    {0, {0x1B, false}},  // VK_ESCAPE
-    {1, {0xA2, false}},  // VK_CONTROL Left control
-    {2, {0xA4, false}},  // VK_ALT Left alt
-    {3, {0x2D, false}},  // VK_INSERT
-    {4, {0x2E, false}},  // VK_DELETE
-    {5, {0x70, false}},  // VK_F1
-    {6, {0x71, false}},  // VK_F2
-    {7, {0x72, false}},  // VK_F3
-    {8, {0x73, false}},  // VK_F4
-    {9, {0x74, false}},  // VK_F5
-    {10, {0x75, false}}, // VK_F6
-    {11, {0x76, false}}, // VK_F7
-    {12, {0x77, false}}, // VK_F8
-    {13, {0x78, false}}, // VK_F9
-    {14, {0x79, false}}, // VK_F10
-    {15, {0x6A, false}}, // VK_KPASTERISK
-    {16, {0xC0, false}}, // VK_GRAVE Note: can be ` OR ~
-    {17, {0xDE, false}}, // VK_APOSTROPHE Note: can be ' OR "
-    {18, {0xDE, true}},  // VK_APOSTROPHE Note: can be ' OR "
-    {19, {0xBA, true}},  // VK_SEMICOLON Note: can be ; or :
-    {20, {0xBA, false}}, // VK_SEMICOLON Note: can be ; or :
-    {21, {0x36, true}},  // VK_6 Note: use shift to make this char?
-    {22, {0xBF, false}}, // VK_SLASH Note: can be / or ?
-    {23, {0xDC, false}}, // VK_BACK_SLASH Note: can be \ or |
-    {24, {0xDC, true}},  // VK_BACK_SLASH Note: can be \ or |
-    {25, {0xDB, false}}, // VK_BRACELEFT Note: can be [ or {
-    {26, {0xDD, false}}, // VK_BRACERIGHT Note: can be ] or }
-    {27, {0xDB, true}},  // VK_BRACELEFT Note: can be [ or {
-    {28, {0xDD, true}},  // VK_BRACERIGHT Note: can be ] or }
-    {29, {0xBC, true}},  // VK_OEM_102 Note: can be , or <
-    {30, {0xBE, true}},  // VK_OEM_102 Note: can be . or >
-    {31, {0x39, true}},  // VK_9 Note: can be 9 or (
-    {32, {0x30, true}},  // VK_0 Note: can be 0 or )
-    {33, {0xC0, true}},  // VK_GRAVE Note: can be ` OR ~
-    {34, {0x09, false}}, // VK_TAB
-    {35, {0x34, true}},  // VK_4 Note: can be 4 OR $
-    {36, {0xBF, true}},  // VK_SLASH Note: can be / or ?
-    {37, {0x31, true}},  // VK_1 Note: can be 1 OR !
-    {38, {0x37, true}},  // VK_7 Note: can be 7 OR &
-    {39, {0x32, true}},  // VK_2 Note: can be 2 OR @
-    {40, {0x33, true}},  // VK_3 Note: can be 3 or #
-    {41, {0x35, true}},  // VK_5 Note: can be 5 or %
-    {42, {0x08, false}}, // VK_BACK_SPACE
+    {0, {0x1B, false}},      // VK_ESCAPE
+    {1, {CTRL_KC, false}},   // VK_CONTROL Left control
+    {2, {ALT_KC, false}},    // VK_ALT Left alt
+    {3, {0x09, false}},      // VK_TAB
+    {4, {0x2E, false}},      // VK_DELETE
+    {5, {0x70, false}},      // VK_F1
+    {6, {0x71, false}},      // VK_F2
+    {7, {0x72, false}},      // VK_F3
+    {8, {0x73, false}},      // VK_F4
+    {9, {0x74, false}},      // VK_F5
+    {10, {0x75, false}},     // VK_F6
+    {11, {0x76, false}},     // VK_F7
+    {12, {0x77, false}},     // VK_F8
+    {13, {0x78, false}},     // VK_F9
+    {14, {0x79, false}},     // VK_F10
+    {15, {0x6A, false}},     // VK_KPASTERISK
+    {16, {0xC0, false}},     // VK_GRAVE Note: can be ` OR ~
+    {17, {0xDE, false}},     // VK_APOSTROPHE Note: can be ' OR "
+    {18, {0xDE, true}},      // VK_APOSTROPHE Note: can be ' OR "
+    {19, {0xBA, true}},      // VK_SEMICOLON Note: can be ; or :
+    {20, {0xBA, false}},     // VK_SEMICOLON Note: can be ; or :
+    {21, {0x36, true}},      // VK_6 Note: use shift to make this char?
+    {22, {0xBF, false}},     // VK_SLASH Note: can be / or ?
+    {23, {0xDC, false}},     // VK_BACK_SLASH Note: can be \ or |
+    {24, {0xDC, true}},      // VK_BACK_SLASH Note: can be \ or |
+    {25, {0xDB, false}},     // VK_BRACELEFT Note: can be [ or {
+    {26, {0xDD, false}},     // VK_BRACERIGHT Note: can be ] or }
+    {27, {0xDB, true}},      // VK_BRACELEFT Note: can be [ or {
+    {28, {0xDD, true}},      // VK_BRACERIGHT Note: can be ] or }
+    {29, {0xBC, true}},      // VK_OEM_102 Note: can be , or <
+    {30, {0xBE, true}},      // VK_OEM_102 Note: can be . or >
+    {31, {0x39, true}},      // VK_9 Note: can be 9 or (
+    {32, {0x30, true}},      // VK_0 Note: can be 0 or )
+    {33, {0xC0, true}},      // VK_GRAVE Note: can be ` OR ~
+    {34, {SHIFT_KC, false}}, // VK_SHIFT Left shift
+    {35, {0x34, true}},      // VK_4 Note: can be 4 OR $
+    {36, {0xBF, true}},      // VK_SLASH Note: can be / or ?
+    {37, {0x31, true}},      // VK_1 Note: can be 1 OR !
+    {38, {0x37, true}},      // VK_7 Note: can be 7 OR &
+    {39, {0x32, true}},      // VK_2 Note: can be 2 OR @
+    {40, {0x33, true}},      // VK_3 Note: can be 3 or #
+    {41, {0x35, true}},      // VK_5 Note: can be 5 or %
+    {42, {0x08, false}},     // VK_BACK_SPACE
     {43, {KEYBOARD_SWITCH_KC, false}}, // Special key -- keyboard switch
     {44, {0x5B, false}},               // KEY_LEFTMETA
     {45, {0x20, false}},               // VK_SPACE

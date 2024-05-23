@@ -141,7 +141,9 @@ static inline int write_yuv_to_framebuffer(const u8 **source, int width,
         goto y2ru_failed;
     }
 
-    status = Y2RU_SetReceiving(rgb_img_buffer, width * height * px_size, 8, 0);
+    status = Y2RU_SetReceiving(
+        rgb_img_buffer, MOON_CTR_VIDEO_TEX_W * MOON_CTR_VIDEO_TEX_H * px_size,
+        width * px_size, (MOON_CTR_VIDEO_TEX_W - width) * px_size);
     if (status) {
         fprintf(stderr, "Y2RU_SetReceiving failed\n");
         goto y2ru_failed;
