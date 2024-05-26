@@ -22,9 +22,9 @@
 #include <3ds.h>
 #include <Limelight.h>
 #include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <string.h>
-#include <math.h>
 
 #define QUIT_BUTTONS (PLAY_FLAG | BACK_FLAG | LB_FLAG | RB_FLAG)
 #define TOUCH_GAMEPAD_BUTTONS (SPECIAL_FLAG | LS_CLK_FLAG | RS_CLK_FLAG)
@@ -69,7 +69,8 @@ static void remove_gamepad() {
     LiSendMultiControllerEvent(0, ~activeGamepadMask, 0, 0, 0, 0, 0, 0, 0);
 }
 
-void n3dsinput_init(N3dsTouchType touch_type, bool swap_face_buttons, bool swap_triggers_and_shoulders) {
+void n3dsinput_init(N3dsTouchType touch_type, bool swap_face_buttons,
+                    bool swap_triggers_and_shoulders) {
     hidInit();
     HIDUSER_GetGyroscopeRawToDpsCoefficient(&gyro_coeff);
     add_gamepad();
@@ -85,10 +86,16 @@ void n3dsinput_init(N3dsTouchType touch_type, bool swap_face_buttons, bool swap_
         SWAP_ZL = KEY_L;
         SWAP_ZR = KEY_R;
     }
-    touch_handler = std::make_unique<N3dsTouchscreenInput>(&gamepad_state, touch_type);
+    touch_handler =
+        std::make_unique<N3dsTouchscreenInput>(&gamepad_state, touch_type);
 }
 
-void n3dsinput_cleanup() { remove_gamepad(); }
+void n3dsinput_cleanup() {
+    remove_gamepad();
+    gamepad_state = GAMEPAD_STATE();
+    previous_state = GAMEPAD_STATE();
+    touch_handler = nullptr;
+}
 
 static inline int n3ds_to_li_button(u32 key_in, u32 key_n3ds, int key_li) {
     return ((key_in & key_n3ds) / key_n3ds) * key_li;

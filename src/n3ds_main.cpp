@@ -364,7 +364,7 @@ static void init_3ds() {
 static int prompt_for_app_id(PSERVER_DATA server) {
     PAPP_LIST list = NULL;
     if (gs_applist(server, &list) != GS_OK) {
-        fprintf(stderr, "Can't get app list\n");
+        printf("Can't get app list\n");
         return -1;
     }
 
@@ -401,24 +401,23 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
                            config->localaudio, gamepad_mask);
     if (ret < 0) {
         if (ret == GS_NOT_SUPPORTED_4K)
-            fprintf(stderr, "Server doesn't support 4K\n");
+            printf("Server doesn't support 4K\n");
         else if (ret == GS_NOT_SUPPORTED_MODE)
-            fprintf(stderr,
-                    "Server doesn't support %dx%d (%d fps) or remove "
-                    "--nounsupported option\n",
-                    config->stream.width, config->stream.height,
-                    config->stream.fps);
+            printf("Server doesn't support %dx%d (%d fps) or remove "
+                   "--nounsupported option\n",
+                   config->stream.width, config->stream.height,
+                   config->stream.fps);
         else if (ret == GS_NOT_SUPPORTED_SOPS_RESOLUTION)
-            fprintf(
-                stderr,
+            printf(
                 "Optimal Playable Settings isn't supported for the resolution "
                 "%dx%d, use supported resolution or add --nosops option\n",
                 config->stream.width, config->stream.height);
         else if (ret == GS_ERROR)
-            fprintf(stderr, "Gamestream error: %s\n", gs_error);
+            printf("Gamestream error: %s\n", gs_error);
         else
-            fprintf(stderr, "Errorcode starting app: %d\n", ret);
-        exit(-1);
+            printf("Errorcode starting app: %d\n", ret);
+        wait_for_button();
+        return;
     }
 
     n3ds_audio_disabled = config->localaudio;
@@ -445,6 +444,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
         printf("Ignoring invalid rotation value: %d\n", config->rotate);
     }
 
+    n3ds_connection_closed = false;
     n3ds_enable_motion = config->motion_controls;
     PDECODER_RENDERER_CALLBACKS video_callbacks =
         config->hwdecode ? &decoder_callbacks_n3ds_mvd
@@ -468,7 +468,9 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
 
     if (status != 0) {
         n3ds_connection_callbacks.connectionTerminated(status);
-        exit(status);
+        printf("Connection failed with error: %d\n", status);
+        wait_for_button();
+        return;
     }
 
     printf("Connected!\n");
@@ -502,20 +504,19 @@ int main_loop(int argc, char *argv[]) {
         if ((ret = gs_init(&server, config.address, config.port, config.key_dir,
                            config.debug_level, config.unsupported)) ==
             GS_OUT_OF_MEMORY) {
-            fprintf(stderr, "Not enough memory\n");
+            printf("Not enough memory\n");
             exit(-1);
         } else if (ret == GS_ERROR) {
-            fprintf(stderr, "Gamestream error: %s\n", gs_error);
+            printf("Gamestream error: %s\n", gs_error);
             exit(-1);
         } else if (ret == GS_INVALID) {
-            fprintf(stderr, "Invalid data received from server: %s\n",
-                    gs_error);
+            printf("Invalid data received from server: %s\n", gs_error);
             exit(-1);
         } else if (ret == GS_UNSUPPORTED_VERSION) {
-            fprintf(stderr, "Unsupported version: %s\n", gs_error);
+            printf("Unsupported version: %s\n", gs_error);
             exit(-1);
         } else if (ret != GS_OK) {
-            fprintf(stderr, "Can't connect to server %s\n", config.address);
+            printf("Can't connect to server %s\n", config.address);
             wait_for_button();
             continue;
         }
@@ -579,8 +580,6 @@ int main_loop(int argc, char *argv[]) {
                 if (!config.viewonly) {
                     n3dsinput_cleanup();
                 }
-                // Exit app after streaming has closed
-                exit(0);
             } else if (strcmp("pair", config.action) == 0) {
                 char pin[5];
                 if (config.pin > 0 && config.pin <= 9999) {
@@ -594,7 +593,7 @@ int main_loop(int argc, char *argv[]) {
                        pin);
                 fflush(stdout);
                 if (gs_pair(&server, &pin[0]) != GS_OK) {
-                    fprintf(stderr, "Failed to pair to server: %s\n", gs_error);
+                    printf("Failed to pair to server: %s\n", gs_error);
                 } else {
                     printf("Succesfully paired\n");
                     add_pair_address(config.address);
@@ -605,8 +604,7 @@ int main_loop(int argc, char *argv[]) {
                 continue;
             } else if (strcmp("unpair", config.action) == 0) {
                 if (gs_unpair(&server) != GS_OK) {
-                    fprintf(stderr, "Failed to unpair to server: %s\n",
-                            gs_error);
+                    printf("Failed to unpair to server: %s\n", gs_error);
                 } else {
                     printf("Succesfully unpaired\n");
                     remove_pair_address(config.address);
@@ -616,7 +614,7 @@ int main_loop(int argc, char *argv[]) {
                 printf("Sending app quit request ...\n");
                 gs_quit_app(&server);
             } else
-                fprintf(stderr, "%s is not a valid action\n", config.action);
+                printf("%s is not a valid action\n", config.action);
 
             wait_for_button();
         }
@@ -628,16 +626,14 @@ int main(int argc, char *argv[]) {
     try {
         main_loop(argc, argv);
     } catch (const std::exception &ex) {
-        fprintf(stderr, "Moonlight crashed with the following error: %s\n",
-                ex.what());
+        printf("Moonlight crashed with the following error: %s\n", ex.what());
         return 1;
     } catch (const std::string &ex) {
-        fprintf(stderr,
-                "Moonlight crashed with the following error message: %s\n",
-                ex.c_str());
+        printf("Moonlight crashed with the following error message: %s\n",
+               ex.c_str());
         return 1;
     } catch (...) {
-        fprintf(stderr, "Moonlight crashed with an unknown error\n");
+        printf("Moonlight crashed with an unknown error\n");
         return 1;
     }
     return 0;

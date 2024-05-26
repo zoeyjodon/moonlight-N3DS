@@ -44,6 +44,22 @@ N3dsRendererBase::~N3dsRendererBase() {
     linearFree(cmdlist);
     vramFree(vramFb);
     vramFree(vramTex);
+    // Return to the default display width before exiting
+    if (surface_width == GSP_SCREEN_HEIGHT_TOP_2X) {
+        gfxSetWide(false);
+    }
+    // Clear both screens
+    u8 *top = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
+    memset(top, 0, GSP_SCREEN_HEIGHT_TOP * GSP_SCREEN_WIDTH * px_size);
+    gfxScreenSwapBuffers(GFX_TOP, true);
+
+    GSPGPU_FramebufferFormat px_fmt_btm = gfxGetScreenFormat(GFX_BOTTOM);
+    int px_size_btm = gspGetBytesPerPixel(px_fmt_btm);
+    u8 *btm = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+    memset(btm, 0, GSP_SCREEN_HEIGHT_BOTTOM * GSP_SCREEN_WIDTH * px_size_btm);
+    gfxScreenSwapBuffers(GFX_BOTTOM, true);
+
+    printf("Closing stream...");
 }
 
 void N3dsRendererBase::ensure_3d_enabled() {

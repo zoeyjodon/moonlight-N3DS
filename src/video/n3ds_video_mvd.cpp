@@ -54,6 +54,7 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
         return -1;
     }
 
+    first_frame = true;
     int status =
         mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264, MVD_OUTPUT_BGR565,
                    width * height * N3DS_DEC_BUFF_SIZE, NULL);
