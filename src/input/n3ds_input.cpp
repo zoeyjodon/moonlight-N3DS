@@ -74,18 +74,31 @@ void n3dsinput_init(N3dsTouchType touch_type, bool swap_face_buttons,
     hidInit();
     HIDUSER_GetGyroscopeRawToDpsCoefficient(&gyro_coeff);
     add_gamepad();
+
     if (swap_face_buttons) {
         SWAP_A = KEY_B;
         SWAP_B = KEY_A;
         SWAP_X = KEY_Y;
         SWAP_Y = KEY_X;
+    } else {
+        SWAP_A = KEY_A;
+        SWAP_B = KEY_B;
+        SWAP_X = KEY_X;
+        SWAP_Y = KEY_Y;
     }
+
     if (swap_triggers_and_shoulders) {
         SWAP_L = KEY_ZL;
         SWAP_R = KEY_ZR;
         SWAP_ZL = KEY_L;
         SWAP_ZR = KEY_R;
+    } else {
+        SWAP_L = KEY_L;
+        SWAP_R = KEY_R;
+        SWAP_ZL = KEY_ZL;
+        SWAP_ZR = KEY_ZR;
     }
+
     touch_handler =
         std::make_unique<N3dsTouchscreenInput>(&gamepad_state, touch_type);
 }

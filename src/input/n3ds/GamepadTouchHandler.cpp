@@ -49,4 +49,16 @@ void GamepadTouchHandler::_handle_touch_up(touchPosition touch) {
     gamepad_state->buttons &= ~(SPECIAL_FLAG | LS_CLK_FLAG | RS_CLK_FLAG);
 }
 
-void GamepadTouchHandler::_handle_touch_hold(touchPosition touch) {}
+void GamepadTouchHandler::_handle_touch_hold(touchPosition touch) {
+    gamepad_state->buttons &= ~(SPECIAL_FLAG | LS_CLK_FLAG | RS_CLK_FLAG);
+
+    if (touch.py >= 120) {
+        gamepad_state->buttons |= SPECIAL_FLAG;
+        return;
+    }
+
+    if (touch.px < 235)
+        gamepad_state->buttons |= LS_CLK_FLAG;
+    if (touch.px > 104)
+        gamepad_state->buttons |= RS_CLK_FLAG;
+}
