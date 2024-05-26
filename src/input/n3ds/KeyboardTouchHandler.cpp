@@ -21,6 +21,7 @@
 #include "keyboard_alt_bgr.h"
 #include "keyboard_bgr.h"
 #include "keyboard_lock_bgr.h"
+#include "keyboard_shift_bgr.h"
 #include "keyboard_temp_bgr.h"
 #include <Limelight.h>
 #include <cstring>
@@ -41,8 +42,6 @@ void KeyboardTouchHandler::set_screen(const uint8_t *bgr_buffer, int bgr_size) {
     gfxScreenSwapBuffers(GFX_BOTTOM, false);
 }
 
-// TODO: Add function to change a single key.
-// Changing the whole section doesn't work for the alt keyboard.
 void KeyboardTouchHandler::set_screen_key(KeyInfo &key_info) {
     u8 *gfxbtmadr = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
 
@@ -54,8 +53,11 @@ void KeyboardTouchHandler::set_screen_key(KeyInfo &key_info) {
     case (KEY_LOCKED):
         bgr_buffer = keyboard_lock_bgr;
         break;
+    case (KEY_SHIFT):
+        bgr_buffer = keyboard_shift_bgr;
+        break;
     default:
-        bgr_buffer = keyboard_bgr;
+        bgr_buffer = alt_keyboard_active ? keyboard_alt_bgr : keyboard_bgr;
         break;
     }
 
@@ -69,6 +71,12 @@ void KeyboardTouchHandler::set_screen_key(KeyInfo &key_info) {
 
     gfxFlushBuffers();
     gfxScreenSwapBuffers(GFX_BOTTOM, false);
+}
+
+void KeyboardTouchHandler::set_shift_keys() {
+    shift_keys.state =
+        (shift_info.state != KEY_DISABLED) ? KEY_SHIFT : KEY_DISABLED;
+    set_screen_key(shift_keys);
 }
 
 void KeyboardTouchHandler::handle_default() {
@@ -145,6 +153,7 @@ void KeyboardTouchHandler::_handle_touch_down(touchPosition touch) {
     } else if (active_keycode.code > KEYBOARD_SWITCH_KC) {
         if (active_keycode.code == SHIFT_KC) {
             cycle_key_state(shift_info);
+            set_shift_keys();
         } else if (active_keycode.code == CTRL_KC) {
             cycle_key_state(ctrl_info);
         } else if (active_keycode.code == ALT_KC) {
@@ -168,6 +177,7 @@ void KeyboardTouchHandler::_handle_touch_up(touchPosition touch) {
         if (shift_info.state == KEY_TEMPORARY) {
             shift_info.state = KEY_DISABLED;
             set_screen_key(shift_info);
+            set_shift_keys();
         }
         if (ctrl_info.state == KEY_TEMPORARY) {
             ctrl_info.state = KEY_DISABLED;
