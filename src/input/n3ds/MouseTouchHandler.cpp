@@ -37,6 +37,11 @@ void MouseTouchHandler::_handle_touch_down(touchPosition touch) {
     if (touch.py < 175) {
         previous_x = touch.px;
         previous_y = touch.py;
+        if (touch.px > 285) {
+            v_scroll = true;
+        } else if (touch.py < 35) {
+            h_scroll = true;
+        }
     } else if (touch.px > 160) {
         mouse_button = BUTTON_RIGHT;
         LiSendMouseButtonEvent(BUTTON_ACTION_PRESS, BUTTON_RIGHT);
@@ -53,15 +58,25 @@ void MouseTouchHandler::_handle_touch_up(touchPosition touch) {
     mouse_button = -1;
     previous_x = -1;
     previous_y = -1;
+    v_scroll = false;
+    h_scroll = false;
 }
 
 void MouseTouchHandler::_handle_touch_hold(touchPosition touch) {
     if (previous_x == -1) {
         return;
     }
-    short deltaX = N3DS_MOUSEPAD_SENSITIVITY * (touch.px - previous_x);
-    short deltaY = N3DS_MOUSEPAD_SENSITIVITY * (touch.py - previous_y);
+    short deltaX = touch.px - previous_x;
+    short deltaY = touch.py - previous_y;
     previous_x = touch.px;
     previous_y = touch.py;
-    LiSendMouseMoveEvent(deltaX, deltaY);
+
+    if (v_scroll) {
+        LiSendScrollEvent(-1 * deltaY);
+    } else if (h_scroll) {
+        LiSendHScrollEvent(deltaX);
+    } else {
+        LiSendMouseMoveEvent(N3DS_MOUSEPAD_SENSITIVITY * deltaX,
+                             N3DS_MOUSEPAD_SENSITIVITY * deltaY);
+    }
 }

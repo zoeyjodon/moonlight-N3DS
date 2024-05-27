@@ -79,6 +79,8 @@ class MouseTouchHandler : public TouchHandlerBase {
     int mouse_button = -1;
     int previous_x = 0;
     int previous_y = 0;
+    bool v_scroll = false;
+    bool h_scroll = false;
 };
 
 enum KeyState { KEY_DISABLED, KEY_TEMPORARY, KEY_LOCKED, KEY_SHIFT };
