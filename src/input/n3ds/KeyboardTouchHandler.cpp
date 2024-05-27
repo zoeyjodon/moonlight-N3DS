@@ -75,7 +75,9 @@ void KeyboardTouchHandler::set_screen_key(KeyInfo &key_info) {
 
 void KeyboardTouchHandler::set_shift_keys() {
     shift_keys.state =
-        (shift_info.state != KEY_DISABLED) ? KEY_SHIFT : KEY_DISABLED;
+        !alt_keyboard_active && (shift_info.state != KEY_DISABLED)
+            ? KEY_SHIFT
+            : KEY_DISABLED;
     set_screen_key(shift_keys);
 }
 
@@ -86,6 +88,7 @@ void KeyboardTouchHandler::handle_default() {
     set_screen_key(shift_info);
     set_screen_key(ctrl_info);
     set_screen_key(alt_info);
+    set_shift_keys();
 }
 
 void KeyboardTouchHandler::cycle_key_state(KeyInfo &key_info) {
@@ -113,6 +116,7 @@ void KeyboardTouchHandler::handle_alt_keyboard() {
         set_screen_key(shift_info);
         set_screen_key(ctrl_info);
         set_screen_key(alt_info);
+        set_shift_keys();
     }
 }
 
