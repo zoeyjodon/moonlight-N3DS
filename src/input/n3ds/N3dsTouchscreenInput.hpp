@@ -111,6 +111,7 @@ class KeyboardTouchHandler : public TouchHandlerBase {
     int get_key_mod();
 
   private:
+    int key_px_size;
     keycode_info active_keycode{-1, false};
     KeyInfo shift_info = {KEY_DISABLED, 0, 48, 136, 169};
     KeyInfo ctrl_info = {KEY_DISABLED, 64, 127, 0, 37};

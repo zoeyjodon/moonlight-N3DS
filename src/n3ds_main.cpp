@@ -336,7 +336,10 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
 static void init_3ds() {
     Result status = 0;
     acInit();
-    gfxInit(GSP_RGB565_OES, GSP_BGR8_OES, false);
+    gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
+    gfxSetDoubleBuffering(GFX_TOP, false);
+    gfxSetDoubleBuffering(GFX_BOTTOM, false);
+
     consoleInit(GFX_TOP, &topScreen);
     consoleSelect(&topScreen);
     atexit(n3ds_exit_handler);
@@ -555,13 +558,9 @@ int main_loop(int argc, char *argv[]) {
                     consoleInit(GFX_BOTTOM, &bottomScreen);
                     consoleSelect(&bottomScreen);
                 } else if (config.display_type == RENDER_DUAL_SCREEN_STRETCH) {
-                    gfxExit();
-                    gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
                     touch_type = DS_TOUCH;
                 } else if (config.display_type == RENDER_BOTTOM ||
                            config.display_type == RENDER_DUAL_SCREEN_MIRROR) {
-                    gfxExit();
-                    gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
                     touch_type = ABSOLUTE_TOUCH;
                 } else {
                     touch_type = GAMEPAD;

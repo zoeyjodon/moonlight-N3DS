@@ -24,7 +24,6 @@
 
 GamepadTouchHandler::GamepadTouchHandler(GAMEPAD_STATE *gamepad_in)
     : gamepad_state(gamepad_in) {
-    gfxSetDoubleBuffering(GFX_BOTTOM, false);
     u8 *gfxbtmadr = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
 
     memcpy(gfxbtmadr, gamepad_bgr, gamepad_bgr_size);

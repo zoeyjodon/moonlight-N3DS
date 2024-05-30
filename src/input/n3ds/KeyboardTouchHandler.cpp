@@ -26,10 +26,12 @@
 #include <Limelight.h>
 #include <cstring>
 
-const static int KEY_PX_SIZE = 3;
-
 KeyboardTouchHandler::KeyboardTouchHandler()
     : selected_keycodes(&default_keycodes) {
+
+    GSPGPU_FramebufferFormat px_fmt_btm = gfxGetScreenFormat(GFX_BOTTOM);
+    key_px_size = gspGetBytesPerPixel(px_fmt_btm);
+
     handle_default();
 }
 
@@ -64,8 +66,8 @@ void KeyboardTouchHandler::set_screen_key(KeyInfo &key_info) {
     for (int x = key_info.min_x; x < key_info.max_x; x++) {
         int bgr_offset =
             ((GSP_SCREEN_WIDTH * x) + (GSP_SCREEN_WIDTH - key_info.max_y)) *
-            KEY_PX_SIZE;
-        int bgr_size = (key_info.max_y - key_info.min_y) * KEY_PX_SIZE;
+            key_px_size;
+        int bgr_size = (key_info.max_y - key_info.min_y) * key_px_size;
         memcpy(gfxbtmadr + bgr_offset, bgr_buffer + bgr_offset, bgr_size);
     }
 

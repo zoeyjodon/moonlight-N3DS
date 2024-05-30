@@ -288,7 +288,8 @@ $(OUTPUT).elf	:	$(OFILES)
 %.bgr: %.png
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
-	@convert $< -colorspace RGB -rotate 90 $@
+	@ffmpeg -vcodec png -i $< -vf transpose=1 -vcodec rawvideo -f rawvideo -pix_fmt rgb565 $@
+	@cp $@ $@.bmp
 
 #---------------------------------------------------------------------------------
 .PRECIOUS	:	%.t3x
