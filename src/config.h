@@ -56,7 +56,7 @@ typedef struct _CONFIGURATION {
   int pin;
   unsigned short port;
   bool hwdecode;
-  bool dual_screen;
+  int display_type;
   bool motion_controls;
   bool swap_face_buttons;
   bool swap_triggers_and_shoulders;

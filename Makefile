@@ -39,7 +39,9 @@ SOURCES		:=	src \
 				src/n3ds/ \
 				src/audio/ \
 				src/input/ \
+				src/input/n3ds \
 				src/video/ \
+				src/video/n3ds \
 				libgamestream \
 				third_party/h264bitstream \
 				third_party/libuuid \
@@ -88,7 +90,8 @@ CFLAGS	:=	-g -Wall -O2 -mword-relocations -Wno-psabi \
 			-DVERSION_MAJOR=$(VERSION_MAJOR) -DVERSION_MINOR=$(VERSION_MINOR) -DVERSION_MICRO=$(VERSION_MICRO) \
 			$(ARCH)
 
-CFLAGS	+=	$(INCLUDE) -D__3DS__ -DUSE_MBEDTLS
+# TODO: Reenable build warnings and actually address them
+CFLAGS	+=	$(INCLUDE) -D__3DS__ -DUSE_MBEDTLS -Wno-implicit-function-declaration -Wno-incompatible-pointer-types
 
 CXXFLAGS	:= $(CFLAGS) -fno-rtti -fexceptions -std=gnu++17
 
@@ -285,7 +288,8 @@ $(OUTPUT).elf	:	$(OFILES)
 %.bgr: %.png
 #---------------------------------------------------------------------------------
 	@echo $(notdir $<)
-	@convert $< -channel B -separate $< -channel G -separate $< -channel R -separate -channel RGB -combine -rotate 90 $@
+	@ffmpeg -vcodec png -i $< -vf transpose=1 -vcodec rawvideo -f rawvideo -pix_fmt rgb565 $@
+	@cp $@ $@.bmp
 
 #---------------------------------------------------------------------------------
 .PRECIOUS	:	%.t3x

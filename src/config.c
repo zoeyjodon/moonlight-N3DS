@@ -85,7 +85,7 @@ static struct option long_options[] = {
   {"port", required_argument, NULL, '6'},
   {"hdr", no_argument, NULL, '7'},
   {"hwdecode", required_argument, NULL, '8'},
-  {"dual_screen", required_argument, NULL, '9'},
+  {"display_type", required_argument, NULL, '9'},
   {"motion_controls", required_argument, NULL, 'e'},
   {"swapfacebuttons", required_argument, NULL, 'A'},
   {"swaptriggersandshoulders", required_argument, NULL, 'B'},
@@ -318,11 +318,11 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     }
     break;
   case '9':
-    if ((value != NULL) && (strcmp(value, "true") == 0)) {
-      config->dual_screen = true;
+    if (value != NULL) {
+      config->display_type = atoi(value);
     }
     else {
-      config->dual_screen = false;
+      config->display_type = 0;
     }
     break;
   case 'A':
@@ -407,7 +407,7 @@ void config_save(char* filename, PCONFIGURATION config) {
   write_config_bool(fd, "swapfacebuttons", config->swap_face_buttons);
   write_config_bool(fd, "swaptriggersandshoulders", config->swap_triggers_and_shoulders);
   write_config_bool(fd, "debug", config->debug_level);
-  write_config_bool(fd, "dual_screen", config->dual_screen);
+  write_config_int(fd, "display_type", config->display_type);
   write_config_bool(fd, "motion_controls", config->motion_controls);
 
   if (strcmp(config->app, "Steam") != 0)
@@ -466,12 +466,12 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   strcpy(config->key_dir, MOONLIGHT_3DS_PATH "/keys");
 
 #ifdef __3DS__
-  config->stream.width = 400;
-  config->stream.height = 240;
-  config->stream.fps = 30;
+  config->stream.width = 800;
+  config->stream.height = 480;
+  config->stream.fps = 60;
   config->stream.encryptionFlags = ENCFLG_NONE;
   config->hwdecode = true;
-  config->dual_screen = false;
+  config->display_type = 0;
   config->motion_controls = false;
   config->swap_face_buttons = false;
   config->swap_triggers_and_shoulders = false;

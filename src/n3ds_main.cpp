@@ -23,13 +23,13 @@
 #include "loop.h"
 #include "platform_main.h"
 
-#include "n3ds/n3ds_connection.h"
+#include "n3ds/n3ds_connection.hpp"
 #include "n3ds/pair_record.hpp"
 
 #include "audio/audio.h"
 #include "video/video.h"
 
-#include "input/n3ds_input.h"
+#include "input/n3ds_input.hpp"
 
 #include <3ds.h>
 
@@ -213,6 +213,22 @@ static bool prompt_for_boolean(std::string prompt, bool default_val) {
     return idx == 0;
 }
 
+static int prompt_for_display_type(int default_val) {
+    std::vector<std::string> options = {
+        "top",
+        "bottom",
+        "dual screen (stretch)",
+        "dual screen (mirror)",
+    };
+    int idx = console_selection_prompt(
+        "Which screen should be used to display the stream?", options,
+        default_val);
+    if (idx < 0) {
+        return default_val;
+    }
+    return idx;
+}
+
 static int prompt_for_int(std::string initial_text) {
     char *setting_buff = (char *)malloc(MAX_INPUT_CHAR);
     memset(setting_buff, 0, MAX_INPUT_CHAR);
@@ -233,7 +249,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         "width",
         "height",
         "fps",
-        "dual_screen",
+        "display_type",
         "motion_controls",
         "bitrate",
         "packetsize",
@@ -246,21 +262,17 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         "swaptriggersandshoulders",
         "debug",
     };
-    char argument_ids[] = {
-        'c', 'd', 'v', '9', 'e', 'g', 'h', 'l',
-        'n', '1', '2', '8', 'A', 'B', 'Z',
-    };
     int idx = 0;
     while (1) {
         std::string prompt = "Select a setting";
-        if (config->stream.width != GSP_SCREEN_HEIGHT_TOP &&
-            config->stream.width != GSP_SCREEN_HEIGHT_TOP_2X) {
+        if (config->stream.width % GSP_SCREEN_HEIGHT_TOP &&
+            config->stream.width % GSP_SCREEN_HEIGHT_BOTTOM) {
             prompt += "\n\nWARNING: Using an unsupported width may "
-                      "cause issues (3DS supports 400 or 800)\n";
+                      "cause issues (3DS supports multiples of 400 or 320)\n";
         }
-        if (config->stream.height != GSP_SCREEN_WIDTH) {
+        if (config->stream.height % GSP_SCREEN_WIDTH) {
             prompt += "\n\nWARNING: Using an unsupported height may "
-                      "cause issues (3DS supports 240)\n";
+                      "cause issues (3DS supports multiples of 240)\n";
         }
         idx = console_selection_prompt(prompt, setting_names, idx);
         if (idx < 0) {
@@ -273,9 +285,9 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         } else if ("height" == setting_names[idx]) {
             config->stream.height =
                 prompt_for_int(std::to_string(config->stream.height));
-        } else if ("dual_screen" == setting_names[idx]) {
-            config->dual_screen =
-                prompt_for_boolean("Enable Dual Screens", config->dual_screen);
+        } else if ("display_type" == setting_names[idx]) {
+            config->display_type =
+                prompt_for_display_type(config->display_type);
         } else if ("motion_controls" == setting_names[idx]) {
             config->motion_controls = prompt_for_boolean(
                 "Enable Motion Controls", config->motion_controls);
@@ -324,7 +336,10 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
 static void init_3ds() {
     Result status = 0;
     acInit();
-    gfxInit(GSP_RGB565_OES, GSP_BGR8_OES, false);
+    gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
+    gfxSetDoubleBuffering(GFX_TOP, false);
+    gfxSetDoubleBuffering(GFX_BOTTOM, false);
+
     consoleInit(GFX_TOP, &topScreen);
     consoleSelect(&topScreen);
     atexit(n3ds_exit_handler);
@@ -352,7 +367,7 @@ static void init_3ds() {
 static int prompt_for_app_id(PSERVER_DATA server) {
     PAPP_LIST list = NULL;
     if (gs_applist(server, &list) != GS_OK) {
-        fprintf(stderr, "Can't get app list\n");
+        printf("Can't get app list\n");
         return -1;
     }
 
@@ -389,28 +404,28 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
                            config->localaudio, gamepad_mask);
     if (ret < 0) {
         if (ret == GS_NOT_SUPPORTED_4K)
-            fprintf(stderr, "Server doesn't support 4K\n");
+            printf("Server doesn't support 4K\n");
         else if (ret == GS_NOT_SUPPORTED_MODE)
-            fprintf(stderr,
-                    "Server doesn't support %dx%d (%d fps) or remove "
-                    "--nounsupported option\n",
-                    config->stream.width, config->stream.height,
-                    config->stream.fps);
+            printf("Server doesn't support %dx%d (%d fps) or remove "
+                   "--nounsupported option\n",
+                   config->stream.width, config->stream.height,
+                   config->stream.fps);
         else if (ret == GS_NOT_SUPPORTED_SOPS_RESOLUTION)
-            fprintf(
-                stderr,
+            printf(
                 "Optimal Playable Settings isn't supported for the resolution "
                 "%dx%d, use supported resolution or add --nosops option\n",
                 config->stream.width, config->stream.height);
         else if (ret == GS_ERROR)
-            fprintf(stderr, "Gamestream error: %s\n", gs_error);
+            printf("Gamestream error: %s\n", gs_error);
         else
-            fprintf(stderr, "Errorcode starting app: %d\n", ret);
-        exit(-1);
+            printf("Errorcode starting app: %d\n", ret);
+        wait_for_button();
+        return;
     }
 
     n3ds_audio_disabled = config->localaudio;
     n3ds_connection_debug = config->debug_level;
+    N3DS_RENDER_TYPE = static_cast<n3ds_render_type>(config->display_type);
 
     int drFlags = 0;
     if (config->fullscreen)
@@ -432,6 +447,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
         printf("Ignoring invalid rotation value: %d\n", config->rotate);
     }
 
+    n3ds_connection_closed = false;
     n3ds_enable_motion = config->motion_controls;
     PDECODER_RENDERER_CALLBACKS video_callbacks =
         config->hwdecode ? &decoder_callbacks_n3ds_mvd
@@ -440,13 +456,13 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     printf(
         "Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
  viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d,\
- dual_screen=%d, motion_controls=%d, debug=%d\n",
+ display_type=%d, motion_controls=%d, debug=%d\n",
         config->stream.width, config->stream.height, config->stream.fps,
         config->stream.bitrate, config->sops, config->localaudio,
         config->quitappafter, config->viewonly, config->rotate,
         config->stream.encryptionFlags, config->hwdecode,
         config->swap_face_buttons, config->swap_triggers_and_shoulders,
-        config->dual_screen, config->motion_controls, config->debug_level);
+        config->display_type, config->motion_controls, config->debug_level);
 
     int status = LiStartConnection(&server->serverInfo, &config->stream,
                                    &n3ds_connection_callbacks, video_callbacks,
@@ -455,23 +471,12 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
 
     if (status != 0) {
         n3ds_connection_callbacks.connectionTerminated(status);
-        exit(status);
+        printf("Connection failed with error: %d\n", status);
+        wait_for_button();
+        return;
     }
 
-    consoleClear();
-    if (config->debug_level) {
-        consoleInit(GFX_BOTTOM, &bottomScreen);
-        consoleSelect(&bottomScreen);
-        printf("Connected!\n");
-    } else if (config->dual_screen) {
-        enable_dual_display = true;
-        gfxExit();
-        gfxInit(GSP_RGB565_OES, GSP_RGB565_OES, false);
-        n3dsinput_set_touch(DS_TOUCH);
-    } else {
-        n3dsinput_set_touch(GAMEPAD);
-    }
-
+    printf("Connected!\n");
     stream_loop(config);
 
     LiStopConnection();
@@ -502,20 +507,19 @@ int main_loop(int argc, char *argv[]) {
         if ((ret = gs_init(&server, config.address, config.port, config.key_dir,
                            config.debug_level, config.unsupported)) ==
             GS_OUT_OF_MEMORY) {
-            fprintf(stderr, "Not enough memory\n");
+            printf("Not enough memory\n");
             exit(-1);
         } else if (ret == GS_ERROR) {
-            fprintf(stderr, "Gamestream error: %s\n", gs_error);
+            printf("Gamestream error: %s\n", gs_error);
             exit(-1);
         } else if (ret == GS_INVALID) {
-            fprintf(stderr, "Invalid data received from server: %s\n",
-                    gs_error);
+            printf("Invalid data received from server: %s\n", gs_error);
             exit(-1);
         } else if (ret == GS_UNSUPPORTED_VERSION) {
-            fprintf(stderr, "Unsupported version: %s\n", gs_error);
+            printf("Unsupported version: %s\n", gs_error);
             exit(-1);
         } else if (ret != GS_OK) {
-            fprintf(stderr, "Can't connect to server %s\n", config.address);
+            printf("Can't connect to server %s\n", config.address);
             wait_for_button();
             continue;
         }
@@ -548,12 +552,26 @@ int main_loop(int argc, char *argv[]) {
 
                 config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
 
+                consoleClear();
+                N3dsTouchType touch_type = DISABLED;
+                if (config.debug_level) {
+                    consoleInit(GFX_BOTTOM, &bottomScreen);
+                    consoleSelect(&bottomScreen);
+                } else if (config.display_type == RENDER_DUAL_SCREEN_STRETCH) {
+                    touch_type = DS_TOUCH;
+                } else if (config.display_type == RENDER_BOTTOM ||
+                           config.display_type == RENDER_DUAL_SCREEN_MIRROR) {
+                    touch_type = ABSOLUTE_TOUCH;
+                } else {
+                    touch_type = GAMEPAD;
+                }
+
                 if (config.viewonly) {
                     if (config.debug_level > 0)
                         printf("View-only mode enabled, no input will be sent "
                                "to the host computer\n");
                 } else {
-                    n3dsinput_init(config.swap_face_buttons,
+                    n3dsinput_init(touch_type, config.swap_face_buttons,
                                    config.swap_triggers_and_shoulders);
                 }
                 stream(&server, &config, appId);
@@ -561,8 +579,6 @@ int main_loop(int argc, char *argv[]) {
                 if (!config.viewonly) {
                     n3dsinput_cleanup();
                 }
-                // Exit app after streaming has closed
-                exit(0);
             } else if (strcmp("pair", config.action) == 0) {
                 char pin[5];
                 if (config.pin > 0 && config.pin <= 9999) {
@@ -576,7 +592,7 @@ int main_loop(int argc, char *argv[]) {
                        pin);
                 fflush(stdout);
                 if (gs_pair(&server, &pin[0]) != GS_OK) {
-                    fprintf(stderr, "Failed to pair to server: %s\n", gs_error);
+                    printf("Failed to pair to server: %s\n", gs_error);
                 } else {
                     printf("Succesfully paired\n");
                     add_pair_address(config.address);
@@ -587,8 +603,7 @@ int main_loop(int argc, char *argv[]) {
                 continue;
             } else if (strcmp("unpair", config.action) == 0) {
                 if (gs_unpair(&server) != GS_OK) {
-                    fprintf(stderr, "Failed to unpair to server: %s\n",
-                            gs_error);
+                    printf("Failed to unpair to server: %s\n", gs_error);
                 } else {
                     printf("Succesfully unpaired\n");
                     remove_pair_address(config.address);
@@ -598,7 +613,7 @@ int main_loop(int argc, char *argv[]) {
                 printf("Sending app quit request ...\n");
                 gs_quit_app(&server);
             } else
-                fprintf(stderr, "%s is not a valid action\n", config.action);
+                printf("%s is not a valid action\n", config.action);
 
             wait_for_button();
         }
@@ -610,16 +625,14 @@ int main(int argc, char *argv[]) {
     try {
         main_loop(argc, argv);
     } catch (const std::exception &ex) {
-        fprintf(stderr, "Moonlight crashed with the following error: %s\n",
-                ex.what());
+        printf("Moonlight crashed with the following error: %s\n", ex.what());
         return 1;
     } catch (const std::string &ex) {
-        fprintf(stderr,
-                "Moonlight crashed with the following error message: %s\n",
-                ex.c_str());
+        printf("Moonlight crashed with the following error message: %s\n",
+               ex.c_str());
         return 1;
     } catch (...) {
-        fprintf(stderr, "Moonlight crashed with an unknown error\n");
+        printf("Moonlight crashed with an unknown error\n");
         return 1;
     }
     return 0;
