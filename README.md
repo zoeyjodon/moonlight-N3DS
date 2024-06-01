@@ -4,7 +4,7 @@ Moonlight is an open source client for [Sunshine](https://github.com/LizardByte/
 
 ## Original 3DS Note
 
-While this app is operable on the original 3DS, the hardware decoder must be disabled and the framerate will be significantly lower due to the slower CPU. It is not recommended to use this app on the original 3DS.
+While this app is operable on the original 3DS, the hardware decoder must be disabled and the framerate will be significantly lower due to the slower CPU.
 
 ## Configuration
 
@@ -25,10 +25,9 @@ docker build --network=host -t moonlight-n3ds .
 docker run --rm -it -v .:/moonlight-N3DS -w /moonlight-N3DS moonlight-n3ds:latest
 ```
 
-Then, run the following commands in the docker commandline:
+Then, run the following command in the docker commandline:
 
 ```bash
-source /etc/profile.d/devkit-env.sh
 make
 ```
 
