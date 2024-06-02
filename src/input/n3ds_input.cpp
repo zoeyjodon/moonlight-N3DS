@@ -236,9 +236,9 @@ int n3dsinput_handle_event() {
     if (enable_accel) {
         accelVector accel_vector;
         hidAccelRead(&accel_vector);
-        gamepad_state.accel_vector_x = floor(accel_vector.x / accel_coeff);
-        gamepad_state.accel_vector_y = floor(accel_vector.y / accel_coeff);
-        gamepad_state.accel_vector_z = floor(accel_vector.z / accel_coeff);
+        gamepad_state.accel_vector_x = trunc(accel_vector.x / accel_coeff);
+        gamepad_state.accel_vector_y = trunc(accel_vector.y / accel_coeff);
+        gamepad_state.accel_vector_z = trunc(accel_vector.z / accel_coeff);
         if (accelerometer_state_changed()) {
             LiSendControllerMotionEvent(
                 0, LI_MOTION_TYPE_ACCEL, gamepad_state.accel_vector_x,
@@ -249,9 +249,9 @@ int n3dsinput_handle_event() {
     if (enable_gyro) {
         angularRate gyro_rate;
         hidGyroRead(&gyro_rate);
-        gamepad_state.gyro_rate_x = floor(-1 * gyro_rate.x / gyro_coeff);
-        gamepad_state.gyro_rate_y = floor(gyro_rate.y / gyro_coeff);
-        gamepad_state.gyro_rate_z = floor(-1 * gyro_rate.z / gyro_coeff);
+        gamepad_state.gyro_rate_x = trunc(-1 * gyro_rate.x / gyro_coeff);
+        gamepad_state.gyro_rate_y = trunc(gyro_rate.y / gyro_coeff);
+        gamepad_state.gyro_rate_z = trunc(-1 * gyro_rate.z / gyro_coeff);
         if (gyroscope_state_changed()) {
             LiSendControllerMotionEvent(
                 0, LI_MOTION_TYPE_GYRO, gamepad_state.gyro_rate_x,

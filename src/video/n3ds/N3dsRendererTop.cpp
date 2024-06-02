@@ -35,7 +35,9 @@ N3dsRendererTop::N3dsRendererTop(int dest_width, int dest_height, int src_width,
 N3dsRendererTop::~N3dsRendererTop() = default;
 
 void N3dsRendererTop::write_px_to_framebuffer(uint8_t *source) {
-    if (osGet3DSliderState() > 0.0) {
+    // TODO: Add logic for stretching 400px images to fit 2 400px screen buffers
+    if (osGet3DSliderState() > 0.0 &&
+        surface_width >= GSP_SCREEN_HEIGHT_TOP_2X) {
         ensure_3d_enabled();
     } else {
         ensure_3d_disabled();
