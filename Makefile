@@ -76,9 +76,9 @@ PRODUCT_CODE	:=	CTR-P-MOONLIGHT
 ICON_FLAGS		:=	nosavebackups,visible
 
 # Version
-VERSION_MAJOR	:=	1
+VERSION_MAJOR	:=	2
 VERSION_MINOR	:=	0
-VERSION_MICRO	:=	1
+VERSION_MICRO	:=	0
 
 #---------------------------------------------------------------------------------
 # options for code generation
