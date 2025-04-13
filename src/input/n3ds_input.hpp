@@ -25,7 +25,9 @@
 extern bool enable_gyro;
 extern bool enable_accel;
 
-void n3dsinput_init(N3dsTouchType touch_type, bool set_face_swap, bool set_trigger_swap);
+void n3dsinput_init(N3dsTouchType touch_type, bool swap_face_buttons,
+                    bool swap_triggers_and_shoulders,
+                    bool use_triggers_for_mouse_in);
 void n3dsinput_cleanup();
 void n3dsinput_set_touch(enum N3dsTouchType ttype);
 int n3dsinput_handle_event();

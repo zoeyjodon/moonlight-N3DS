@@ -253,13 +253,14 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         "motion_controls",
         "bitrate",
         "packetsize",
-        "nosops",
+        "sops",
         "localaudio",
         "quitappafter",
         "viewonly",
         "hwdecode",
         "swapfacebuttons",
         "swaptriggersandshoulders",
+        "usetriggersformouse",
         "debug",
     };
     int idx = 0;
@@ -300,8 +301,9 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         } else if ("packetsize" == setting_names[idx]) {
             config->stream.packetSize =
                 prompt_for_int(std::to_string(config->stream.packetSize));
-        } else if ("nosops" == setting_names[idx]) {
-            config->sops = !prompt_for_boolean("Disable sops", !config->sops);
+        } else if ("sops" == setting_names[idx]) {
+            config->sops = prompt_for_boolean(
+                "Optimize Game settings for streaming", config->sops);
         } else if ("localaudio" == setting_names[idx]) {
             config->localaudio =
                 prompt_for_boolean("Enable local audio", config->localaudio);
@@ -322,6 +324,10 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
             config->swap_triggers_and_shoulders = prompt_for_boolean(
                 "Swaps L/ZL and R/ZR for a more natural feel",
                 config->swap_triggers_and_shoulders);
+        } else if ("usetriggersformouse" == setting_names[idx]) {
+            config->use_triggers_for_mouse =
+                prompt_for_boolean("Use ZL/ZR as left/right mouse buttons",
+                                   config->use_triggers_for_mouse);
         } else if ("debug" == setting_names[idx]) {
             config->debug_level =
                 prompt_for_boolean("Enable debug logs", config->debug_level);
@@ -413,7 +419,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
         else if (ret == GS_NOT_SUPPORTED_SOPS_RESOLUTION)
             printf(
                 "Optimal Playable Settings isn't supported for the resolution "
-                "%dx%d, use supported resolution or add --nosops option\n",
+                "%dx%d, use supported resolution or disable 'sops' option\n",
                 config->stream.width, config->stream.height);
         else if (ret == GS_ERROR)
             printf("Gamestream error: %s\n", gs_error);
@@ -456,13 +462,14 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     printf(
         "Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
  viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d,\
- display_type=%d, motion_controls=%d, debug=%d\n",
+ usetriggersformouse=%d, display_type=%d, motion_controls=%d, debug=%d\n",
         config->stream.width, config->stream.height, config->stream.fps,
         config->stream.bitrate, config->sops, config->localaudio,
         config->quitappafter, config->viewonly, config->rotate,
         config->stream.encryptionFlags, config->hwdecode,
         config->swap_face_buttons, config->swap_triggers_and_shoulders,
-        config->display_type, config->motion_controls, config->debug_level);
+        config->use_triggers_for_mouse, config->display_type,
+        config->motion_controls, config->debug_level);
 
     int status = LiStartConnection(&server->serverInfo, &config->stream,
                                    &n3ds_connection_callbacks, video_callbacks,
@@ -572,7 +579,8 @@ int main_loop(int argc, char *argv[]) {
                                "to the host computer\n");
                 } else {
                     n3dsinput_init(touch_type, config.swap_face_buttons,
-                                   config.swap_triggers_and_shoulders);
+                                   config.swap_triggers_and_shoulders,
+                                   config.use_triggers_for_mouse);
                 }
                 stream(&server, &config, appId);
 
