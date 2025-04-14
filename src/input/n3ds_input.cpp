@@ -47,6 +47,7 @@ static float gyro_coeff = 0;
 static float accel_coeff = 52.0;
 bool enable_gyro = false;
 bool enable_accel = false;
+bool use_triggers_for_mouse = false;
 
 static u32 SWAP_A = KEY_A;
 static u32 SWAP_B = KEY_B;
@@ -70,10 +71,12 @@ static void remove_gamepad() {
 }
 
 void n3dsinput_init(N3dsTouchType touch_type, bool swap_face_buttons,
-                    bool swap_triggers_and_shoulders) {
+                    bool swap_triggers_and_shoulders,
+                    bool use_triggers_for_mouse_in) {
     hidInit();
     HIDUSER_GetGyroscopeRawToDpsCoefficient(&gyro_coeff);
     add_gamepad();
+    use_triggers_for_mouse = use_triggers_for_mouse_in;
 
     if (swap_face_buttons) {
         SWAP_A = KEY_B;
@@ -226,11 +229,30 @@ int n3dsinput_handle_event() {
         scale_n3ds_axis(cstick_pos.dy, N3DS_C_STICK_MAX);
 
     if (gamepad_state_changed()) {
-        LiSendMultiControllerEvent(
-            0, activeGamepadMask, gamepad_state.buttons,
-            gamepad_state.leftTrigger, gamepad_state.rightTrigger,
-            gamepad_state.leftStickX, gamepad_state.leftStickY,
-            gamepad_state.rightStickX, gamepad_state.rightStickY);
+        if (use_triggers_for_mouse) {
+            if (previous_state.leftTrigger != gamepad_state.leftTrigger) {
+                LiSendMouseButtonEvent(gamepad_state.leftTrigger
+                                           ? BUTTON_ACTION_PRESS
+                                           : BUTTON_ACTION_RELEASE,
+                                       BUTTON_LEFT);
+            }
+            if (previous_state.rightTrigger != gamepad_state.rightTrigger) {
+                LiSendMouseButtonEvent(gamepad_state.rightTrigger
+                                           ? BUTTON_ACTION_PRESS
+                                           : BUTTON_ACTION_RELEASE,
+                                       BUTTON_RIGHT);
+            }
+            LiSendMultiControllerEvent(
+                0, activeGamepadMask, gamepad_state.buttons, 0, 0,
+                gamepad_state.leftStickX, gamepad_state.leftStickY,
+                gamepad_state.rightStickX, gamepad_state.rightStickY);
+        } else {
+            LiSendMultiControllerEvent(
+                0, activeGamepadMask, gamepad_state.buttons,
+                gamepad_state.leftTrigger, gamepad_state.rightTrigger,
+                gamepad_state.leftStickX, gamepad_state.leftStickY,
+                gamepad_state.rightStickX, gamepad_state.rightStickY);
+        }
     }
 
     if (enable_accel) {

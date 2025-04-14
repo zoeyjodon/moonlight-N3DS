@@ -62,7 +62,7 @@ static struct option long_options[] = {
   {"app", required_argument, NULL, 'i'},
   {"input", required_argument, NULL, 'j'},
   {"mapping", required_argument, NULL, 'k'},
-  {"nosops", required_argument, NULL, 'l'},
+  {"sops", required_argument, NULL, 'l'},
   {"audio", required_argument, NULL, 'm'},
   {"localaudio", required_argument, NULL, 'n'},
   {"config", required_argument, NULL, 'o'},
@@ -89,6 +89,7 @@ static struct option long_options[] = {
   {"motion_controls", required_argument, NULL, 'e'},
   {"swapfacebuttons", required_argument, NULL, 'A'},
   {"swaptriggersandshoulders", required_argument, NULL, 'B'},
+  {"usetriggersformouse", required_argument, NULL, 'C'},
   {0, 0, 0, 0},
 };
 
@@ -166,12 +167,7 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     config->stream.height = atoi(value);
     break;
   case 'e':
-    if ((value != NULL) && (strcmp(value, "true") == 0)) {
-      config->motion_controls = true;
-    }
-    else {
-      config->motion_controls = false;
-    }
+    config->motion_controls = ((value != NULL) && (strcmp(value, "true") == 0));
     break;
   case 'g':
     config->stream.bitrate = atoi(value);
@@ -201,23 +197,13 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     break;
 #endif
   case 'l':
-    if ((value != NULL) && (strcmp(value, "true") == 0)) {
-      config->sops = false;
-    }
-    else {
-      config->sops = true;
-    }
+    config->sops = ((value == NULL) || (strcmp(value, "false") != 0));
     break;
   case 'm':
     config->audio_device = value;
     break;
   case 'n':
-    if ((value != NULL) && (strcmp(value, "true") == 0)) {
-      config->localaudio = true;
-    }
-    else {
-      config->localaudio = false;
-    }
+    config->localaudio = ((value != NULL) && (strcmp(value, "true") == 0));
     break;
   case 'o':
     if (!config_file_parse(value, config))
@@ -268,20 +254,10 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     config->unsupported = false;
     break;
   case '1':
-    if ((value != NULL) && (strcmp(value, "true") == 0)) {
-      config->quitappafter = true;
-    }
-    else {
-      config->quitappafter = false;
-    }
+    config->quitappafter = ((value != NULL) && (strcmp(value, "true") == 0));
     break;
   case '2':
-    if ((value != NULL) && (strcmp(value, "true") == 0)) {
-      config->viewonly = true;
-    }
-    else {
-      config->viewonly = false;
-    }
+    config->viewonly = ((value != NULL) && (strcmp(value, "true") == 0));
     break;
   case '3':
     config->rotate = atoi(value);
@@ -310,12 +286,7 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     config->hdr = true;
     break;
   case '8':
-    if ((value != NULL) && (strcmp(value, "true") == 0)) {
-      config->hwdecode = true;
-    }
-    else {
-      config->hwdecode = false;
-    }
+    config->hwdecode = ((value != NULL) && (strcmp(value, "true") == 0));
     break;
   case '9':
     if (value != NULL) {
@@ -326,20 +297,13 @@ void parse_argument(int c, char* value, PCONFIGURATION config) {
     }
     break;
   case 'A':
-    if ((value != NULL) && (strcmp(value, "true") == 0)) {
-      config->swap_face_buttons = true;
-    }
-    else {
-      config->swap_face_buttons = false;
-    }
+    config->swap_face_buttons = ((value != NULL) && (strcmp(value, "true") == 0));
     break;
   case 'B':
-    if ((value != NULL) && (strcmp(value, "true") == 0)) {
-      config->swap_triggers_and_shoulders = true;
-    }
-    else {
-      config->swap_triggers_and_shoulders = false;
-    }
+    config->swap_triggers_and_shoulders = ((value != NULL) && (strcmp(value, "true") == 0));
+    break;
+  case 'C':
+    config->use_triggers_for_mouse = ((value != NULL) && (strcmp(value, "true") == 0));
     break;
   case 1:
     if (config->action == NULL)
@@ -369,8 +333,6 @@ bool config_file_parse(char* filename, PCONFIGURATION config) {
     if (sscanf(line, "%ms = %m[^\n]", &key, &value) == 2) {
       if (strcmp(key, "address") == 0) {
         config->address = value;
-      } else if (strcmp(key, "sops") == 0) {
-        config->sops = strcmp("true", value) == 0;
       } else {
         for (int i=0;long_options[i].name != NULL;i++) {
           if (strcmp(long_options[i].name, key) == 0) {
@@ -406,6 +368,7 @@ void config_save(char* filename, PCONFIGURATION config) {
   write_config_bool(fd, "hwdecode", config->hwdecode);
   write_config_bool(fd, "swapfacebuttons", config->swap_face_buttons);
   write_config_bool(fd, "swaptriggersandshoulders", config->swap_triggers_and_shoulders);
+  write_config_bool(fd, "usetriggersformouse", config->use_triggers_for_mouse);
   write_config_bool(fd, "debug", config->debug_level);
   write_config_int(fd, "display_type", config->display_type);
   write_config_bool(fd, "motion_controls", config->motion_controls);
@@ -475,6 +438,7 @@ void config_parse(int argc, char* argv[], PCONFIGURATION config) {
   config->motion_controls = false;
   config->swap_face_buttons = false;
   config->swap_triggers_and_shoulders = false;
+  config->use_triggers_for_mouse = false;
 
   char* config_file = (char*) MOONLIGHT_3DS_PATH "/moonlight.conf";
   if (config_file)

@@ -832,3 +832,11 @@ int gs_init(PSERVER_DATA server, char *address, unsigned short httpPort, const c
   server->httpsPort = 0; /* Populated by load_server_status() */
   return load_server_status(server);
 }
+
+void gs_cleanup() {
+  if (cert != NULL)
+    X509_free(cert);
+  if (privateKey != NULL)
+    EVP_PKEY_free(privateKey);
+  http_cleanup();
+}
