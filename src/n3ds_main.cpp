@@ -509,7 +509,7 @@ int main_loop(int argc, char *argv[]) {
 
         SERVER_DATA server;
         printf("Connecting to %s...\n", config.address);
-
+        gs_cleanup();
         int ret;
         if ((ret = gs_init(&server, config.address, config.port, config.key_dir,
                            config.debug_level, config.unsupported)) ==
