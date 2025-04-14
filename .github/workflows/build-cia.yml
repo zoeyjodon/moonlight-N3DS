@@ -17,13 +17,10 @@ jobs:
         run: docker build --network=host -t moonlight-n3ds .
       - name: Build CIA
         run: docker run --rm -v .:/moonlight-N3DS -w /moonlight-N3DS moonlight-n3ds:latest make
-      - name: Upload CIA
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: ${{ github.event.repository.name }}
-          path: ./*.cia
-      - name: Upload 3DSX
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ github.event.repository.name }}
-          path: ./*.3dsx
+          path: |
+            ./*.cia
+            ./*.3dsx
