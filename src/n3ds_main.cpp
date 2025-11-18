@@ -598,12 +598,22 @@ int main_loop(int argc, char *argv[]) {
                 }
                 printf("Please enter the following PIN on the target PC:\n%s\n",
                        pin);
-                fflush(stdout);
+                
+                // Actually display the PIN on screen by swapping buffers
+                gfxSwapBuffers();
+                gfxFlushBuffers();
+                gspWaitForVBlank();
+                
                 if (gs_pair(&server, &pin[0]) != GS_OK) {
                     printf("Failed to pair to server: %s\n", gs_error);
                 } else {
                     printf("Succesfully paired\n");
+                    // Display success message before breaking
+                    gfxSwapBuffers();
+                    gfxFlushBuffers();
+                    gspWaitForVBlank();
                     add_pair_address(config.address);
+                    wait_for_button();
                     break;
                 }
             } else if (strcmp("stream settings", config.action) == 0) {
