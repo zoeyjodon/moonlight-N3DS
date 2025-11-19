@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
     ffmpeg
 
 # Install the luma dump parser for inspecting crashes
-RUN pip install -U git+https://github.com/LumaTeam/luma3ds_exception_dump_parser.git
+# RUN pip install --break-system-packages -U git+https://github.com/LumaTeam/luma3ds_exception_dump_parser.git
 
 # Install moonlight dependencies
 RUN apt-get install -y \
