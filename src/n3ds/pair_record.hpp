@@ -26,7 +26,7 @@
 #include <vector>
 
 void trim(std::string &s);
-void add_pair_address(std::string address);
-void remove_pair_address(std::string address);
+void add_pair_address(std::string address, uint16_t port);
+void remove_pair_address(std::string address, uint16_t port);
 std::vector<std::string> list_paired_addresses();
 #endif

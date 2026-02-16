@@ -505,10 +505,17 @@ int main_loop(int argc, char *argv[]) {
         if (address_string.empty()) {
             continue;
         }
+        // Split address and port (if specified)
+        uint32_t port_delim_pos = address_string.find(':');
+        if (port_delim_pos != std::string::npos) {
+            std::string port_string = address_string.substr(port_delim_pos + 1);
+            address_string = address_string.substr(0, port_delim_pos);
+            config.port = std::stoi(port_string);
+        }
         config.address = (char *)address_string.c_str();
 
         SERVER_DATA server;
-        printf("Connecting to %s...\n", config.address);
+        printf("Connecting to %s:%d...\n", config.address, config.port);
         gs_cleanup();
         int ret;
         if ((ret = gs_init(&server, config.address, config.port, config.key_dir,
@@ -539,9 +546,9 @@ int main_loop(int argc, char *argv[]) {
                    server.serverInfo.serverCodecModeSupport);
         }
         if (server.paired) {
-            add_pair_address(config.address);
+            add_pair_address(config.address, config.port);
         } else {
-            remove_pair_address(config.address);
+            remove_pair_address(config.address, config.port);
         }
 
         while (aptMainLoop()) {
@@ -598,12 +605,12 @@ int main_loop(int argc, char *argv[]) {
                 }
                 printf("Please enter the following PIN on the target PC:\n%s\n",
                        pin);
-                
+
                 // Actually display the PIN on screen by swapping buffers
                 gfxSwapBuffers();
                 gfxFlushBuffers();
                 gspWaitForVBlank();
-                
+
                 if (gs_pair(&server, &pin[0]) != GS_OK) {
                     printf("Failed to pair to server: %s\n", gs_error);
                 } else {
@@ -612,7 +619,7 @@ int main_loop(int argc, char *argv[]) {
                     gfxSwapBuffers();
                     gfxFlushBuffers();
                     gspWaitForVBlank();
-                    add_pair_address(config.address);
+                    add_pair_address(config.address, config.port);
                     wait_for_button();
                     break;
                 }
@@ -624,7 +631,7 @@ int main_loop(int argc, char *argv[]) {
                     printf("Failed to unpair to server: %s\n", gs_error);
                 } else {
                     printf("Succesfully unpaired\n");
-                    remove_pair_address(config.address);
+                    remove_pair_address(config.address, config.port);
                     break;
                 }
             } else if (strcmp("quit stream", config.action) == 0) {
