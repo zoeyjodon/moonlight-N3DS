@@ -17,6 +17,7 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "../../video/n3ds/N3dsRenderer.hpp"
 #include "keycode_map.hpp"
 #include <3ds.h>
 #include <memory>
@@ -27,7 +28,8 @@ enum N3dsTouchType {
     MOUSEPAD,
     KEYBOARD,
     ABSOLUTE_TOUCH,
-    DS_TOUCH
+    DS_TOUCH,
+    MAGNIFY_TOUCH,
 };
 typedef struct _GAMEPAD_STATE {
     unsigned char leftTrigger, rightTrigger;
@@ -136,6 +138,16 @@ class AbsoluteTouchHandler : public TouchHandlerBase {
     int y_scale = 1;
     int previous_x = 0;
     int previous_y = 0;
+};
+
+class MagnifyTouchHandler : public TouchHandlerBase {
+  public:
+    MagnifyTouchHandler(){};
+
+  private:
+    void _handle_touch_down(touchPosition touch);
+    void _handle_touch_up(touchPosition touch);
+    void _handle_touch_hold(touchPosition touch);
 };
 
 class N3dsTouchscreenInput {

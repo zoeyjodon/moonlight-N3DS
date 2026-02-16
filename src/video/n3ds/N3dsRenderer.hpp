@@ -101,3 +101,22 @@ class N3dsRendererDualScreenMirror : public N3dsRendererBase {
     N3dsRendererTop top_renderer;
     N3dsRendererBottom bottom_renderer;
 };
+
+class N3dsRendererDualScreenMagnify : public N3dsRendererBase {
+  public:
+    N3dsRendererDualScreenMagnify(int dest_width, int dest_height,
+                                  int src_width, int src_height, int px_size);
+    ~N3dsRendererDualScreenMagnify();
+    void write_px_to_framebuffer(uint8_t *source);
+    void set_crop_region(int center_x, int center_y);
+
+  private:
+    int magnify_factor;
+    int pixel_offset = 0;
+    N3dsRendererTop top_renderer;
+    N3dsRendererBottom bottom_renderer;
+};
+
+extern N3dsRendererDualScreenMagnify
+    *magnify_renderer_instance; // TODO: Gross, replace this and other externs
+                                // with intra-component messaging system

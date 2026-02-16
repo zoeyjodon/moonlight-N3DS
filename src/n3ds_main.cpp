@@ -219,6 +219,7 @@ static int prompt_for_display_type(int default_val) {
         "bottom",
         "dual screen (stretch)",
         "dual screen (mirror)",
+        "dual screen (magnify)",
     };
     int idx = console_selection_prompt(
         "Which screen should be used to display the stream?", options,
@@ -547,6 +548,8 @@ static void action_stream(CONFIGURATION *config, SERVER_DATA *server) {
         consoleSelect(&bottomScreen);
     } else if (config->display_type == RENDER_DUAL_SCREEN_STRETCH) {
         touch_type = DS_TOUCH;
+    } else if (config->display_type == RENDER_DUAL_SCREEN_MAGNIFY) {
+        touch_type = MAGNIFY_TOUCH;
     } else if (config->display_type == RENDER_BOTTOM ||
                config->display_type == RENDER_DUAL_SCREEN_MIRROR) {
         touch_type = ABSOLUTE_TOUCH;

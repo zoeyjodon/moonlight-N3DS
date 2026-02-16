@@ -27,7 +27,7 @@ N3dsTouchscreenInput::N3dsTouchscreenInput(GAMEPAD_STATE *gamepad_in,
 
 inline bool N3dsTouchscreenInput::next_touchpad_pressed(touchPosition touch) {
     if (touch_type == DISABLED || touch_type == ABSOLUTE_TOUCH ||
-        touch_type == DS_TOUCH) {
+        touch_type == MAGNIFY_TOUCH || touch_type == DS_TOUCH) {
         return false;
     }
     if (touch.py >= 205 && touch.px >= 285) {
@@ -51,7 +51,7 @@ inline bool N3dsTouchscreenInput::next_touchpad_pressed(touchPosition touch) {
 inline bool
 N3dsTouchscreenInput::previous_touchpad_pressed(touchPosition touch) {
     if (touch_type == DISABLED || touch_type == ABSOLUTE_TOUCH ||
-        touch_type == DS_TOUCH) {
+        touch_type == MAGNIFY_TOUCH || touch_type == DS_TOUCH) {
         return false;
     }
 
@@ -89,6 +89,9 @@ inline void N3dsTouchscreenInput::init_touch_handler() {
         break;
     case DS_TOUCH:
         handler = std::make_unique<AbsoluteTouchHandler>(GSP_SCREEN_WIDTH, 2);
+        break;
+    case MAGNIFY_TOUCH:
+        handler = std::make_unique<MagnifyTouchHandler>();
         break;
     default:
         handler = nullptr;
