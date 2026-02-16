@@ -494,6 +494,125 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     }
 }
 
+static int init_server(CONFIGURATION *config, SERVER_DATA *server) {
+    printf("Connecting to %s:%d...\n", config->address, config->port);
+    gs_cleanup();
+    int status = gs_init(server, config->address, config->port, config->key_dir,
+                         config->debug_level, config->unsupported);
+    if (status == GS_OUT_OF_MEMORY) {
+        printf("Not enough memory\n");
+        return 1;
+    } else if (status == GS_ERROR) {
+        printf("Gamestream error: %s\n", gs_error);
+        return 1;
+    } else if (status == GS_INVALID) {
+        printf("Invalid data received from server: %s\n", gs_error);
+        return 1;
+    } else if (status == GS_UNSUPPORTED_VERSION) {
+        printf("Unsupported version: %s\n", gs_error);
+        return 1;
+    } else if (status != GS_OK) {
+        printf("Can't connect to server %s:%d\n", config->address,
+               config->port);
+        return 1;
+    }
+
+    if (config->debug_level > 0) {
+        printf("GPU: %s, GFE: %s (%s, %s)\n", server->gpuType,
+               server->serverInfo.serverInfoGfeVersion, server->gsVersion,
+               server->serverInfo.serverInfoAppVersion);
+        printf("Server codec flags: 0x%x\n",
+               server->serverInfo.serverCodecModeSupport);
+    }
+    if (server->paired) {
+        add_pair_address(config->address, config->port);
+    } else {
+        remove_pair_address(config->address, config->port);
+    }
+    return 0;
+}
+
+static void action_stream(CONFIGURATION *config, SERVER_DATA *server) {
+    int appId = prompt_for_app_id(server);
+    if (appId == -1) {
+        return;
+    }
+
+    config->stream.supportedVideoFormats = VIDEO_FORMAT_H264;
+
+    consoleClear();
+    N3dsTouchType touch_type = DISABLED;
+    if (config->debug_level) {
+        consoleInit(GFX_BOTTOM, &bottomScreen);
+        consoleSelect(&bottomScreen);
+    } else if (config->display_type == RENDER_DUAL_SCREEN_STRETCH) {
+        touch_type = DS_TOUCH;
+    } else if (config->display_type == RENDER_BOTTOM ||
+               config->display_type == RENDER_DUAL_SCREEN_MIRROR) {
+        touch_type = ABSOLUTE_TOUCH;
+    } else {
+        touch_type = GAMEPAD;
+    }
+
+    if (config->viewonly) {
+        if (config->debug_level > 0)
+            printf("View-only mode enabled, no input will be sent "
+                   "to the host computer\n");
+    } else {
+        n3dsinput_init(touch_type, config->swap_face_buttons,
+                       config->swap_triggers_and_shoulders,
+                       config->use_triggers_for_mouse);
+    }
+    stream(server, config, appId);
+
+    if (!config->viewonly) {
+        n3dsinput_cleanup();
+    }
+}
+
+static void action_pair(CONFIGURATION *config, SERVER_DATA *server) {
+    char pin[5];
+    if (config->pin > 0 && config->pin <= 9999) {
+        sprintf(pin, "%04d", config->pin);
+    } else {
+        sprintf(pin, "%d%d%d%d", (unsigned)random() % 10,
+                (unsigned)random() % 10, (unsigned)random() % 10,
+                (unsigned)random() % 10);
+    }
+    printf("Please enter the following PIN on the target PC:\n%s\n", pin);
+
+    // Actually display the PIN on screen by swapping buffers
+    gfxSwapBuffers();
+    gfxFlushBuffers();
+    gspWaitForVBlank();
+
+    if (gs_pair(server, &pin[0]) != GS_OK) {
+        printf("Failed to pair to server: %s\n", gs_error);
+    } else {
+        printf("Succesfully paired\n");
+        // Display success message before breaking
+        gfxSwapBuffers();
+        gfxFlushBuffers();
+        gspWaitForVBlank();
+        add_pair_address(config->address, config->port);
+    }
+}
+
+static void action_unpair(CONFIGURATION *config, SERVER_DATA *server) {
+    if (gs_unpair(server) != GS_OK) {
+        printf("Failed to unpair from server: %s\n", gs_error);
+    } else {
+        printf("Succesfully unpaired\n");
+        remove_pair_address(config->address, config->port);
+    }
+}
+
+static void action_quit_stream(SERVER_DATA *server) {
+    printf("Sending app quit request ...\n");
+    gs_quit_app(server);
+    printf("Request completed\n");
+}
+
 int main_loop(int argc, char *argv[]) {
     init_3ds();
 
@@ -515,40 +634,9 @@ int main_loop(int argc, char *argv[]) {
         config.address = (char *)address_string.c_str();
 
         SERVER_DATA server;
-        printf("Connecting to %s:%d...\n", config.address, config.port);
-        gs_cleanup();
-        int ret;
-        if ((ret = gs_init(&server, config.address, config.port, config.key_dir,
-                           config.debug_level, config.unsupported)) ==
-            GS_OUT_OF_MEMORY) {
-            printf("Not enough memory\n");
-            exit(-1);
-        } else if (ret == GS_ERROR) {
-            printf("Gamestream error: %s\n", gs_error);
-            exit(-1);
-        } else if (ret == GS_INVALID) {
-            printf("Invalid data received from server: %s\n", gs_error);
-            exit(-1);
-        } else if (ret == GS_UNSUPPORTED_VERSION) {
-            printf("Unsupported version: %s\n", gs_error);
-            exit(-1);
-        } else if (ret != GS_OK) {
-            printf("Can't connect to server %s\n", config.address);
+        if (init_server(&config, &server)) {
             wait_for_button();
             continue;
-        }
-
-        if (config.debug_level > 0) {
-            printf("GPU: %s, GFE: %s (%s, %s)\n", server.gpuType,
-                   server.serverInfo.serverInfoGfeVersion, server.gsVersion,
-                   server.serverInfo.serverInfoAppVersion);
-            printf("Server codec flags: 0x%x\n",
-                   server.serverInfo.serverCodecModeSupport);
-        }
-        if (server.paired) {
-            add_pair_address(config.address, config.port);
-        } else {
-            remove_pair_address(config.address, config.port);
         }
 
         while (aptMainLoop()) {
@@ -559,88 +647,24 @@ int main_loop(int argc, char *argv[]) {
             config.action = (char *)action.c_str();
 
             if (strcmp("stream", config.action) == 0) {
-                int appId = prompt_for_app_id(&server);
-                if (appId == -1) {
-                    continue;
-                }
-
-                config.stream.supportedVideoFormats = VIDEO_FORMAT_H264;
-
-                consoleClear();
-                N3dsTouchType touch_type = DISABLED;
-                if (config.debug_level) {
-                    consoleInit(GFX_BOTTOM, &bottomScreen);
-                    consoleSelect(&bottomScreen);
-                } else if (config.display_type == RENDER_DUAL_SCREEN_STRETCH) {
-                    touch_type = DS_TOUCH;
-                } else if (config.display_type == RENDER_BOTTOM ||
-                           config.display_type == RENDER_DUAL_SCREEN_MIRROR) {
-                    touch_type = ABSOLUTE_TOUCH;
-                } else {
-                    touch_type = GAMEPAD;
-                }
-
-                if (config.viewonly) {
-                    if (config.debug_level > 0)
-                        printf("View-only mode enabled, no input will be sent "
-                               "to the host computer\n");
-                } else {
-                    n3dsinput_init(touch_type, config.swap_face_buttons,
-                                   config.swap_triggers_and_shoulders,
-                                   config.use_triggers_for_mouse);
-                }
-                stream(&server, &config, appId);
-
-                if (!config.viewonly) {
-                    n3dsinput_cleanup();
-                }
+                action_stream(&config, &server);
             } else if (strcmp("pair", config.action) == 0) {
-                char pin[5];
-                if (config.pin > 0 && config.pin <= 9999) {
-                    sprintf(pin, "%04d", config.pin);
-                } else {
-                    sprintf(pin, "%d%d%d%d", (unsigned)random() % 10,
-                            (unsigned)random() % 10, (unsigned)random() % 10,
-                            (unsigned)random() % 10);
-                }
-                printf("Please enter the following PIN on the target PC:\n%s\n",
-                       pin);
-
-                // Actually display the PIN on screen by swapping buffers
-                gfxSwapBuffers();
-                gfxFlushBuffers();
-                gspWaitForVBlank();
-
-                if (gs_pair(&server, &pin[0]) != GS_OK) {
-                    printf("Failed to pair to server: %s\n", gs_error);
-                } else {
-                    printf("Succesfully paired\n");
-                    // Display success message before breaking
-                    gfxSwapBuffers();
-                    gfxFlushBuffers();
-                    gspWaitForVBlank();
-                    add_pair_address(config.address, config.port);
-                    wait_for_button();
-                    break;
-                }
+                action_pair(&config, &server);
+                wait_for_button();
+                break;
             } else if (strcmp("stream settings", config.action) == 0) {
                 prompt_for_stream_settings(&config);
-                continue;
             } else if (strcmp("unpair", config.action) == 0) {
-                if (gs_unpair(&server) != GS_OK) {
-                    printf("Failed to unpair to server: %s\n", gs_error);
-                } else {
-                    printf("Succesfully unpaired\n");
-                    remove_pair_address(config.address, config.port);
-                    break;
-                }
+                action_unpair(&config, &server);
+                wait_for_button();
+                break;
             } else if (strcmp("quit stream", config.action) == 0) {
-                printf("Sending app quit request ...\n");
-                gs_quit_app(&server);
-            } else
+                action_quit_stream(&server);
+                wait_for_button();
+            } else {
                 printf("%s is not a valid action\n", config.action);
-
-            wait_for_button();
+                wait_for_button();
+            }
         }
     }
     return 0;

@@ -837,6 +837,10 @@ void gs_cleanup() {
   if (cert != NULL)
     X509_free(cert);
   if (privateKey != NULL)
+  {
     EVP_PKEY_free(privateKey);
+    // Set to NULL to avoid reconnection issues
+    privateKey = NULL;
+  }
   http_cleanup();
 }
