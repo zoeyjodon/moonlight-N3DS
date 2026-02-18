@@ -27,8 +27,7 @@
 
 N3dsRendererDualScreenMagnify::N3dsRendererDualScreenMagnify(
     int dest_width, int dest_height, int src_width, int src_height, int px_size)
-    : N3dsRendererBase(GFX_TOP, dest_width, dest_height, src_width, src_height,
-                       px_size),
+    : image_width(src_width), image_height(src_height), px_size(px_size),
       top_renderer(dest_width, dest_height, src_width, src_height, px_size),
       bottom_renderer(GSP_SCREEN_HEIGHT_BOTTOM, GSP_SCREEN_WIDTH, px_size) {
     set_crop_region(GSP_SCREEN_HEIGHT_BOTTOM / 2, GSP_SCREEN_WIDTH / 2);
@@ -66,4 +65,8 @@ void N3dsRendererDualScreenMagnify::write_px_to_framebuffer(uint8_t *source) {
     top_renderer.write_px_to_framebuffer(source);
     // Render magnified region on bottom screen
     bottom_renderer.write_px_to_framebuffer(source + pixel_offset);
+}
+
+void N3dsRendererDualScreenMagnify::set_perf_decode_ticks(u64 ticks) {
+    top_renderer.set_perf_decode_ticks(ticks);
 }

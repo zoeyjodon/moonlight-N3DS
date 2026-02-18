@@ -44,3 +44,7 @@ void N3dsRendererTop::write_px_to_framebuffer(uint8_t *source) {
     }
     write_px_to_framebuffer_gpu(source);
 }
+
+void N3dsRendererTop::set_perf_decode_ticks(u64 ticks) {
+    perf_decode_ticks = ticks;
+}

@@ -19,6 +19,7 @@
 
 #include <3ds.h>
 #include <Limelight.h>
+#include <memory>
 
 #define MOON_CTR_VIDEO_TEX_W 1024
 #define MOON_CTR_VIDEO_TEX_H 512
@@ -27,14 +28,20 @@
 #define MOON_CTR_VIDEO_TEX_H_OFFSET 32
 #define CMDLIST_SZ 0x800
 
+class IN3dsRenderer {
+  public:
+    virtual void write_px_to_framebuffer(uint8_t *source) = 0;
+    virtual void set_perf_decode_ticks(u64 ticks) = 0;
+    virtual ~IN3dsRenderer() {}
+};
+
 class N3dsRendererBase {
   public:
     N3dsRendererBase(gfxScreen_t screen_in, int surface_width_in,
                      int surface_height_in, int image_width_in,
                      int image_height_in, int pixel_size,
                      bool debug_in = false);
-    ~N3dsRendererBase();
-    virtual void write_px_to_framebuffer(uint8_t *source) = 0;
+    virtual ~N3dsRendererBase();
 
   public:
     u64 perf_frame_target_ticks = SYSCLOCK_ARM11 * ((double)(1.0 / 60.0));
@@ -61,28 +68,31 @@ class N3dsRendererBase {
     void *vramTex = NULL;
 };
 
-class N3dsRendererTop : public N3dsRendererBase {
+class N3dsRendererTop : public IN3dsRenderer, N3dsRendererBase {
   public:
     N3dsRendererTop(int dest_width, int dest_height, int src_width,
                     int src_height, int px_size, bool debug_in = false);
     ~N3dsRendererTop();
     void write_px_to_framebuffer(uint8_t *source);
+    void set_perf_decode_ticks(u64 ticks);
 };
 
-class N3dsRendererBottom : public N3dsRendererBase {
+class N3dsRendererBottom : public IN3dsRenderer, N3dsRendererBase {
   public:
     N3dsRendererBottom(int src_width, int src_height, int px_size,
                        bool debug_in = false);
     ~N3dsRendererBottom();
     void write_px_to_framebuffer(uint8_t *source);
+    void set_perf_decode_ticks(u64 ticks);
 };
 
-class N3dsRendererDualScreenStretch : public N3dsRendererBase {
+class N3dsRendererDualScreenStretch : public IN3dsRenderer {
   public:
     N3dsRendererDualScreenStretch(int dest_width, int dest_height,
                                   int src_width, int src_height, int px_size);
     ~N3dsRendererDualScreenStretch();
     void write_px_to_framebuffer(uint8_t *source);
+    void set_perf_decode_ticks(u64 ticks);
 
   private:
     int source_offset;
@@ -90,30 +100,35 @@ class N3dsRendererDualScreenStretch : public N3dsRendererBase {
     N3dsRendererBottom bottom_renderer;
 };
 
-class N3dsRendererDualScreenMirror : public N3dsRendererBase {
+class N3dsRendererDualScreenMirror : public IN3dsRenderer {
   public:
     N3dsRendererDualScreenMirror(int dest_width, int dest_height, int src_width,
                                  int src_height, int px_size);
     ~N3dsRendererDualScreenMirror();
     void write_px_to_framebuffer(uint8_t *source);
+    void set_perf_decode_ticks(u64 ticks);
 
   private:
     N3dsRendererTop top_renderer;
     N3dsRendererBottom bottom_renderer;
 };
 
-class N3dsRendererDualScreenMagnify : public N3dsRendererBase {
+class N3dsRendererDualScreenMagnify : public IN3dsRenderer {
   public:
     N3dsRendererDualScreenMagnify(int dest_width, int dest_height,
                                   int src_width, int src_height, int px_size);
     ~N3dsRendererDualScreenMagnify();
     void write_px_to_framebuffer(uint8_t *source);
+    void set_perf_decode_ticks(u64 ticks);
     void set_crop_region(int center_x, int center_y);
 
   private:
-    int pixel_offset = 0;
+    int image_width;
+    int image_height;
+    int px_size;
     N3dsRendererTop top_renderer;
     N3dsRendererBottom bottom_renderer;
+    int pixel_offset = 0;
 };
 
 extern N3dsRendererDualScreenMagnify

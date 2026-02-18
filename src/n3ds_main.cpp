@@ -651,6 +651,7 @@ int main_loop(int argc, char *argv[]) {
 
             if (strcmp("stream", config.action) == 0) {
                 action_stream(&config, &server);
+                break;
             } else if (strcmp("pair", config.action) == 0) {
                 action_pair(&config, &server);
                 wait_for_button();
@@ -664,6 +665,7 @@ int main_loop(int argc, char *argv[]) {
             } else if (strcmp("quit stream", config.action) == 0) {
                 action_quit_stream(&server);
                 wait_for_button();
+                break;
             } else {
                 printf("%s is not a valid action\n", config.action);
                 wait_for_button();

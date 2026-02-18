@@ -41,7 +41,7 @@ static int image_width, image_height, surface_width, surface_height, pixel_size;
 static u8 *rgb_img_buffer;
 static bool first_frame = true;
 
-static std::unique_ptr<N3dsRendererBase> renderer = nullptr;
+static std::unique_ptr<IN3dsRenderer> renderer = nullptr;
 N3dsRendererDualScreenMagnify *magnify_renderer_instance = nullptr;
 
 static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
@@ -180,7 +180,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
     GSPGPU_FlushDataCache(nal_unit_buffer, length);
 
     n3ds_decode((unsigned char *)nal_unit_buffer, length);
-    renderer->perf_decode_ticks = svcGetSystemTick() - start_ticks;
+    renderer->set_perf_decode_ticks(svcGetSystemTick() - start_ticks);
 
     renderer->write_px_to_framebuffer(rgb_img_buffer);
 

@@ -33,6 +33,10 @@ N3dsRendererBottom::N3dsRendererBottom(int src_width, int src_height,
 
 N3dsRendererBottom::~N3dsRendererBottom() {}
 
-inline void N3dsRendererBottom::write_px_to_framebuffer(uint8_t *source) {
+void N3dsRendererBottom::write_px_to_framebuffer(uint8_t *source) {
     write_px_to_framebuffer_gpu(source);
+}
+
+void N3dsRendererBottom::set_perf_decode_ticks(u64 ticks) {
+    perf_decode_ticks = ticks;
 }

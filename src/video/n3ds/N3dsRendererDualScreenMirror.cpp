@@ -27,9 +27,7 @@
 
 N3dsRendererDualScreenMirror::N3dsRendererDualScreenMirror(
     int dest_width, int dest_height, int src_width, int src_height, int px_size)
-    : N3dsRendererBase(GFX_TOP, dest_width, dest_height, src_width, src_height,
-                       px_size),
-      top_renderer(dest_width, dest_height, src_width, src_height, px_size),
+    : top_renderer(dest_width, dest_height, src_width, src_height, px_size),
       bottom_renderer(src_width, src_height, px_size) {}
 
 N3dsRendererDualScreenMirror::~N3dsRendererDualScreenMirror() = default;
@@ -37,4 +35,8 @@ N3dsRendererDualScreenMirror::~N3dsRendererDualScreenMirror() = default;
 void N3dsRendererDualScreenMirror::write_px_to_framebuffer(uint8_t *source) {
     top_renderer.write_px_to_framebuffer(source);
     bottom_renderer.write_px_to_framebuffer(source);
+}
+
+void N3dsRendererDualScreenMirror::set_perf_decode_ticks(u64 ticks) {
+    top_renderer.set_perf_decode_ticks(ticks);
 }
