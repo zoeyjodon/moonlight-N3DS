@@ -111,7 +111,6 @@ class N3dsRendererDualScreenMagnify : public N3dsRendererBase {
     void set_crop_region(int center_x, int center_y);
 
   private:
-    int magnify_factor;
     int pixel_offset = 0;
     N3dsRendererTop top_renderer;
     N3dsRendererBottom bottom_renderer;

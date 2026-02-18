@@ -29,10 +29,8 @@ N3dsRendererDualScreenMagnify::N3dsRendererDualScreenMagnify(
     int dest_width, int dest_height, int src_width, int src_height, int px_size)
     : N3dsRendererBase(GFX_TOP, dest_width, dest_height, src_width, src_height,
                        px_size),
-      magnify_factor(2), // 2x magnification
       top_renderer(dest_width, dest_height, src_width, src_height, px_size),
-      bottom_renderer(src_width / magnify_factor, src_height / magnify_factor,
-                      px_size) {
+      bottom_renderer(GSP_SCREEN_HEIGHT_BOTTOM, GSP_SCREEN_WIDTH, px_size) {
     set_crop_region(GSP_SCREEN_HEIGHT_BOTTOM / 2, GSP_SCREEN_WIDTH / 2);
 }
 
@@ -40,8 +38,8 @@ N3dsRendererDualScreenMagnify::~N3dsRendererDualScreenMagnify() = default;
 
 void N3dsRendererDualScreenMagnify::set_crop_region(int center_x,
                                                     int center_y) {
-    int crop_width = image_width / magnify_factor;
-    int crop_height = image_height / magnify_factor;
+    int crop_width = GSP_SCREEN_HEIGHT_BOTTOM;
+    int crop_height = GSP_SCREEN_WIDTH;
 
     int crop_offset_x =
         ((image_width - crop_width) * center_x) / GSP_SCREEN_HEIGHT_BOTTOM;
