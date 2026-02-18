@@ -32,8 +32,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define N3DS_DEC_BUFF_SIZE 23
-
 // General decoder and renderer state
 static void *nal_unit_buffer;
 static size_t nal_unit_buffer_size;
@@ -55,10 +53,27 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
         return -1;
     }
 
+    // Calculate required buffer size
+    MVDSTD_CalculateWorkBufSizeConfig config = {
+        0,
+    };
+    config.level.enable = true;
+    config.level.flag = (MVD_CALC_WITH_LEVEL_FLAG_ENABLE_CALC |
+                         MVD_CALC_WITH_LEVEL_FLAG_ENABLE_EXTRA_OP |
+                         MVD_CALC_WITH_LEVEL_FLAG_UNK);
+    config.level.level = MVD_H264_LEVEL_4_2;
+    config.width = width;
+    config.height = height;
+    uint32_t size = 0;
+    int status = mvdstdCalculateBufferSize(&config, &size);
+    if (status) {
+        fprintf(stderr, "mvdstdCalculateBufferSize failed: %d\n", status);
+        return -1;
+    }
+
     first_frame = true;
-    int status =
-        mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264, MVD_OUTPUT_BGR565,
-                   width * height * N3DS_DEC_BUFF_SIZE, NULL);
+    status = mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264,
+                        MVD_OUTPUT_BGR565, size, NULL);
     if (status) {
         fprintf(stderr, "mvdstdInit failed: %d\n", status);
         mvdstdExit();
