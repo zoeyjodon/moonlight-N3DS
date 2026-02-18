@@ -22,7 +22,7 @@
 #include <memory>
 
 #define MOON_CTR_VIDEO_TEX_W 1024
-#define MOON_CTR_VIDEO_TEX_H 512
+#define MOON_CTR_VIDEO_TEX_H 1024
 // TODO: No idea why, but this seems to be the magic number to make dual screen
 // offsets work
 #define MOON_CTR_VIDEO_TEX_H_OFFSET 32
@@ -51,6 +51,13 @@ class N3dsRendererBase {
   protected:
     inline void draw_perf_counters();
     void write_px_to_framebuffer_gpu(uint8_t *__restrict source);
+    // Refactor helpers for write_px_to_framebuffer_gpu
+    void tile_source_to_vram(uint8_t *__restrict source);
+    void build_and_submit_gpu_cmdlist_for_transform();
+    void upload_vertex_attributes_and_draw();
+    void process_cmdlist_and_wait();
+    void copy_vram_to_framebuffer_to_screen(uint8_t *__restrict source);
+    void finalize_frame_and_swap(u64 start_ticks);
     void ensure_3d_enabled();
     void ensure_3d_disabled();
     inline void write24(u8 *p, u32 val);

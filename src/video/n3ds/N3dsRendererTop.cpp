@@ -18,7 +18,6 @@
  */
 
 #include "N3dsRenderer.hpp"
-#include "vshader_shbin.h"
 
 #include <3ds.h>
 #include <cstdlib>

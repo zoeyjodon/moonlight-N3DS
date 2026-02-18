@@ -126,15 +126,29 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
 
     u64 start_ticks = svcGetSystemTick();
 
-    // NOTE: At 800x480, we can display the _width_ natively, but the height
-    // needs to be downsampled. MVD is incapable of downsampling, so we have to
-    // do it on the GPU.
-
-    // TODO: If we can use rotation from the decoder, we can do a 2x downscale
-    // using display transfer and skip P3D. Not necessary because PICA is
-    // significantly faster than the decoder.
-
     // Tile the source image into the scratch buffer.
+    tile_source_to_vram(source);
+
+    // Build and submit GPU command list to perform the transform/draw.
+    build_and_submit_gpu_cmdlist_for_transform();
+
+    // Process the prepared command list and wait for completion.
+    process_cmdlist_and_wait();
+
+    // Copy the transformed framebuffer into the display framebuffer.
+    copy_vram_to_framebuffer_to_screen(source);
+
+    // Finalize: perf counting and buffer swap.
+    finalize_frame_and_swap(start_ticks);
+}
+
+void N3dsRendererBase::tile_source_to_vram(uint8_t *__restrict source) {
+    // Transfer the decoded source into a scratch tiled texture in VRAM.
+    // - MOON_CTR_VIDEO_TEX_W/H: texture dimensions (1024x512) chosen to
+    //   accommodate the largest expected source and align to PICA tile sizes.
+    // - GX_TRANSFER_FLIP_VERT(1): source coordinate system is flipped
+    //   vertically relative to PICA's origin, so flip during transfer.
+    // - GX_TRANSFER_OUT_TILED(1): store in tiled layout for faster GPU access.
     GX_DisplayTransfer(
         (u32 *)source,
         GX_BUFFER_DIM(MOON_CTR_VIDEO_TEX_W, MOON_CTR_VIDEO_TEX_H),
@@ -143,101 +157,90 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
         GX_TRANSFER_FLIP_VERT(1) | GX_TRANSFER_OUT_TILED(1) |
             GX_TRANSFER_IN_FORMAT(GX_TRANSFER_FMT_RGB565) |
             GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB565));
+}
 
-    // While the transfer is running, create a temporary command list to rotate
-    // the framebuffer into source
+void N3dsRendererBase::build_and_submit_gpu_cmdlist_for_transform() {
     GPUCMD_SetBuffer(cmdlist, CMDLIST_SZ, 0);
 
-    // TODO: Verify this mitigates rounding errors due to f24 precision issues.
+    GPUCMD_AddWrite(GPUREG_FRAMEBUFFER_INVALIDATE, 1);
+    // GPU expects framebuffer address in units of 8 bytes, so shift right by 3.
+    GPUCMD_AddWrite(GPUREG_COLORBUFFER_LOC, osConvertVirtToPhys(vramFb) >> 3);
+    GPUCMD_AddWrite(GPUREG_DEPTHBUFFER_LOC, 0);
+    // Render/Framebuffer dim register layout:
+    //  - bit24 (1<<24) enables the register's special mode expected by PICA
+    //  - bits [23:12] hold (width - 1)
+    //  - bits [11:0] hold height
+    GPUCMD_AddWrite(GPUREG_RENDERBUF_DIM,
+                    (1 << 24) | ((surface_width - 1) << 12) | surface_height);
+    GPUCMD_AddWrite(GPUREG_FRAMEBUFFER_DIM,
+                    (1 << 24) | ((surface_width - 1) << 12) | surface_height);
+    GPUCMD_AddWrite(GPUREG_FRAMEBUFFER_BLOCK32, 0);
 
-#define C GPUCMD_AddWrite
+    GPUCMD_AddWrite(GPUREG_DEPTH_COLOR_MASK, 0xF << 8); // Write RGBA, no depth
+    GPUCMD_AddWrite(GPUREG_EARLYDEPTH_TEST1, 0);
+    GPUCMD_AddWrite(GPUREG_EARLYDEPTH_TEST2, 0);
+    GPUCMD_AddWrite(GPUREG_COLORBUFFER_FORMAT, GPU_RGB565 << 16);
+    GPUCMD_AddWrite(GPUREG_COLORBUFFER_READ, 0x0);
+    GPUCMD_AddWrite(GPUREG_COLORBUFFER_WRITE, 0xF);
+    GPUCMD_AddWrite(GPUREG_DEPTHBUFFER_READ, 0);
+    GPUCMD_AddWrite(GPUREG_DEPTHBUFFER_WRITE, 0);
 
-    C(GPUREG_FRAMEBUFFER_INVALIDATE, 1);
-    C(GPUREG_COLORBUFFER_LOC, osConvertVirtToPhys(vramFb) >> 3);
-    C(GPUREG_DEPTHBUFFER_LOC, 0);
-    C(GPUREG_RENDERBUF_DIM,
-      (1 << 24) | ((surface_width - 1) << 12) | surface_height);
-    C(GPUREG_FRAMEBUFFER_DIM,
-      (1 << 24) | ((surface_width - 1) << 12) | surface_height);
-    C(GPUREG_FRAMEBUFFER_BLOCK32, 0);
+    GPUCMD_AddWrite(GPUREG_VIEWPORT_XY, 0);
 
-    C(GPUREG_DEPTH_COLOR_MASK, 0xF << 8); // Write RGBA, no depth
-    C(GPUREG_EARLYDEPTH_TEST1, 0);
-    C(GPUREG_EARLYDEPTH_TEST2, 0);
-    C(GPUREG_COLORBUFFER_FORMAT, GPU_RGB565 << 16);
-    C(GPUREG_COLORBUFFER_READ,
-      0x0); // Buffer is uninitialized and should not be read.
-    C(GPUREG_COLORBUFFER_WRITE, 0xF);
-    C(GPUREG_DEPTHBUFFER_READ, 0); // No depth buffer
-    C(GPUREG_DEPTHBUFFER_WRITE, 0);
+    // Note: width/height are swapped and halved here because the draw
+    // performs a 90-degree transform (rotation) and the PICA viewport
+    // expects half-scale values in this configuration.
+    // - f32tof24/f32tof31 convert floats to the fixed-point format required
+    //   by the GPU registers.
+    // - the `<< 1` on INVW/INVH aligns the fixed-point format expected by PICA.
+    GPUCMD_AddWrite(GPUREG_VIEWPORT_WIDTH, f32tof24(surface_height / 2));
+    GPUCMD_AddWrite(GPUREG_VIEWPORT_INVW,
+                    f32tof31(2.0 / ((double)surface_height)) << 1);
+    GPUCMD_AddWrite(GPUREG_VIEWPORT_HEIGHT, f32tof24(surface_width / 2));
+    GPUCMD_AddWrite(GPUREG_VIEWPORT_INVH,
+                    f32tof31(2.0 / ((double)surface_width)) << 1);
 
-    C(GPUREG_VIEWPORT_XY, 0);
+    GPUCMD_AddWrite(GPUREG_SCISSORTEST_MODE, 0);
+    GPUCMD_AddWrite(GPUREG_SCISSORTEST_POS, 0);
+    GPUCMD_AddWrite(GPUREG_SCISSORTEST_DIM, 0);
 
-    C(GPUREG_VIEWPORT_WIDTH, f32tof24(surface_height / 2));
-    C(GPUREG_VIEWPORT_INVW, f32tof31(2.0 / ((double)surface_height)) << 1);
-    C(GPUREG_VIEWPORT_HEIGHT, f32tof24(surface_width / 2));
-    C(GPUREG_VIEWPORT_INVH, f32tof31(2.0 / ((double)surface_width)) << 1);
-
-    C(GPUREG_SCISSORTEST_MODE, 0);
-    C(GPUREG_SCISSORTEST_POS, 0);
-    C(GPUREG_SCISSORTEST_DIM, 0);
-
-    C(GPUREG_DEPTHMAP_ENABLE, 1);
-    C(GPUREG_DEPTHMAP_SCALE, f32tof24(-1.0));
-    C(GPUREG_DEPTHMAP_OFFSET, 0);
-    C(GPUREG_STENCIL_TEST, 0);
-    C(GPUREG_FRAGOP_ALPHA_TEST, 0);
-    C(GPUREG_LOGIC_OP, 3);
-    C(GPUREG_COLOR_OPERATION, 0x00E40000);
+    GPUCMD_AddWrite(GPUREG_DEPTHMAP_ENABLE, 1);
+    GPUCMD_AddWrite(GPUREG_DEPTHMAP_SCALE, f32tof24(-1.0));
+    GPUCMD_AddWrite(GPUREG_DEPTHMAP_OFFSET, 0);
+    GPUCMD_AddWrite(GPUREG_STENCIL_TEST, 0);
+    GPUCMD_AddWrite(GPUREG_FRAGOP_ALPHA_TEST, 0);
+    GPUCMD_AddWrite(GPUREG_LOGIC_OP, 3);                 // COPY operation
+    GPUCMD_AddWrite(GPUREG_COLOR_OPERATION, 0x00E40000); // deafult, Logic op
 
     // Texturing
-    C(GPUREG_TEXUNIT0_TYPE, GPU_RGB565);
-    C(GPUREG_TEXUNIT0_DIM, MOON_CTR_VIDEO_TEX_H | (MOON_CTR_VIDEO_TEX_W << 16));
-    C(GPUREG_TEXUNIT0_ADDR1, osConvertVirtToPhys(vramTex) >> 3);
-    C(GPUREG_TEXUNIT0_PARAM,
-      GPU_NEAREST | (GPU_LINEAR << 1)); // Linear min and mag filter
+    GPUCMD_AddWrite(GPUREG_TEXUNIT0_TYPE, GPU_RGB565);
+    // TEXUNIT0_DIM packs width/height into a 32-bit register: low 16 bits
+    // height, high 16 bits width.
+    GPUCMD_AddWrite(GPUREG_TEXUNIT0_DIM,
+                    MOON_CTR_VIDEO_TEX_H | (MOON_CTR_VIDEO_TEX_W << 16));
+    // Texture address similarly uses 8-byte units for the GPU address.
+    GPUCMD_AddWrite(GPUREG_TEXUNIT0_ADDR1, osConvertVirtToPhys(vramTex) >> 3);
+    GPUCMD_AddWrite(GPUREG_TEXUNIT0_PARAM, GPU_NEAREST | (GPU_LINEAR << 1));
 
-    // Shading
-    // GPUCMD_AddMaskedWrite(GPUREG_SH_OUTATTR_CLOCK, 0x2, 1 << 8); // No Z, Yes
-    // texcoord0
-    C(GPUREG_TEXUNIT_CONFIG,
-      1 | (1 << 12) | (1 << 16)); // Activate texture 0, clear texture cache
+    GPUCMD_AddWrite(GPUREG_TEXUNIT_CONFIG, 1 | (1 << 12) | (1 << 16));
 
-    C(GPUREG_TEXENV0_SOURCE, 0x003003); // Texture 0
-    C(GPUREG_TEXENV0_OPERAND, 0);       // Source Color
-    C(GPUREG_TEXENV0_COMBINER, 0);      // Replace
-    C(GPUREG_TEXENV0_SCALE, 0);         // No Scale
-
-    C(GPUREG_TEXENV1_SOURCE, 0x003003); // Texture 0
-    C(GPUREG_TEXENV1_OPERAND, 0);       // Source Color
-    C(GPUREG_TEXENV1_COMBINER, 0);      // Replace
-    C(GPUREG_TEXENV1_SCALE, 0);         // No Scale
-
-    C(GPUREG_TEXENV2_SOURCE, 0x003003); // Texture 0
-    C(GPUREG_TEXENV2_OPERAND, 0);       // Source Color
-    C(GPUREG_TEXENV2_COMBINER, 0);      // Replace
-    C(GPUREG_TEXENV2_SCALE, 0);         // No Scale
-
-    C(GPUREG_TEXENV3_SOURCE, 0x003003); // Texture 0
-    C(GPUREG_TEXENV3_OPERAND, 0);       // Source Color
-    C(GPUREG_TEXENV3_COMBINER, 0);      // Replace
-    C(GPUREG_TEXENV3_SCALE, 0);         // No Scale
-
-    C(GPUREG_TEXENV4_SOURCE, 0x003003); // Texture 0
-    C(GPUREG_TEXENV4_OPERAND, 0);       // Source Color
-    C(GPUREG_TEXENV4_COMBINER, 0);      // Replace
-    C(GPUREG_TEXENV4_SCALE, 0);         // No Scale
-
-    C(GPUREG_TEXENV5_SOURCE, 0x003003); // Texture 0
-    C(GPUREG_TEXENV5_OPERAND, 0);       // Source Color
-    C(GPUREG_TEXENV5_COMBINER, 0);      // Replace
-    C(GPUREG_TEXENV5_SCALE, 0);         // No Scale
+    // There are multiple TEXENV registers spaced sequentially; the loop
+    // programs six of them. Register spacing is 4 bytes between env registers.
+    for (int i = 0; i < 6; i++) {
+        GPUCMD_AddWrite(GPUREG_TEXENV0_SOURCE + (i * 4), 0x003003);
+        GPUCMD_AddWrite(GPUREG_TEXENV0_OPERAND + (i * 4), 0);
+        GPUCMD_AddWrite(GPUREG_TEXENV0_COMBINER + (i * 4), 0);
+        GPUCMD_AddWrite(GPUREG_TEXENV0_SCALE + (i * 4), 0);
+    }
 
     // Attribute buffers
-    C(GPUREG_ATTRIBBUFFERS_LOC, 0);
-    C(GPUREG_ATTRIBBUFFERS_FORMAT_LOW, 0);
-    C(GPUREG_ATTRIBBUFFERS_FORMAT_HIGH,
-      (0xFFF << 16) | (1 << 28)); // Two fixed vertex attributes
+    GPUCMD_AddWrite(GPUREG_ATTRIBBUFFERS_LOC, 0);
+    GPUCMD_AddWrite(GPUREG_ATTRIBBUFFERS_FORMAT_LOW, 0);
+    // ATTRIB FORMAT HIGH: (0xFFF << 16) => attribute size/format mask,
+    // (1<<28) sets the number of fixed attributes (here used for two
+    // fixed vertex attributes required by the shader).
+    GPUCMD_AddWrite(GPUREG_ATTRIBBUFFERS_FORMAT_HIGH,
+                    (0xFFF << 16) | (1 << 28));
 
     // Vertex Shader
     static DVLB_s *vshader_dvlb = NULL;
@@ -251,26 +254,42 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
 
     shaderProgramUse(&program);
 
-    C(GPUREG_VSH_NUM_ATTR, 1); // 2 attributes
-    GPUCMD_AddMaskedWrite(GPUREG_VSH_INPUTBUFFER_CONFIG, 0xB,
-                          1 | (0xA0 << 24)); // 2 attributes, no geometry shader
-    C(GPUREG_VSH_ATTRIBUTES_PERMUTATION_LOW, 0x00000010);
-    C(GPUREG_VSH_ATTRIBUTES_PERMUTATION_HIGH, 0);
+    GPUCMD_AddWrite(GPUREG_VSH_NUM_ATTR, 1);
+    GPUCMD_AddMaskedWrite(GPUREG_VSH_INPUTBUFFER_CONFIG, 0xB, 1 | (0xA0 << 24));
+    GPUCMD_AddWrite(GPUREG_VSH_ATTRIBUTES_PERMUTATION_LOW, 0x00000010);
+    GPUCMD_AddWrite(GPUREG_VSH_ATTRIBUTES_PERMUTATION_HIGH, 0);
 
     // Geometry Pipeline
-    C(GPUREG_FACECULLING_CONFIG, 0);
-    C(GPUREG_GEOSTAGE_CONFIG, 0);
-    GPUCMD_AddMaskedWrite(GPUREG_PRIMITIVE_CONFIG, 2,
-                          (1 << 8) |
-                              1); // 2 outmap registers, drawing triangle strip
-    C(GPUREG_INDEXBUFFER_CONFIG, 0x80000000);
-    C(GPUREG_RESTART_PRIMITIVE, 1);
+    GPUCMD_AddWrite(GPUREG_FACECULLING_CONFIG, 0);
+    GPUCMD_AddWrite(GPUREG_GEOSTAGE_CONFIG, 0);
+    GPUCMD_AddMaskedWrite(GPUREG_PRIMITIVE_CONFIG, 2, (1 << 8) | 1);
+    // INDEXBUFFER_CONFIG = 0x80000000 disables indexed drawing (special
+    // sentinel used by this pipeline configuration).
+    GPUCMD_AddWrite(GPUREG_INDEXBUFFER_CONFIG, 0x80000000);
+    GPUCMD_AddWrite(GPUREG_RESTART_PRIMITIVE, 1);
 
     // Vertex Data
     GPUCMD_AddMaskedWrite(GPUREG_GEOSTAGE_CONFIG2, 1, 1);
     GPUCMD_AddMaskedWrite(GPUREG_START_DRAW_FUNC0, 1, 0);
-    C(GPUREG_FIXEDATTRIB_INDEX, 0xF);
+    // FIXEDATTRIB_INDEX = 0xF selects the fixed attribute indices the
+    // shader will read; 0xF matches the attribute layout we upload below.
+    GPUCMD_AddWrite(GPUREG_FIXEDATTRIB_INDEX, 0xF);
 
+    // Vertex attributes will be added by upload_vertex_attributes_and_draw()
+    upload_vertex_attributes_and_draw();
+
+    // End Geometry Pipeline
+    GPUCMD_AddMaskedWrite(GPUREG_START_DRAW_FUNC0, 1, 1);
+    GPUCMD_AddMaskedWrite(GPUREG_GEOSTAGE_CONFIG2, 1, 0);
+    GPUCMD_AddWrite(GPUREG_VTX_FUNC, 1);
+
+    // Stop Command List
+    GPUCMD_AddMaskedWrite(GPUREG_PRIMITIVE_CONFIG, 0x8, 0x00000000);
+    GPUCMD_AddWrite(GPUREG_FRAMEBUFFER_FLUSH, 1);
+    GPUCMD_AddWrite(GPUREG_FRAMEBUFFER_INVALIDATE, 1);
+}
+
+void N3dsRendererBase::upload_vertex_attributes_and_draw() {
     union {
         u32 packed[3];
         struct {
@@ -278,6 +297,12 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
         };
     } param;
 
+/*
+ * ATTR packs four 24-bit fixed-point values into the GPU attribute stream.
+ * The GPU expects attributes in a particular packed order; the swap of
+ * packed[0] and packed[2] corrects the ordering so the incremental writes
+ * land in the hardware registers in the expected sequence.
+ */
 #define ATTR(X, Y, Z, W)                                                       \
     {                                                                          \
         write24(param.x, f32tof24(X));                                         \
@@ -292,10 +317,11 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
                                     3);                                        \
     }
 
+    // Texture coordinate scale factors (source dimensions / texture size).
     float sw = image_width / ((float)MOON_CTR_VIDEO_TEX_W);
     float sh = image_height / ((float)MOON_CTR_VIDEO_TEX_H);
-
-    // float hw = 2.0f / surface_height;
+    // `hh` maps pixel-space offsets into normalized device coordinates
+    // used by the vertex shader (2.0 / width maps to [-1,1] range).
     float hh = 2.0f / surface_width;
 
     ATTR(1.0, -1.0, 0.0, 0.0); // TR
@@ -310,18 +336,10 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
     ATTR(-1.0, 1.0, 0.0, 0.0); // BL
     ATTR(0.0, sh, 0.0, 0.0);
 
-    // End Geometry Pipeline
-    GPUCMD_AddMaskedWrite(GPUREG_START_DRAW_FUNC0, 1, 1);
-    GPUCMD_AddMaskedWrite(GPUREG_GEOSTAGE_CONFIG2, 1, 0);
-    C(GPUREG_VTX_FUNC, 1);
+#undef ATTR
+}
 
-    // Stop Command List
-    GPUCMD_AddMaskedWrite(GPUREG_PRIMITIVE_CONFIG, 0x8, 0x00000000);
-    C(GPUREG_FRAMEBUFFER_FLUSH, 1);
-    C(GPUREG_FRAMEBUFFER_INVALIDATE, 1);
-
-#undef C
-
+void N3dsRendererBase::process_cmdlist_and_wait() {
     gspWaitForEvent(GSPGPU_EVENT_PPF, 0);
 
     u32 *unused;
@@ -334,10 +352,15 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
     GX_FlushCacheRegions(cmdlist, cmdlist_len * 4, (u32 *)__ctru_linear_heap,
                          __ctru_linear_heap_size, NULL, 0);
 
+    // ProcessCommandList expects a byte size (cmdlist_len is a word count),
+    // so multiply by 4 to convert to bytes.
     GX_ProcessCommandList(cmdlist, cmdlist_len * 4, 2);
 
     gspWaitForEvent(GSPGPU_EVENT_P3D, 0);
+}
 
+void N3dsRendererBase::copy_vram_to_framebuffer_to_screen(
+    uint8_t *__restrict source) {
     // Copy into framebuffer, untiled
     if ((screen == GFX_TOP) && gfxIs3D()) {
         // Left
@@ -355,6 +378,12 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
         // Right
         u32 *dest_right =
             (u32 *)gfxGetFramebuffer(GFX_TOP, GFX_RIGHT, NULL, NULL);
+        // Compute the u32-word offset for the right-eye framebuffer.
+        // - surface_height * surface_width * px_size: total bytes for a
+        //   single-screen buffer.
+        // - dividing by (sizeof(u32) * 2) converts bytes -> u32 words and
+        //   accounts for the left/right interleaving used by the top-screen
+        //   framebuffer layout (hence the extra division by 2).
         auto surface_offset_3d =
             surface_height * surface_width * px_size / (sizeof(u32) * 2);
         GX_DisplayTransfer((u32 *)vramFb + surface_offset_3d,
@@ -376,7 +405,9 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
                                GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
     }
     gspWaitForEvent(GSPGPU_EVENT_PPF, 0);
+}
 
+void N3dsRendererBase::finalize_frame_and_swap(u64 start_ticks) {
     perf_fbcopy_ticks = svcGetSystemTick() - start_ticks;
     if (debug) {
         draw_perf_counters();

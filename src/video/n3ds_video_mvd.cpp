@@ -88,8 +88,9 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     }
 
     GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
-    image_width = width;
-    image_height = height;
+    image_width = (width < MOON_CTR_VIDEO_TEX_W) ? width : MOON_CTR_VIDEO_TEX_W;
+    image_height =
+        (height < MOON_CTR_VIDEO_TEX_H) ? height : MOON_CTR_VIDEO_TEX_H;
     pixel_size = gspGetBytesPerPixel(px_fmt);
     rgb_img_buffer = (u8 *)linearAlloc(MOON_CTR_VIDEO_TEX_W *
                                        MOON_CTR_VIDEO_TEX_H * pixel_size);
@@ -101,9 +102,9 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     ensure_linear_buf_size(&nal_unit_buffer, &nal_unit_buffer_size,
                            INITIAL_DECODER_BUFFER_SIZE +
                                AV_INPUT_BUFFER_PADDING_SIZE);
-    mvdstdGenerateDefaultConfig(&mvdstd_config, image_width, image_height,
-                                image_width, image_height, NULL,
-                                (u32 *)rgb_img_buffer, NULL);
+    mvdstdGenerateDefaultConfig(&mvdstd_config, width, height, image_width,
+                                image_height, NULL, (u32 *)rgb_img_buffer,
+                                NULL);
 
     // Place within the 1024x512 buffer
     mvdstd_config.flag_x104 = 1;
