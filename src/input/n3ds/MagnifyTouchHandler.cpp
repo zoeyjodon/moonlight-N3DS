@@ -17,19 +17,20 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "../../system/dispatcher.hpp"
 #include "N3dsTouchscreenInput.hpp"
-#include <Limelight.h>
+#include <3ds.h>
 
 void MagnifyTouchHandler::_handle_touch_down(touchPosition touch) {
-    if (magnify_renderer_instance) {
-        magnify_renderer_instance->set_crop_region(touch.px, touch.py);
-    }
+    auto pDispatcher = MessageDispatcher::get_instance();
+    auto msg = TouchscreenEventMsg(TouchscreenEventMsgType::DOWN, touch);
+    pDispatcher->post_immediate(&msg);
 }
 
 void MagnifyTouchHandler::_handle_touch_up(touchPosition touch) {}
 
 void MagnifyTouchHandler::_handle_touch_hold(touchPosition touch) {
-    if (magnify_renderer_instance) {
-        magnify_renderer_instance->set_crop_region(touch.px, touch.py);
-    }
+    auto pDispatcher = MessageDispatcher::get_instance();
+    auto msg = TouchscreenEventMsg(TouchscreenEventMsgType::HOLD, touch);
+    pDispatcher->post_immediate(&msg);
 }

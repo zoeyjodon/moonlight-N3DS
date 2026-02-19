@@ -37,6 +37,7 @@ TARGET		:=	moonlight
 BUILD		:=	build
 SOURCES		:=	src \
 				src/n3ds/ \
+				src/system/ \
 				src/audio/ \
 				src/input/ \
 				src/input/n3ds \

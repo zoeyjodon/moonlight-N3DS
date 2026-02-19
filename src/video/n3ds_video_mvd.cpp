@@ -42,7 +42,6 @@ static u8 *rgb_img_buffer;
 static bool first_frame = true;
 
 static std::unique_ptr<IN3dsRenderer> renderer = nullptr;
-N3dsRendererDualScreenMagnify *magnify_renderer_instance = nullptr;
 
 static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
                      void *context, int drFlags) {
@@ -131,8 +130,6 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
         renderer = std::make_unique<N3dsRendererDualScreenMagnify>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
-        magnify_renderer_instance =
-            static_cast<N3dsRendererDualScreenMagnify *>(renderer.get());
         break;
     default:
         renderer = std::make_unique<N3dsRendererTop>(
@@ -150,7 +147,6 @@ static void n3ds_destroy(void) {
     mvdstdExit();
     linearFree(nal_unit_buffer);
     linearFree(rgb_img_buffer);
-    magnify_renderer_instance = nullptr;
     renderer = nullptr;
 }
 

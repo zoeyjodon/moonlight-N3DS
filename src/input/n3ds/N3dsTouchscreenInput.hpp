@@ -16,6 +16,7 @@
  * You should have received a copy of the GNU General Public License
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
+#pragma once
 
 #include "../../video/n3ds/N3dsRenderer.hpp"
 #include "keycode_map.hpp"
@@ -142,7 +143,7 @@ class AbsoluteTouchHandler : public TouchHandlerBase {
 
 class MagnifyTouchHandler : public TouchHandlerBase {
   public:
-    MagnifyTouchHandler(){};
+    MagnifyTouchHandler() = default;
 
   private:
     void _handle_touch_down(touchPosition touch);

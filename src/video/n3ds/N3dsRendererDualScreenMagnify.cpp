@@ -17,6 +17,7 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "../../system/dispatcher.hpp"
 #include "N3dsRenderer.hpp"
 
 #include <cstdlib>
@@ -31,9 +32,23 @@ N3dsRendererDualScreenMagnify::N3dsRendererDualScreenMagnify(
       top_renderer(dest_width, dest_height, src_width, src_height, px_size),
       bottom_renderer(GSP_SCREEN_HEIGHT_BOTTOM, GSP_SCREEN_WIDTH, px_size) {
     set_crop_region(GSP_SCREEN_HEIGHT_BOTTOM / 2, GSP_SCREEN_WIDTH / 2);
+
+    auto pDispatcher = MessageDispatcher::get_instance();
+    pDispatcher->subscribe(MessageType::TOUCHSCREEN_EVENT, this);
 }
 
-N3dsRendererDualScreenMagnify::~N3dsRendererDualScreenMagnify() = default;
+N3dsRendererDualScreenMagnify::~N3dsRendererDualScreenMagnify() {
+    auto pDispatcher = MessageDispatcher::get_instance();
+    pDispatcher->unsubscribe(MessageType::TOUCHSCREEN_EVENT, this);
+}
+
+void N3dsRendererDualScreenMagnify::accept(IMessage *msg) {
+    if (msg->getMessageType() != MessageType::TOUCHSCREEN_EVENT) {
+        return;
+    }
+    auto touch_msg = static_cast<TouchscreenEventMsg *>(msg);
+    set_crop_region(touch_msg->touch.px, touch_msg->touch.py);
+}
 
 void N3dsRendererDualScreenMagnify::set_crop_region(int center_x,
                                                     int center_y) {
