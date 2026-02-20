@@ -1,7 +1,7 @@
 #include "dispatcher.hpp"
 #include <algorithm>
 
-std::unique_ptr<MessageDispatcher> MessageDispatcher::instance = nullptr;
+std::shared_ptr<MessageDispatcher> MessageDispatcher::instance = nullptr;
 
 MessageDispatcher::MessageDispatcher() {
     for (uint8_t i = 0; i < MessageType::MESSAGE_TYPE_COUNT; i++) {

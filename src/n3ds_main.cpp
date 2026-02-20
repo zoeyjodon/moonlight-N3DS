@@ -394,18 +394,20 @@ static int prompt_for_app_id(PSERVER_DATA server) {
     return app_ids[id_idx];
 }
 
-static inline void stream_loop(PCONFIGURATION config) {
+static inline void stream_loop(PCONFIGURATION config,
+                               std::shared_ptr<N3dsInput> input_handler) {
     bool done = false;
     while (!done && aptMainLoop()) {
         done = n3ds_connection_closed;
         if (!config->viewonly) {
-            done |= n3dsinput_handle_event();
+            done |= input_handler->n3dsinput_handle_event();
         }
         hidWaitForAnyEvent(true, 0, 1000000000);
     }
 }
 
-static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
+static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
+                   std::shared_ptr<N3dsInput> input_handler) {
     int gamepad_mask = 1;
     int ret = gs_start_app(server, &config->stream, appId, config->sops,
                            config->localaudio, gamepad_mask);
@@ -485,7 +487,7 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId) {
     }
 
     printf("Connected!\n");
-    stream_loop(config);
+    stream_loop(config, input_handler);
 
     LiStopConnection();
 
@@ -557,20 +559,18 @@ static void action_stream(CONFIGURATION *config, SERVER_DATA *server) {
         touch_type = GAMEPAD;
     }
 
+    std::shared_ptr<N3dsInput> input_handler = nullptr;
     if (config->viewonly) {
         if (config->debug_level > 0)
             printf("View-only mode enabled, no input will be sent "
                    "to the host computer\n");
     } else {
-        n3dsinput_init(touch_type, config->swap_face_buttons,
-                       config->swap_triggers_and_shoulders,
-                       config->use_triggers_for_mouse);
+        input_handler =
+            std::make_shared<N3dsInput>(touch_type, config->swap_face_buttons,
+                                        config->swap_triggers_and_shoulders,
+                                        config->use_triggers_for_mouse);
     }
-    stream(server, config, appId);
-
-    if (!config->viewonly) {
-        n3dsinput_cleanup();
-    }
+    stream(server, config, appId, input_handler);
 }
 
 static void action_pair(CONFIGURATION *config, SERVER_DATA *server) {

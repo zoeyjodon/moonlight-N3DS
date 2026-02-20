@@ -11,11 +11,11 @@ class MessageDispatcher {
     MessageDispatcher();
     ~MessageDispatcher() = default;
 
-    static MessageDispatcher *get_instance() {
+    static std::shared_ptr<MessageDispatcher> get_instance() {
         if (instance == nullptr) {
-            instance = std::make_unique<MessageDispatcher>();
+            instance = std::make_shared<MessageDispatcher>();
         }
-        return instance.get();
+        return instance;
     }
 
     void subscribe(MessageType type, ISubscriber *sub);
@@ -23,6 +23,6 @@ class MessageDispatcher {
     void post_immediate(IMessage *m);
 
   private:
-    static std::unique_ptr<MessageDispatcher> instance;
+    static std::shared_ptr<MessageDispatcher> instance;
     std::map<MessageType, std::vector<ISubscriber *>> subscribers{};
 };

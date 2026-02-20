@@ -18,6 +18,7 @@
  */
 
 #include "n3ds_input.hpp"
+#include "../system/dispatcher.hpp"
 
 #include <3ds.h>
 #include <Limelight.h>
@@ -37,105 +38,92 @@
 #define N3DS_C_STICK_MAX 100
 #define N3DS_ANALOG_POS_FACTOR 5
 
-static GAMEPAD_STATE gamepad_state, previous_state;
-std::unique_ptr<N3dsTouchscreenInput> touch_handler = nullptr;
+// The 3DS only has one controller; set it to P1
+#define CONTROLLER_NUMBER 0
+#define ACTIVE_GAMEPAD_MASK 1
 
-static const int activeGamepadMask = 1;
-static float gyro_coeff = 0;
-// Note: This was found experimentally and may need a calibration option in
-// settings
-static float accel_coeff = 52.0;
-bool enable_gyro = false;
-bool enable_accel = false;
-bool use_triggers_for_mouse = false;
-
-static u32 SWAP_A = KEY_A;
-static u32 SWAP_B = KEY_B;
-static u32 SWAP_X = KEY_X;
-static u32 SWAP_Y = KEY_Y;
-
-static u32 SWAP_L = KEY_L;
-static u32 SWAP_R = KEY_R;
-static u32 SWAP_ZL = KEY_ZL;
-static u32 SWAP_ZR = KEY_ZR;
-
-static void add_gamepad() {
-    unsigned short capabilities = LI_CCAP_ACCEL | LI_CCAP_GYRO;
-    unsigned char type = LI_CTYPE_NINTENDO;
-    LiSendControllerArrivalEvent(0, activeGamepadMask, type, SUPPORTED_BUTTONS,
-                                 capabilities);
-}
-
-static void remove_gamepad() {
-    LiSendMultiControllerEvent(0, ~activeGamepadMask, 0, 0, 0, 0, 0, 0, 0);
-}
-
-void n3dsinput_init(N3dsTouchType touch_type, bool swap_face_buttons,
-                    bool swap_triggers_and_shoulders,
-                    bool use_triggers_for_mouse_in) {
+N3dsInput::N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
+                     bool swap_triggers_and_shoulders,
+                     bool use_triggers_for_mouse_in) {
     hidInit();
     HIDUSER_GetGyroscopeRawToDpsCoefficient(&gyro_coeff);
-    add_gamepad();
+    _add_gamepad();
     use_triggers_for_mouse = use_triggers_for_mouse_in;
 
-    if (swap_face_buttons) {
-        SWAP_A = KEY_B;
-        SWAP_B = KEY_A;
-        SWAP_X = KEY_Y;
-        SWAP_Y = KEY_X;
-    } else {
-        SWAP_A = KEY_A;
-        SWAP_B = KEY_B;
-        SWAP_X = KEY_X;
-        SWAP_Y = KEY_Y;
-    }
+    // Ternary setup is less efficient, but more readable.
+    // We can afford the minor performance cost here.
+    CUSTOM_KEY_A = swap_face_buttons ? KEY_B : KEY_A;
+    CUSTOM_KEY_B = swap_face_buttons ? KEY_A : KEY_B;
+    CUSTOM_KEY_X = swap_face_buttons ? KEY_Y : KEY_X;
+    CUSTOM_KEY_Y = swap_face_buttons ? KEY_X : KEY_Y;
 
-    if (swap_triggers_and_shoulders) {
-        SWAP_L = KEY_ZL;
-        SWAP_R = KEY_ZR;
-        SWAP_ZL = KEY_L;
-        SWAP_ZR = KEY_R;
-    } else {
-        SWAP_L = KEY_L;
-        SWAP_R = KEY_R;
-        SWAP_ZL = KEY_ZL;
-        SWAP_ZR = KEY_ZR;
-    }
+    CUSTOM_KEY_L = swap_triggers_and_shoulders ? KEY_ZL : KEY_L;
+    CUSTOM_KEY_R = swap_triggers_and_shoulders ? KEY_ZR : KEY_R;
+    CUSTOM_KEY_ZL = swap_triggers_and_shoulders ? KEY_L : KEY_ZL;
+    CUSTOM_KEY_ZR = swap_triggers_and_shoulders ? KEY_R : KEY_ZR;
 
     touch_handler =
         std::make_unique<N3dsTouchscreenInput>(&gamepad_state, touch_type);
+
+    auto pDispatcher = MessageDispatcher::get_instance();
+    pDispatcher->subscribe(MessageType::ENABLE_ACCEL, this);
+    pDispatcher->subscribe(MessageType::ENABLE_GYRO, this);
 }
 
-void n3dsinput_cleanup() {
-    remove_gamepad();
+N3dsInput::~N3dsInput() {
+    auto pDispatcher = MessageDispatcher::get_instance();
+    pDispatcher->unsubscribe(MessageType::ENABLE_ACCEL, this);
+    pDispatcher->unsubscribe(MessageType::ENABLE_GYRO, this);
+
+    _remove_gamepad();
     gamepad_state = GAMEPAD_STATE();
     previous_state = GAMEPAD_STATE();
     touch_handler = nullptr;
 }
 
-static inline int n3ds_to_li_button(u32 key_in, u32 key_n3ds, int key_li) {
-    return ((key_in & key_n3ds) / key_n3ds) * key_li;
+void N3dsInput::accept(IMessage *msg) {
+    if (msg->getMessageType() == MessageType::ENABLE_ACCEL) {
+        enable_accel = true;
+    } else if (msg->getMessageType() == MessageType::ENABLE_GYRO) {
+        enable_gyro = true;
+    }
 }
 
-static inline int n3ds_to_li_buttons(u32 key_n3ds) {
+void N3dsInput::_add_gamepad() {
+    unsigned short capabilities = LI_CCAP_ACCEL | LI_CCAP_GYRO;
+    unsigned char type = LI_CTYPE_NINTENDO;
+    LiSendControllerArrivalEvent(CONTROLLER_NUMBER, ACTIVE_GAMEPAD_MASK, type,
+                                 SUPPORTED_BUTTONS, capabilities);
+}
+
+void N3dsInput::_remove_gamepad() {
+    LiSendMultiControllerEvent(CONTROLLER_NUMBER, ~ACTIVE_GAMEPAD_MASK, 0, 0, 0,
+                               0, 0, 0, 0);
+}
+
+static inline int n3ds_to_li_button(u32 key_in, u32 key_n3ds, int key_li) {
+    return (key_in & key_n3ds) ? key_li : 0;
+}
+
+int N3dsInput::_n3ds_to_li_buttons(u32 key_n3ds) {
     int li_out = 0;
-    li_out |= n3ds_to_li_button(key_n3ds, SWAP_A, A_FLAG);
-    li_out |= n3ds_to_li_button(key_n3ds, SWAP_B, B_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, CUSTOM_KEY_A, A_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, CUSTOM_KEY_B, B_FLAG);
     li_out |= n3ds_to_li_button(key_n3ds, KEY_SELECT, BACK_FLAG);
     li_out |= n3ds_to_li_button(key_n3ds, KEY_START, PLAY_FLAG);
     li_out |= n3ds_to_li_button(key_n3ds, KEY_DRIGHT, RIGHT_FLAG);
     li_out |= n3ds_to_li_button(key_n3ds, KEY_DLEFT, LEFT_FLAG);
     li_out |= n3ds_to_li_button(key_n3ds, KEY_DUP, UP_FLAG);
     li_out |= n3ds_to_li_button(key_n3ds, KEY_DDOWN, DOWN_FLAG);
-    li_out |= n3ds_to_li_button(key_n3ds, SWAP_R, RB_FLAG);
-    li_out |= n3ds_to_li_button(key_n3ds, SWAP_L, LB_FLAG);
-    li_out |= n3ds_to_li_button(key_n3ds, SWAP_X, X_FLAG);
-    li_out |= n3ds_to_li_button(key_n3ds, SWAP_Y, Y_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, CUSTOM_KEY_R, RB_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, CUSTOM_KEY_L, LB_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, CUSTOM_KEY_X, X_FLAG);
+    li_out |= n3ds_to_li_button(key_n3ds, CUSTOM_KEY_Y, Y_FLAG);
     return li_out;
 }
 
-static inline unsigned char n3ds_to_li_trigger(u32 key_in, u32 key_n3ds) {
-    return ((key_in & key_n3ds) / key_n3ds) * 255UL;
+static inline uint8_t n3ds_to_li_trigger(u32 key_in, u32 key_n3ds) {
+    return (key_in & key_n3ds) ? 255UL : 0UL;
 }
 
 static inline int scale_n3ds_axis(int axis_n3ds, int axis_max) {
@@ -152,49 +140,33 @@ static inline bool joystick_state_changed(short before, short after) {
            (after / N3DS_ANALOG_POS_FACTOR);
 }
 
-static inline bool gamepad_state_changed() {
-    if ((previous_state.buttons != gamepad_state.buttons) ||
-        (previous_state.leftTrigger != gamepad_state.leftTrigger) ||
-        (previous_state.rightTrigger != gamepad_state.rightTrigger)) {
-        return true;
-    }
-
-    if (joystick_state_changed(previous_state.leftStickX,
-                               gamepad_state.leftStickX) ||
-        joystick_state_changed(previous_state.leftStickY,
-                               gamepad_state.leftStickY)) {
-        return true;
-    }
-
-    if (joystick_state_changed(previous_state.rightStickX,
-                               gamepad_state.rightStickX) ||
-        joystick_state_changed(previous_state.rightStickY,
-                               gamepad_state.rightStickY)) {
-        return true;
-    }
-
-    return false;
+bool N3dsInput::_gamepad_state_changed() {
+    return (previous_state.buttons != gamepad_state.buttons) ||
+           (previous_state.leftTrigger != gamepad_state.leftTrigger) ||
+           (previous_state.rightTrigger != gamepad_state.rightTrigger) ||
+           joystick_state_changed(previous_state.leftStickX,
+                                  gamepad_state.leftStickX) ||
+           joystick_state_changed(previous_state.leftStickY,
+                                  gamepad_state.leftStickY) ||
+           joystick_state_changed(previous_state.rightStickX,
+                                  gamepad_state.rightStickX) ||
+           joystick_state_changed(previous_state.rightStickY,
+                                  gamepad_state.rightStickY);
 }
 
-static inline bool accelerometer_state_changed() {
-    if ((previous_state.accel_vector_x != gamepad_state.accel_vector_x) ||
-        (previous_state.accel_vector_y != gamepad_state.accel_vector_y) ||
-        (previous_state.accel_vector_z != gamepad_state.accel_vector_z)) {
-        return true;
-    }
-    return false;
+bool N3dsInput::_accelerometer_state_changed() {
+    return (previous_state.accel_vector_x != gamepad_state.accel_vector_x) ||
+           (previous_state.accel_vector_y != gamepad_state.accel_vector_y) ||
+           (previous_state.accel_vector_z != gamepad_state.accel_vector_z);
 }
 
-static inline bool gyroscope_state_changed() {
-    if ((previous_state.gyro_rate_x != gamepad_state.gyro_rate_x) ||
-        (previous_state.gyro_rate_y != gamepad_state.gyro_rate_y) ||
-        (previous_state.gyro_rate_z != gamepad_state.gyro_rate_z)) {
-        return true;
-    }
-    return false;
+bool N3dsInput::_gyroscope_state_changed() {
+    return (previous_state.gyro_rate_x != gamepad_state.gyro_rate_x) ||
+           (previous_state.gyro_rate_y != gamepad_state.gyro_rate_y) ||
+           (previous_state.gyro_rate_z != gamepad_state.gyro_rate_z);
 }
 
-int n3dsinput_handle_event() {
+int N3dsInput::n3dsinput_handle_event() {
     hidScanInput();
     u32 kDown = hidKeysDown();
     u32 kUp = hidKeysUp();
@@ -202,15 +174,15 @@ int n3dsinput_handle_event() {
 
     touch_handler->n3dsinput_handle_touch(kDown, kUp);
 
-    if (kDown) {
-        gamepad_state.buttons |= n3ds_to_li_buttons(kDown);
-        gamepad_state.leftTrigger |= n3ds_to_li_trigger(kDown, SWAP_ZL);
-        gamepad_state.rightTrigger |= n3ds_to_li_trigger(kDown, SWAP_ZR);
+    if (kDown & ~KEY_TOUCH) {
+        gamepad_state.buttons |= _n3ds_to_li_buttons(kDown);
+        gamepad_state.leftTrigger |= n3ds_to_li_trigger(kDown, CUSTOM_KEY_ZL);
+        gamepad_state.rightTrigger |= n3ds_to_li_trigger(kDown, CUSTOM_KEY_ZR);
     }
-    if (kUp) {
-        gamepad_state.buttons &= ~n3ds_to_li_buttons(kUp);
-        gamepad_state.leftTrigger &= ~n3ds_to_li_trigger(kUp, SWAP_ZL);
-        gamepad_state.rightTrigger &= ~n3ds_to_li_trigger(kUp, SWAP_ZR);
+    if (kUp & ~KEY_TOUCH) {
+        gamepad_state.buttons &= ~_n3ds_to_li_buttons(kUp);
+        gamepad_state.leftTrigger &= ~n3ds_to_li_trigger(kUp, CUSTOM_KEY_ZL);
+        gamepad_state.rightTrigger &= ~n3ds_to_li_trigger(kUp, CUSTOM_KEY_ZR);
     }
 
     if ((gamepad_state.buttons & QUIT_BUTTONS) == QUIT_BUTTONS)
@@ -228,7 +200,7 @@ int n3dsinput_handle_event() {
     gamepad_state.rightStickY =
         scale_n3ds_axis(cstick_pos.dy, N3DS_C_STICK_MAX);
 
-    if (gamepad_state_changed()) {
+    if (_gamepad_state_changed()) {
         if (use_triggers_for_mouse) {
             if (previous_state.leftTrigger != gamepad_state.leftTrigger) {
                 LiSendMouseButtonEvent(gamepad_state.leftTrigger
@@ -243,12 +215,12 @@ int n3dsinput_handle_event() {
                                        BUTTON_RIGHT);
             }
             LiSendMultiControllerEvent(
-                0, activeGamepadMask, gamepad_state.buttons, 0, 0,
-                gamepad_state.leftStickX, gamepad_state.leftStickY,
+                CONTROLLER_NUMBER, ACTIVE_GAMEPAD_MASK, gamepad_state.buttons,
+                0, 0, gamepad_state.leftStickX, gamepad_state.leftStickY,
                 gamepad_state.rightStickX, gamepad_state.rightStickY);
         } else {
             LiSendMultiControllerEvent(
-                0, activeGamepadMask, gamepad_state.buttons,
+                CONTROLLER_NUMBER, ACTIVE_GAMEPAD_MASK, gamepad_state.buttons,
                 gamepad_state.leftTrigger, gamepad_state.rightTrigger,
                 gamepad_state.leftStickX, gamepad_state.leftStickY,
                 gamepad_state.rightStickX, gamepad_state.rightStickY);
@@ -261,10 +233,11 @@ int n3dsinput_handle_event() {
         gamepad_state.accel_vector_x = trunc(accel_vector.x / accel_coeff);
         gamepad_state.accel_vector_y = trunc(accel_vector.y / accel_coeff);
         gamepad_state.accel_vector_z = trunc(accel_vector.z / accel_coeff);
-        if (accelerometer_state_changed()) {
-            LiSendControllerMotionEvent(
-                0, LI_MOTION_TYPE_ACCEL, gamepad_state.accel_vector_x,
-                gamepad_state.accel_vector_y, gamepad_state.accel_vector_z);
+        if (_accelerometer_state_changed()) {
+            LiSendControllerMotionEvent(CONTROLLER_NUMBER, LI_MOTION_TYPE_ACCEL,
+                                        gamepad_state.accel_vector_x,
+                                        gamepad_state.accel_vector_y,
+                                        gamepad_state.accel_vector_z);
         }
     }
 
@@ -274,10 +247,11 @@ int n3dsinput_handle_event() {
         gamepad_state.gyro_rate_x = trunc(-1 * gyro_rate.x / gyro_coeff);
         gamepad_state.gyro_rate_y = trunc(gyro_rate.y / gyro_coeff);
         gamepad_state.gyro_rate_z = trunc(-1 * gyro_rate.z / gyro_coeff);
-        if (gyroscope_state_changed()) {
-            LiSendControllerMotionEvent(
-                0, LI_MOTION_TYPE_GYRO, gamepad_state.gyro_rate_x,
-                gamepad_state.gyro_rate_y, gamepad_state.gyro_rate_z);
+        if (_gyroscope_state_changed()) {
+            LiSendControllerMotionEvent(CONTROLLER_NUMBER, LI_MOTION_TYPE_GYRO,
+                                        gamepad_state.gyro_rate_x,
+                                        gamepad_state.gyro_rate_y,
+                                        gamepad_state.gyro_rate_z);
         }
     }
 

@@ -2,7 +2,12 @@
 
 #include <3ds.h>
 
-enum MessageType { TOUCHSCREEN_EVENT, MESSAGE_TYPE_COUNT };
+enum MessageType {
+    TOUCHSCREEN_EVENT,
+    ENABLE_ACCEL,
+    ENABLE_GYRO,
+    MESSAGE_TYPE_COUNT
+};
 
 class IMessage {
   public:
@@ -19,4 +24,12 @@ class TouchscreenEventMsg : public IMessage {
     MessageType getMessageType() { return MessageType::TOUCHSCREEN_EVENT; };
     TouchscreenEventMsgType event;
     touchPosition touch;
+};
+
+class GenericEventMsg : public IMessage {
+  public:
+    GenericEventMsg(MessageType event_in) : event(event_in){};
+    ~GenericEventMsg() = default;
+    MessageType getMessageType() { return event; };
+    MessageType event;
 };

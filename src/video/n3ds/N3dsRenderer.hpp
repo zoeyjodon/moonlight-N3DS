@@ -130,7 +130,7 @@ class N3dsRendererDualScreenMagnify : public IN3dsRenderer, ISubscriber {
     void write_px_to_framebuffer(uint8_t *source);
     void set_perf_decode_ticks(u64 ticks);
     void set_crop_region(int center_x, int center_y);
-    void accept(IMessage *msg);
+    void accept(IMessage *message) override;
 
   private:
     int image_width;
