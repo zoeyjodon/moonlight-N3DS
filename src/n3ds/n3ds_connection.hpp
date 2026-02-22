@@ -20,16 +20,30 @@
 #pragma once
 
 #include <Limelight.h>
+#include <memory>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+class N3dsConnectionListener {
+  public:
+    N3dsConnectionListener(bool debug, bool enable_motion);
+    ~N3dsConnectionListener();
 
-extern bool n3ds_connection_closed;
-extern bool n3ds_connection_debug;
-extern bool n3ds_enable_motion;
-extern CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks;
+    static N3dsConnectionListener *create_instance(bool debug,
+                                                   bool enable_motion) {
+        if (instance == nullptr) {
+            instance =
+                std::make_unique<N3dsConnectionListener>(debug, enable_motion);
+        }
+        return instance.get();
+    }
+    static N3dsConnectionListener *get_instance() {
+        return instance != nullptr ? instance.get() : nullptr;
+    }
+    static void destroy_instance() { instance = nullptr; }
 
-#ifdef __cplusplus
- }
-#endif
+  public:
+    CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks;
+    bool connection_closed = false;
+
+  private:
+    static std::unique_ptr<N3dsConnectionListener> instance;
+};

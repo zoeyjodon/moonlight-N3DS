@@ -395,10 +395,11 @@ static int prompt_for_app_id(PSERVER_DATA server) {
 }
 
 static inline void stream_loop(PCONFIGURATION config,
+                               N3dsConnectionListener *connection_listener,
                                std::shared_ptr<N3dsInput> input_handler) {
     bool done = false;
     while (!done && aptMainLoop()) {
-        done = n3ds_connection_closed;
+        done = connection_listener->connection_closed;
         if (!config->viewonly) {
             done |= input_handler->n3dsinput_handle_event();
         }
@@ -433,7 +434,6 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
     }
 
     n3ds_audio_disabled = config->localaudio;
-    n3ds_connection_debug = config->debug_level;
     N3DS_RENDER_TYPE = static_cast<n3ds_render_type>(config->display_type);
 
     int drFlags = 0;
@@ -456,8 +456,6 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
         printf("Ignoring invalid rotation value: %d\n", config->rotate);
     }
 
-    n3ds_connection_closed = false;
-    n3ds_enable_motion = config->motion_controls;
     PDECODER_RENDERER_CALLBACKS video_callbacks =
         config->hwdecode ? &decoder_callbacks_n3ds_mvd
                          : &decoder_callbacks_n3ds;
@@ -474,22 +472,26 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
         config->use_triggers_for_mouse, config->display_type,
         config->motion_controls, config->debug_level);
 
-    int status = LiStartConnection(&server->serverInfo, &config->stream,
-                                   &n3ds_connection_callbacks, video_callbacks,
-                                   &audio_callbacks_n3ds, NULL, drFlags,
-                                   config->audio_device, 0);
+    auto connection_listener = N3dsConnectionListener::create_instance(
+        config->debug_level, config->motion_controls);
+    int status = LiStartConnection(
+        &server->serverInfo, &config->stream,
+        &connection_listener->n3ds_connection_callbacks, video_callbacks,
+        &audio_callbacks_n3ds, NULL, drFlags, config->audio_device, 0);
 
     if (status != 0) {
-        n3ds_connection_callbacks.connectionTerminated(status);
+        connection_listener->n3ds_connection_callbacks.connectionTerminated(
+            status);
         printf("Connection failed with error: %d\n", status);
         wait_for_button();
         return;
     }
 
     printf("Connected!\n");
-    stream_loop(config, input_handler);
+    stream_loop(config, connection_listener, input_handler);
 
     LiStopConnection();
+    N3dsConnectionListener::destroy_instance();
 
     if (config->quitappafter) {
         printf("Sending app quit request ...\n");
