@@ -142,7 +142,7 @@ void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
     finalize_frame_and_swap(start_ticks);
 }
 
-void N3dsRendererBase::tile_source_to_vram(uint8_t *__restrict source) {
+inline void N3dsRendererBase::tile_source_to_vram(uint8_t *__restrict source) {
     // Transfer the decoded source into a scratch tiled texture in VRAM.
     // - MOON_CTR_VIDEO_TEX_W/H: texture dimensions (1024x512) chosen to
     //   accommodate the largest expected source and align to PICA tile sizes.
@@ -159,7 +159,7 @@ void N3dsRendererBase::tile_source_to_vram(uint8_t *__restrict source) {
             GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB565));
 }
 
-void N3dsRendererBase::build_and_submit_gpu_cmdlist_for_transform() {
+inline void N3dsRendererBase::build_and_submit_gpu_cmdlist_for_transform() {
     GPUCMD_SetBuffer(cmdlist, CMDLIST_SZ, 0);
 
     GPUCMD_AddWrite(GPUREG_FRAMEBUFFER_INVALIDATE, 1);
@@ -289,7 +289,7 @@ void N3dsRendererBase::build_and_submit_gpu_cmdlist_for_transform() {
     GPUCMD_AddWrite(GPUREG_FRAMEBUFFER_INVALIDATE, 1);
 }
 
-void N3dsRendererBase::upload_vertex_attributes_and_draw() {
+inline void N3dsRendererBase::upload_vertex_attributes_and_draw() {
     union {
         u32 packed[3];
         struct {
@@ -339,7 +339,7 @@ void N3dsRendererBase::upload_vertex_attributes_and_draw() {
 #undef ATTR
 }
 
-void N3dsRendererBase::process_cmdlist_and_wait() {
+inline void N3dsRendererBase::process_cmdlist_and_wait() {
     gspWaitForEvent(GSPGPU_EVENT_PPF, 0);
 
     u32 *unused;
@@ -359,7 +359,7 @@ void N3dsRendererBase::process_cmdlist_and_wait() {
     gspWaitForEvent(GSPGPU_EVENT_P3D, 0);
 }
 
-void N3dsRendererBase::copy_vram_to_framebuffer_to_screen(
+inline void N3dsRendererBase::copy_vram_to_framebuffer_to_screen(
     uint8_t *__restrict source) {
     // Copy into framebuffer, untiled
     if ((screen == GFX_TOP) && gfxIs3D()) {
@@ -407,7 +407,7 @@ void N3dsRendererBase::copy_vram_to_framebuffer_to_screen(
     gspWaitForEvent(GSPGPU_EVENT_PPF, 0);
 }
 
-void N3dsRendererBase::finalize_frame_and_swap(u64 start_ticks) {
+inline void N3dsRendererBase::finalize_frame_and_swap(u64 start_ticks) {
     perf_fbcopy_ticks = svcGetSystemTick() - start_ticks;
     if (debug) {
         draw_perf_counters();

@@ -54,12 +54,12 @@ class N3dsRendererBase {
     inline void draw_perf_counters();
     void write_px_to_framebuffer_gpu(uint8_t *__restrict source);
     // Refactor helpers for write_px_to_framebuffer_gpu
-    void tile_source_to_vram(uint8_t *__restrict source);
-    void build_and_submit_gpu_cmdlist_for_transform();
-    void upload_vertex_attributes_and_draw();
-    void process_cmdlist_and_wait();
-    void copy_vram_to_framebuffer_to_screen(uint8_t *__restrict source);
-    void finalize_frame_and_swap(u64 start_ticks);
+    inline void tile_source_to_vram(uint8_t *__restrict source);
+    inline void build_and_submit_gpu_cmdlist_for_transform();
+    inline void upload_vertex_attributes_and_draw();
+    inline void process_cmdlist_and_wait();
+    inline void copy_vram_to_framebuffer_to_screen(uint8_t *__restrict source);
+    inline void finalize_frame_and_swap(u64 start_ticks);
     void ensure_3d_enabled();
     void ensure_3d_disabled();
     inline void write24(u8 *p, u32 val);
