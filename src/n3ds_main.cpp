@@ -17,11 +17,7 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifdef __3DS__
-
 #include "config.h"
-#include "loop.h"
-#include "platform_main.h"
 
 #include "n3ds/n3ds_connection.hpp"
 #include "n3ds/pair_record.hpp"
@@ -693,5 +689,3 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
-
-#endif

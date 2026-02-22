@@ -37,21 +37,6 @@
 
 #define INITIAL_DECODER_BUFFER_SIZE (256 * 1024)
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
-#ifdef HAVE_X11
-int x11_init(bool vdpau, bool vaapi);
-extern DECODER_RENDERER_CALLBACKS decoder_callbacks_x11;
-#ifdef HAVE_VAAPI
-extern DECODER_RENDERER_CALLBACKS decoder_callbacks_x11_vaapi;
-#endif
-#ifdef HAVE_VDPAU
-extern DECODER_RENDERER_CALLBACKS decoder_callbacks_x11_vdpau;
-#endif
-#endif
-#ifdef __3DS__
 #include <3ds/types.h>
 
 enum n3ds_render_type {
@@ -65,11 +50,3 @@ extern enum n3ds_render_type N3DS_RENDER_TYPE;
 
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds;
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd;
-#endif
-#ifdef HAVE_SDL
-extern DECODER_RENDERER_CALLBACKS decoder_callbacks_sdl;
-#endif
-
-#ifdef __cplusplus
-}
-#endif

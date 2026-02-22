@@ -22,7 +22,6 @@
 #include <Limelight.h>
 
 #include <stdbool.h>
-#include "platform_main.h"
 
 #define MAX_INPUTS 6
 
@@ -31,44 +30,43 @@ extern "C" {
 #endif
 
 typedef struct _CONFIGURATION {
-  STREAM_CONFIGURATION stream;
-  int debug_level;
-  char* app;
-  char* action;
-  char* address;
-  char* mapping;
-  char* platform;
-  char* audio_device;
-  char* config_file;
-  char key_dir[4096];
-  bool sops;
-  bool localaudio;
-  bool fullscreen;
-  int rotate;
-  bool unsupported;
-  bool quitappafter;
-  bool viewonly;
-  bool mouse_emulation;
-  char* inputs[MAX_INPUTS];
-  int inputsCount;
-  enum codecs codec;
-  bool hdr;
-  int pin;
-  unsigned short port;
-  bool hwdecode;
-  int display_type;
-  bool motion_controls;
-  bool swap_face_buttons;
-  bool swap_triggers_and_shoulders;
-  bool use_triggers_for_mouse;
+    STREAM_CONFIGURATION stream;
+    int debug_level;
+    char *app;
+    char *action;
+    char *address;
+    char *mapping;
+    char *platform;
+    char *audio_device;
+    char *config_file;
+    char key_dir[4096];
+    bool sops;
+    bool localaudio;
+    bool fullscreen;
+    int rotate;
+    bool unsupported;
+    bool quitappafter;
+    bool viewonly;
+    bool mouse_emulation;
+    char *inputs[MAX_INPUTS];
+    int inputsCount;
+    bool hdr;
+    int pin;
+    unsigned short port;
+    bool hwdecode;
+    int display_type;
+    bool motion_controls;
+    bool swap_face_buttons;
+    bool swap_triggers_and_shoulders;
+    bool use_triggers_for_mouse;
 } CONFIGURATION, *PCONFIGURATION;
 
 extern bool inputAdded;
 
-bool config_file_parse(char* filename, PCONFIGURATION config);
-void config_parse(int argc, char* argv[], PCONFIGURATION config);
-void parse_argument(int c, char* value, PCONFIGURATION config);
-void config_save(char* filename, PCONFIGURATION config);
+bool config_file_parse(char *filename, PCONFIGURATION config);
+void config_parse(int argc, char *argv[], PCONFIGURATION config);
+void parse_argument(int c, char *value, PCONFIGURATION config);
+void config_save(char *filename, PCONFIGURATION config);
 
 #ifdef __cplusplus
 }
