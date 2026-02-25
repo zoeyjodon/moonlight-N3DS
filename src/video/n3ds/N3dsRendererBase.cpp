@@ -27,6 +27,46 @@
 #include <stdexcept>
 #include <unistd.h>
 
+static void process_cmdlist_and_wait_cb(void *arg) {
+    if (!arg) {
+        return;
+    }
+
+    N3dsRendererBase *renderer = static_cast<N3dsRendererBase *>(arg);
+    if (!gspHasGpuRight()) {
+        renderer->source = nullptr;
+        return;
+    }
+
+    renderer->process_cmdlist_and_wait();
+}
+static void copy_vram_to_framebuffer_to_screen_cb(void *arg) {
+    if (!arg) {
+        return;
+    }
+
+    N3dsRendererBase *renderer = static_cast<N3dsRendererBase *>(arg);
+    if (!gspHasGpuRight()) {
+        renderer->source = nullptr;
+        return;
+    }
+
+    renderer->copy_vram_to_framebuffer_to_screen();
+}
+static void finalize_frame_and_swap_cb(void *arg) {
+    if (!arg) {
+        return;
+    }
+
+    N3dsRendererBase *renderer = static_cast<N3dsRendererBase *>(arg);
+    if (!gspHasGpuRight()) {
+        renderer->source = nullptr;
+        return;
+    }
+
+    renderer->finalize_frame_and_swap();
+}
+
 N3dsRendererBase::N3dsRendererBase(gfxScreen_t screen_in, int surface_width_in,
                                    int surface_height_in, int image_width_in,
                                    int image_height_in, int pixel_size,
@@ -85,64 +125,28 @@ inline void N3dsRendererBase::write24(u8 *p, u32 val) {
     p[2] = val >> 16;
 }
 
-inline void N3dsRendererBase::draw_perf_counters() {
-    u8 *dest = gfxGetFramebuffer(screen, GFX_LEFT, NULL, NULL);
+void N3dsRendererBase::write_px_to_framebuffer_gpu(
+    uint8_t *__restrict source_in) {
 
-    // Use a line going across the first scanline (left) for the perf counters.
-    // Clear to black
-    memset(dest, 0, GSP_SCREEN_WIDTH * 3);
-
-    // Display frame target in the middle of the screen.
-    double perf_tick_divisor =
-        ((double)GSP_SCREEN_WIDTH) / ((double)(perf_frame_target_ticks * 2));
-    u32 perf_px = 0;
-    u32 perf_tmp_height = 0;
-
-#define PERF_DRAW(ticks, r, g, b)                                              \
-    perf_tmp_height = perf_tick_divisor * ((double)(ticks));                   \
-    do {                                                                       \
-        if (perf_px > GSP_SCREEN_WIDTH)                                        \
-            break;                                                             \
-        const u32 color = (r << 16) | (g << 8) | b;                            \
-        memcpy(dest + (perf_px * 3), &color, 3);                               \
-        perf_px++;                                                             \
-    } while (perf_tmp_height-- > 0);
-
-    PERF_DRAW(perf_decode_ticks, 255, 0, 0);
-    PERF_DRAW(perf_fbcopy_ticks, 0, 0, 255);
-
-    // Draw two green pixels at the center
-    perf_px = (GSP_SCREEN_WIDTH / 2) - 1;
-    PERF_DRAW(0, 0, 255, 0);
-    PERF_DRAW(0, 0, 255, 0);
-}
-
-void N3dsRendererBase::write_px_to_framebuffer_gpu(uint8_t *__restrict source) {
-    // Do nothing when GPU right is lost, otherwise we hang when going to
-    // the home menu.
-    if (!gspHasGpuRight()) {
+    // Do nothing when GPU right is lost, or when a write is in progress.
+    // Otherwise we hang when going to the home menu.
+    if (!gspHasGpuRight() || source != nullptr) {
         return;
     }
-
-    u64 start_ticks = svcGetSystemTick();
+    source = source_in;
 
     // Tile the source image into the scratch buffer.
-    tile_source_to_vram(source);
+    tile_source_to_vram();
 
     // Build and submit GPU command list to perform the transform/draw.
     build_and_submit_gpu_cmdlist_for_transform();
 
     // Process the prepared command list and wait for completion.
-    process_cmdlist_and_wait();
-
-    // Copy the transformed framebuffer into the display framebuffer.
-    copy_vram_to_framebuffer_to_screen(source);
-
-    // Finalize: perf counting and buffer swap.
-    finalize_frame_and_swap(start_ticks);
+    gspSetEventCallback(GSPGPU_EVENT_PPF, process_cmdlist_and_wait_cb, this,
+                        true);
 }
 
-inline void N3dsRendererBase::tile_source_to_vram(uint8_t *__restrict source) {
+inline void N3dsRendererBase::tile_source_to_vram() {
     // Transfer the decoded source into a scratch tiled texture in VRAM.
     // - MOON_CTR_VIDEO_TEX_W/H: texture dimensions (1024x512) chosen to
     //   accommodate the largest expected source and align to PICA tile sizes.
@@ -339,9 +343,7 @@ inline void N3dsRendererBase::upload_vertex_attributes_and_draw() {
 #undef ATTR
 }
 
-inline void N3dsRendererBase::process_cmdlist_and_wait() {
-    gspWaitForEvent(GSPGPU_EVENT_PPF, 0);
-
+void N3dsRendererBase::process_cmdlist_and_wait() {
     u32 *unused;
     u32 cmdlist_len;
     GPUCMD_Split(&unused, &cmdlist_len);
@@ -356,11 +358,11 @@ inline void N3dsRendererBase::process_cmdlist_and_wait() {
     // so multiply by 4 to convert to bytes.
     GX_ProcessCommandList(cmdlist, cmdlist_len * 4, 2);
 
-    gspWaitForEvent(GSPGPU_EVENT_P3D, 0);
+    gspSetEventCallback(GSPGPU_EVENT_P3D, copy_vram_to_framebuffer_to_screen_cb,
+                        this, true);
 }
 
-inline void N3dsRendererBase::copy_vram_to_framebuffer_to_screen(
-    uint8_t *__restrict source) {
+void N3dsRendererBase::copy_vram_to_framebuffer_to_screen() {
     // Copy into framebuffer, untiled
     if ((screen == GFX_TOP) && gfxIs3D()) {
         // Left
@@ -404,14 +406,12 @@ inline void N3dsRendererBase::copy_vram_to_framebuffer_to_screen(
                                GX_TRANSFER_OUT_FORMAT(GX_TRANSFER_FMT_RGB565) |
                                GX_TRANSFER_SCALING(GX_TRANSFER_SCALE_NO));
     }
-    gspWaitForEvent(GSPGPU_EVENT_PPF, 0);
+
+    gspSetEventCallback(GSPGPU_EVENT_PPF, finalize_frame_and_swap_cb, this,
+                        true);
 }
 
-inline void N3dsRendererBase::finalize_frame_and_swap(u64 start_ticks) {
-    perf_fbcopy_ticks = svcGetSystemTick() - start_ticks;
-    if (debug) {
-        draw_perf_counters();
-    }
-
+void N3dsRendererBase::finalize_frame_and_swap() {
     gfxScreenSwapBuffers(screen, true);
+    source = nullptr;
 }
