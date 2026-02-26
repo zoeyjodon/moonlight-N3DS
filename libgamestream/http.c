@@ -25,7 +25,7 @@
 #include <curl/curl.h>
 
 static CURL *curl;
-static const uint32_t CONNECTION_TIMEOUT_S = 30;
+static const uint32_t CONNECTION_TIMEOUT_S = 10;
 static bool debug;
 
 static size_t _write_curl(void *contents, size_t size, size_t nmemb, void *userp)

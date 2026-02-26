@@ -45,23 +45,14 @@ class N3dsRendererBase {
                      bool debug_in = false);
     virtual ~N3dsRendererBase();
 
-    void copy_vram_to_framebuffer_to_screen();
-    void finalize_frame_and_swap();
-    void process_cmdlist_and_wait();
-
   public:
     u64 perf_frame_target_ticks = SYSCLOCK_ARM11 * ((double)(1.0 / 60.0));
     u64 perf_decode_ticks;
     u64 perf_fbcopy_ticks;
-    uint8_t *__restrict source = nullptr;
 
   protected:
     inline void draw_perf_counters();
-    void write_px_to_framebuffer_gpu(uint8_t *__restrict source_in);
-    // Refactor helpers for write_px_to_framebuffer_gpu
-    inline void tile_source_to_vram();
-    inline void build_and_submit_gpu_cmdlist_for_transform();
-    inline void upload_vertex_attributes_and_draw();
+    void write_px_to_framebuffer_gpu(uint8_t *__restrict source);
     void ensure_3d_enabled();
     void ensure_3d_disabled();
     inline void write24(u8 *p, u32 val);
