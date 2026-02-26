@@ -39,14 +39,16 @@
 
 #include <3ds/types.h>
 
-enum n3ds_render_type {
+enum N3dsRenderType {
     RENDER_DEFAULT,
     RENDER_BOTTOM,
     RENDER_DUAL_SCREEN_STRETCH,
     RENDER_DUAL_SCREEN_MIRROR,
     RENDER_DUAL_SCREEN_MAGNIFY
 };
-extern enum n3ds_render_type N3DS_RENDER_TYPE;
 
+struct VideoRendererContext {
+    N3dsRenderType type;
+};
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds;
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd;

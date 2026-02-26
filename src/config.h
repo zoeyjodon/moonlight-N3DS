@@ -59,8 +59,6 @@ typedef struct _CONFIGURATION {
     bool use_triggers_for_mouse;
 } CONFIGURATION, *PCONFIGURATION;
 
-extern bool inputAdded;
-
 bool config_file_parse(char *filename, PCONFIGURATION config);
 void config_parse(int argc, char *argv[], PCONFIGURATION config);
 void parse_argument(int c, char *value, PCONFIGURATION config);

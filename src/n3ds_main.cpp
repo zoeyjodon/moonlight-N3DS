@@ -429,9 +429,12 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
         return;
     }
 
+    VideoRendererContext video_context = {
+        .type = static_cast<N3dsRenderType>(config->display_type),
+    };
+
     AUDIO_RENDERER_CALLBACKS *audio_callbacks =
         config->localaudio ? &audio_callbacks_n3ds : &audio_callbacks_mock;
-    N3DS_RENDER_TYPE = static_cast<n3ds_render_type>(config->display_type);
     PDECODER_RENDERER_CALLBACKS video_callbacks =
         config->hwdecode ? &decoder_callbacks_n3ds_mvd
                          : &decoder_callbacks_n3ds;
@@ -449,10 +452,11 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
 
     auto connection_listener = N3dsConnectionListener::create_instance(
         config->debug_level, config->motion_controls);
-    int status = LiStartConnection(
-        &server->serverInfo, &config->stream,
-        &connection_listener->n3ds_connection_callbacks, video_callbacks,
-        audio_callbacks, NULL, DISPLAY_FULLSCREEN, config->audio_device, 0);
+    int status =
+        LiStartConnection(&server->serverInfo, &config->stream,
+                          &connection_listener->n3ds_connection_callbacks,
+                          video_callbacks, audio_callbacks, &video_context,
+                          DISPLAY_FULLSCREEN, config->audio_device, 0);
 
     if (status != 0) {
         connection_listener->n3ds_connection_callbacks.connectionTerminated(

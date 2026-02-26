@@ -109,7 +109,8 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     mvdstd_config.output_height_override = MOON_CTR_VIDEO_TEX_H;
     MVDSTD_SetConfig(&mvdstd_config);
 
-    switch (N3DS_RENDER_TYPE) {
+    VideoRendererContext *renderer_context = (VideoRendererContext *)context;
+    switch (renderer_context->type) {
     case (RENDER_BOTTOM):
         renderer = std::make_unique<N3dsRendererBottom>(
             image_width, image_height, pixel_size);

@@ -44,8 +44,6 @@ extern ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
 #define write_config_bool(fd, key, value)                                      \
     fprintf(fd, "%s = %s\n", key, value ? "true" : "false")
 
-bool inputAdded = false;
-
 static struct option long_options[] = {
     {"720", no_argument, NULL, 'a'},
     {"1080", no_argument, NULL, 'b'},
@@ -55,7 +53,6 @@ static struct option long_options[] = {
     {"bitrate", required_argument, NULL, 'g'},
     {"packetsize", required_argument, NULL, 'h'},
     {"app", required_argument, NULL, 'i'},
-    {"input", required_argument, NULL, 'j'},
     {"mapping", required_argument, NULL, 'k'},
     {"sops", required_argument, NULL, 'l'},
     {"audio", required_argument, NULL, 'm'},
@@ -118,15 +115,6 @@ void parse_argument(int c, char *value, PCONFIGURATION config) {
         break;
     case 'i':
         config->app = value;
-        break;
-    case 'j':
-        if (config->inputsCount >= MAX_INPUTS) {
-            perror("Too many inputs specified");
-            exit(-1);
-        }
-        config->inputs[config->inputsCount] = value;
-        config->inputsCount++;
-        inputAdded = true;
         break;
     case 'l':
         config->sops = ((value == NULL) || (strcmp(value, "false") != 0));

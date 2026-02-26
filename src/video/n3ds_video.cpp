@@ -37,7 +37,6 @@ static int image_width, image_height, surface_width, surface_height, pixel_size;
 static u8 *rgb_img_buffer;
 
 static std::unique_ptr<IN3dsRenderer> renderer = nullptr;
-enum n3ds_render_type N3DS_RENDER_TYPE = RENDER_DEFAULT;
 
 static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
                       void *context, int drFlags) {
@@ -87,7 +86,8 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
         return -1;
     }
 
-    switch (N3DS_RENDER_TYPE) {
+    VideoRendererContext *renderer_context = (VideoRendererContext *)context;
+    switch (renderer_context->type) {
     case (RENDER_BOTTOM):
         renderer = std::make_unique<N3dsRendererBottom>(
             image_width, image_height, pixel_size);
