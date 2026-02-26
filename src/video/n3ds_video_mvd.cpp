@@ -37,7 +37,7 @@ static void *nal_unit_buffer;
 static size_t nal_unit_buffer_size;
 static MVDSTD_Config mvdstd_config;
 
-static int surface_width, surface_height, pixel_size;
+static int image_width, image_height, surface_width, surface_height, pixel_size;
 static u8 *rgb_img_buffer;
 static bool first_frame = true;
 
@@ -80,11 +80,12 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     }
 
     surface_height = GSP_SCREEN_WIDTH;
-    if (width > GSP_SCREEN_HEIGHT_TOP) {
-        surface_width = GSP_SCREEN_HEIGHT_TOP_2X;
-    } else {
-        surface_width = GSP_SCREEN_HEIGHT_TOP;
-    }
+    surface_width = width > GSP_SCREEN_HEIGHT_TOP ? GSP_SCREEN_HEIGHT_TOP_2X
+                                                  : GSP_SCREEN_HEIGHT_TOP;
+    // Clamp output image to max dimensions supported by the renderer
+    image_width = width > MOON_CTR_VIDEO_TEX_W ? MOON_CTR_VIDEO_TEX_W : width;
+    image_height =
+        height > MOON_CTR_VIDEO_TEX_H ? MOON_CTR_VIDEO_TEX_H : height;
 
     GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
     pixel_size = gspGetBytesPerPixel(px_fmt);
@@ -98,8 +99,8 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     ensure_linear_buf_size(&nal_unit_buffer, &nal_unit_buffer_size,
                            INITIAL_DECODER_BUFFER_SIZE +
                                AV_INPUT_BUFFER_PADDING_SIZE);
-    mvdstdGenerateDefaultConfig(&mvdstd_config, width, height, surface_width,
-                                surface_height, NULL, (u32 *)rgb_img_buffer,
+    mvdstdGenerateDefaultConfig(&mvdstd_config, width, height, image_width,
+                                image_height, NULL, (u32 *)rgb_img_buffer,
                                 NULL);
 
     // Place within the 1024x512 buffer
@@ -111,26 +112,26 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     switch (N3DS_RENDER_TYPE) {
     case (RENDER_BOTTOM):
         renderer = std::make_unique<N3dsRendererBottom>(
-            surface_width, surface_height, pixel_size);
+            image_width, image_height, pixel_size);
         break;
     case (RENDER_DUAL_SCREEN_STRETCH):
         renderer = std::make_unique<N3dsRendererDualScreenStretch>(
-            surface_width, surface_height, surface_width, surface_height,
+            surface_width, surface_height, image_width, image_height,
             pixel_size);
         break;
     case (RENDER_DUAL_SCREEN_MIRROR):
         renderer = std::make_unique<N3dsRendererDualScreenMirror>(
-            surface_width, surface_height, surface_width, surface_height,
+            surface_width, surface_height, image_width, image_height,
             pixel_size);
         break;
     case (RENDER_DUAL_SCREEN_MAGNIFY):
         renderer = std::make_unique<N3dsRendererDualScreenMagnify>(
-            surface_width, surface_height, surface_width, surface_height,
+            surface_width, surface_height, image_width, image_height,
             pixel_size);
         break;
     default:
         renderer = std::make_unique<N3dsRendererTop>(
-            surface_width, surface_height, surface_width, surface_height,
+            surface_width, surface_height, image_width, image_height,
             pixel_size);
         break;
     }
