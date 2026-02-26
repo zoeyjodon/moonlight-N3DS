@@ -25,7 +25,7 @@
 #include <curl/curl.h>
 
 static CURL *curl;
-
+static const uint32_t CONNECTION_TIMEOUT_S = 30;
 static bool debug;
 
 static size_t _write_curl(void *contents, size_t size, size_t nmemb, void *userp)
@@ -66,6 +66,7 @@ int http_init(const char* keyDirectory, int logLevel) {
   curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, _write_curl);
   curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
   curl_easy_setopt(curl, CURLOPT_SSL_SESSIONID_CACHE, 0L);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, CONNECTION_TIMEOUT_S);
 
   return GS_OK;
 }
@@ -73,6 +74,7 @@ int http_init(const char* keyDirectory, int logLevel) {
 int http_request(char* url, PHTTP_DATA data) {
   curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
   curl_easy_setopt(curl, CURLOPT_URL, url);
+  curl_easy_setopt(curl, CURLOPT_TIMEOUT, CONNECTION_TIMEOUT_S);
 #ifdef __FreeBSD__
   curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
 #endif
