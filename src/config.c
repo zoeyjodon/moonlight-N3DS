@@ -71,7 +71,6 @@ static struct option long_options[] = {
     {"nounsupported", no_argument, NULL, 'y'},
     {"quitappafter", required_argument, NULL, '1'},
     {"viewonly", required_argument, NULL, '2'},
-    {"rotate", required_argument, NULL, '3'},
     {"verbose", no_argument, NULL, 'z'},
     {"debug", required_argument, NULL, 'Z'},
     {"nomouseemulation", no_argument, NULL, '4'},
@@ -162,10 +161,6 @@ void parse_argument(int c, char *value, PCONFIGURATION config) {
                  strcasecmp(value, "no") == 0)
             config->stream.streamingRemotely = STREAM_CFG_LOCAL;
         break;
-
-    case 't':
-        config->fullscreen = false;
-        break;
     case 'u':
         if (strcasecmp(value, "5.1") == 0)
             config->stream.audioConfiguration = AUDIO_CONFIGURATION_51_SURROUND;
@@ -184,9 +179,6 @@ void parse_argument(int c, char *value, PCONFIGURATION config) {
         break;
     case '2':
         config->viewonly = ((value != NULL) && (strcmp(value, "true") == 0));
-        break;
-    case '3':
-        config->rotate = atoi(value);
         break;
     case 'z':
         config->debug_level = 1;
@@ -291,7 +283,6 @@ void config_save(char *filename, PCONFIGURATION config) {
     write_config_bool(fd, "localaudio", config->localaudio);
     write_config_bool(fd, "quitappafter", config->quitappafter);
     write_config_bool(fd, "viewonly", config->viewonly);
-    write_config_int(fd, "rotate", config->rotate);
     write_config_bool(fd, "hwdecode", config->hwdecode);
     write_config_bool(fd, "swapfacebuttons", config->swap_face_buttons);
     write_config_bool(fd, "swaptriggersandshoulders",
@@ -329,12 +320,10 @@ void config_parse(int argc, char *argv[], PCONFIGURATION config) {
     config->audio_device = NULL;
     config->sops = true;
     config->localaudio = false;
-    config->fullscreen = true;
     config->unsupported = true;
     config->quitappafter = false;
     config->viewonly = false;
     config->mouse_emulation = true;
-    config->rotate = 0;
     config->hdr = false;
     config->pin = 0;
     config->port = 47989;

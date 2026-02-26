@@ -23,5 +23,5 @@
 
 #include <Limelight.h>
 
-extern bool n3ds_audio_disabled;
+extern AUDIO_RENDERER_CALLBACKS audio_callbacks_mock;
 extern AUDIO_RENDERER_CALLBACKS audio_callbacks_n3ds;

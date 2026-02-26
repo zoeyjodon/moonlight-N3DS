@@ -23,97 +23,112 @@
 #include <math.h>
 #include <opus/opus_multistream.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define WAVEBUF_SIZE 16
 bool n3ds_audio_disabled = false;
 
-static OpusMSDecoder* decoder;
-static u8* audioBuffer;
+static OpusMSDecoder *decoder;
+static u8 *audioBuffer;
 static int samplesPerFrame;
 static int sampleRate;
 static int channelCount;
 static ndspWaveBuf audio_wave_buf[WAVEBUF_SIZE];
 static int wave_buf_idx = 0;
 
-static int n3ds_renderer_init(int audioConfiguration, POPUS_MULTISTREAM_CONFIGURATION opusConfig, void* context, int arFlags) {
-  int rc;
-  decoder = opus_multistream_decoder_create(opusConfig->sampleRate, opusConfig->channelCount, opusConfig->streams, opusConfig->coupledStreams, opusConfig->mapping, &rc);
+static int n3ds_renderer_init(int audioConfiguration,
+                              POPUS_MULTISTREAM_CONFIGURATION opusConfig,
+                              void *context, int arFlags) {
+    int rc;
+    decoder = opus_multistream_decoder_create(
+        opusConfig->sampleRate, opusConfig->channelCount, opusConfig->streams,
+        opusConfig->coupledStreams, opusConfig->mapping, &rc);
 
-  sampleRate = opusConfig->sampleRate;
-  channelCount = opusConfig->channelCount;
-  samplesPerFrame = opusConfig->samplesPerFrame;
-  int bytes_per_frame = sizeof(short) * channelCount * samplesPerFrame;
+    sampleRate = opusConfig->sampleRate;
+    channelCount = opusConfig->channelCount;
+    samplesPerFrame = opusConfig->samplesPerFrame;
+    int bytes_per_frame = sizeof(short) * channelCount * samplesPerFrame;
 
-  if(ndspInit() != 0)
-  {
-    fprintf(stderr, "ndspInit() failed\n");
-    return -1;
-  }
+    if (ndspInit() != 0) {
+        fprintf(stderr, "ndspInit() failed\n");
+        return -1;
+    }
 
-  u8 *audioBuffer = (u8*)linearAlloc(bytes_per_frame * WAVEBUF_SIZE);
-  if (audioBuffer == NULL)
-    return -1;
-  memset(audioBuffer, 0, bytes_per_frame * WAVEBUF_SIZE);
+    u8 *audioBuffer = (u8 *)linearAlloc(bytes_per_frame * WAVEBUF_SIZE);
+    if (audioBuffer == NULL)
+        return -1;
+    memset(audioBuffer, 0, bytes_per_frame * WAVEBUF_SIZE);
 
-  ndspChnWaveBufClear(0);
-  ndspChnReset(0);
-  ndspSetOutputMode(NDSP_OUTPUT_STEREO);
-  ndspChnSetInterp(0, NDSP_INTERP_LINEAR);
-  ndspChnSetRate(0, sampleRate);
-  ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
+    ndspChnWaveBufClear(0);
+    ndspChnReset(0);
+    ndspSetOutputMode(NDSP_OUTPUT_STEREO);
+    ndspChnSetInterp(0, NDSP_INTERP_LINEAR);
+    ndspChnSetRate(0, sampleRate);
+    ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
 
-  float mix[12];
-  memset(mix, 0, sizeof(mix));
-  mix[0] = mix[1] = 1.0f;
-  ndspChnSetMix(0, mix);
+    float mix[12];
+    memset(mix, 0, sizeof(mix));
+    mix[0] = mix[1] = 1.0f;
+    ndspChnSetMix(0, mix);
 
-  memset(audio_wave_buf,0,sizeof(audio_wave_buf));
-  for (int i = 0; i < WAVEBUF_SIZE; i++) {
-    audio_wave_buf[i].data_vaddr = &audioBuffer[i * bytes_per_frame];
-    audio_wave_buf[i].status = NDSP_WBUF_DONE;
-  }
+    memset(audio_wave_buf, 0, sizeof(audio_wave_buf));
+    for (int i = 0; i < WAVEBUF_SIZE; i++) {
+        audio_wave_buf[i].data_vaddr = &audioBuffer[i * bytes_per_frame];
+        audio_wave_buf[i].status = NDSP_WBUF_DONE;
+    }
 
-  ndspChnSetPaused(0, false);
+    ndspChnSetPaused(0, false);
 
-  return 0;
+    return 0;
 }
 
 static void n3ds_renderer_cleanup() {
-  if (decoder != NULL) {
-    opus_multistream_decoder_destroy(decoder);
-    decoder = NULL;
-  }
+    if (decoder != NULL) {
+        opus_multistream_decoder_destroy(decoder);
+        decoder = NULL;
+    }
 
-  ndspChnWaveBufClear(0);
-  ndspExit();
-  if (audioBuffer != NULL) {
-    free(audioBuffer);
-    audioBuffer = NULL;
-  }
+    ndspChnWaveBufClear(0);
+    ndspExit();
+    if (audioBuffer != NULL) {
+        free(audioBuffer);
+        audioBuffer = NULL;
+    }
 }
 
-static void n3ds_renderer_decode_and_play_sample(char* data, int length) {
-  if (n3ds_audio_disabled || (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)) {
-    return;
-  }
+static void n3ds_renderer_decode_and_play_sample(char *data, int length) {
+    if (n3ds_audio_disabled ||
+        (audio_wave_buf[wave_buf_idx].status != NDSP_WBUF_DONE)) {
+        return;
+    }
 
-  int decodeLen = opus_multistream_decode(decoder, (const unsigned char *)data, length, (opus_int16 *)audio_wave_buf[wave_buf_idx].data_vaddr, samplesPerFrame, 0);
-  if (decodeLen < 0) {
-    fprintf(stderr, "Opus error from decode: %d\n", decodeLen);
-    return;
-  }
-  DSP_FlushDataCache(audio_wave_buf[wave_buf_idx].data_vaddr, decodeLen * channelCount * sizeof(short));
-  audio_wave_buf[wave_buf_idx].nsamples = decodeLen;
-  ndspChnWaveBufAdd(0, &audio_wave_buf[wave_buf_idx]);
+    int decodeLen = opus_multistream_decode(
+        decoder, (const unsigned char *)data, length,
+        (opus_int16 *)audio_wave_buf[wave_buf_idx].data_vaddr, samplesPerFrame,
+        0);
+    if (decodeLen < 0) {
+        fprintf(stderr, "Opus error from decode: %d\n", decodeLen);
+        return;
+    }
+    DSP_FlushDataCache(audio_wave_buf[wave_buf_idx].data_vaddr,
+                       decodeLen * channelCount * sizeof(short));
+    audio_wave_buf[wave_buf_idx].nsamples = decodeLen;
+    ndspChnWaveBufAdd(0, &audio_wave_buf[wave_buf_idx]);
 
-  wave_buf_idx = (wave_buf_idx +  1) % WAVEBUF_SIZE;
+    wave_buf_idx = (wave_buf_idx + 1) % WAVEBUF_SIZE;
 }
+
+extern AUDIO_RENDERER_CALLBACKS audio_callbacks_mock = {
+    .init = NULL,
+    .cleanup = NULL,
+    .decodeAndPlaySample = NULL,
+    .capabilities = 0,
+};
 
 AUDIO_RENDERER_CALLBACKS audio_callbacks_n3ds = {
-  .init = n3ds_renderer_init,
-  .cleanup = n3ds_renderer_cleanup,
-  .decodeAndPlaySample = n3ds_renderer_decode_and_play_sample,
-  .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_SLOW_OPUS_DECODER,
+    .init = n3ds_renderer_init,
+    .cleanup = n3ds_renderer_cleanup,
+    .decodeAndPlaySample = n3ds_renderer_decode_and_play_sample,
+    .capabilities = CAPABILITY_DIRECT_SUBMIT | CAPABILITY_SLOW_OPUS_DECODER,
 };

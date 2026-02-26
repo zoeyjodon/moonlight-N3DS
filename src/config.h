@@ -42,8 +42,6 @@ typedef struct _CONFIGURATION {
     char key_dir[4096];
     bool sops;
     bool localaudio;
-    bool fullscreen;
-    int rotate;
     bool unsupported;
     bool quitappafter;
     bool viewonly;

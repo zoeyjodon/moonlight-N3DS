@@ -429,51 +429,30 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
         return;
     }
 
-    n3ds_audio_disabled = config->localaudio;
+    AUDIO_RENDERER_CALLBACKS *audio_callbacks =
+        config->localaudio ? &audio_callbacks_n3ds : &audio_callbacks_mock;
     N3DS_RENDER_TYPE = static_cast<n3ds_render_type>(config->display_type);
-
-    int drFlags = 0;
-    if (config->fullscreen)
-        drFlags |= DISPLAY_FULLSCREEN;
-
-    switch (config->rotate) {
-    case 0:
-        break;
-    case 90:
-        drFlags |= DISPLAY_ROTATE_90;
-        break;
-    case 180:
-        drFlags |= DISPLAY_ROTATE_180;
-        break;
-    case 270:
-        drFlags |= DISPLAY_ROTATE_270;
-        break;
-    default:
-        printf("Ignoring invalid rotation value: %d\n", config->rotate);
-    }
-
     PDECODER_RENDERER_CALLBACKS video_callbacks =
         config->hwdecode ? &decoder_callbacks_n3ds_mvd
                          : &decoder_callbacks_n3ds;
 
     printf(
         "Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
- viewonly=%d, rotate=%d, encryption=%x, hwdecode=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d,\
+ viewonly=%d, encryption=%x, hwdecode=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d,\
  usetriggersformouse=%d, display_type=%d, motion_controls=%d, debug=%d\n",
         config->stream.width, config->stream.height, config->stream.fps,
         config->stream.bitrate, config->sops, config->localaudio,
-        config->quitappafter, config->viewonly, config->rotate,
-        config->stream.encryptionFlags, config->hwdecode,
-        config->swap_face_buttons, config->swap_triggers_and_shoulders,
-        config->use_triggers_for_mouse, config->display_type,
-        config->motion_controls, config->debug_level);
+        config->quitappafter, config->viewonly, config->stream.encryptionFlags,
+        config->hwdecode, config->swap_face_buttons,
+        config->swap_triggers_and_shoulders, config->use_triggers_for_mouse,
+        config->display_type, config->motion_controls, config->debug_level);
 
     auto connection_listener = N3dsConnectionListener::create_instance(
         config->debug_level, config->motion_controls);
     int status = LiStartConnection(
         &server->serverInfo, &config->stream,
         &connection_listener->n3ds_connection_callbacks, video_callbacks,
-        &audio_callbacks_n3ds, NULL, drFlags, config->audio_device, 0);
+        audio_callbacks, NULL, DISPLAY_FULLSCREEN, config->audio_device, 0);
 
     if (status != 0) {
         connection_listener->n3ds_connection_callbacks.connectionTerminated(
