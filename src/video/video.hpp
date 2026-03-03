@@ -37,6 +37,9 @@
 
 #define INITIAL_DECODER_BUFFER_SIZE (256 * 1024)
 
+#include "../system/subscriber.hpp"
+#include "../util.h"
+#include "n3ds/N3dsRenderer.hpp"
 #include <3ds/types.h>
 
 enum N3dsRenderType {
@@ -50,5 +53,28 @@ enum N3dsRenderType {
 struct VideoRendererContext {
     N3dsRenderType type;
 };
+class MvdDecoder : public ISubscriber {
+  public:
+    MvdDecoder(int videoFormat, int width, int height, int redrawRate,
+               VideoRendererContext *context, int drFlags);
+    ~MvdDecoder();
+    void accept(IMessage *msg) override;
+    int submit_decode_unit(PDECODE_UNIT decodeUnit);
+
+  private:
+    void _accept_touch_state_changed(TouchStateChangedMsg *msg);
+    void _accept_keyboard_state_changed(KeyboardStateChangedMsg *msg);
+    int _decode(unsigned char *indata, int inlen);
+
+  private:
+    void *nal_unit_buffer;
+    size_t nal_unit_buffer_size;
+    MVDSTD_Config mvdstd_config;
+    int image_width, image_height, surface_width, surface_height, pixel_size;
+    u8 *rgb_img_buffer;
+    bool first_frame = true;
+    std::unique_ptr<IN3dsRenderer> renderer = nullptr;
+};
+
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds;
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd;

@@ -17,7 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "N3dsTouchscreenInput.hpp"
+#include "../../system/dispatcher.hpp"
+#include "TouchHandler.hpp"
 
 void TouchHandlerBase::handle_touch_down(touchPosition touch) {
     isActive = true;

@@ -17,9 +17,8 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "../util.h"
-#include "n3ds/N3dsRenderer.hpp"
-#include "video.h"
+#include "../system/dispatcher.hpp"
+#include "video.hpp"
 
 #include <3ds.h>
 
@@ -29,27 +28,19 @@
 #include <memory>
 #include <pthread.h>
 #include <stdbool.h>
+#include <stdexcept>
 #include <stdio.h>
 #include <stdlib.h>
 
-// General decoder and renderer state
-static void *nal_unit_buffer;
-static size_t nal_unit_buffer_size;
-static MVDSTD_Config mvdstd_config;
+static std::unique_ptr<MvdDecoder> instance = nullptr;
 
-static int image_width, image_height, surface_width, surface_height, pixel_size;
-static u8 *rgb_img_buffer;
-static bool first_frame = true;
-
-static std::unique_ptr<IN3dsRenderer> renderer = nullptr;
-
-static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
-                     void *context, int drFlags) {
+MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
+                       VideoRendererContext *context, int drFlags) {
     bool is_new_3ds;
     APT_CheckNew3DS(&is_new_3ds);
     if (!is_new_3ds) {
         fprintf(stderr, "Hardware decoding is only available on the New 3DS\n");
-        return -1;
+        throw std::runtime_error("Unsupported hardware");
     }
 
     // Calculate required buffer size
@@ -67,7 +58,7 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     int status = mvdstdCalculateBufferSize(&config, &size);
     if (status) {
         fprintf(stderr, "mvdstdCalculateBufferSize failed: %d\n", status);
-        return -1;
+        throw std::runtime_error("mvdstdCalculateBufferSize failed");
     }
 
     first_frame = true;
@@ -76,7 +67,7 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     if (status) {
         fprintf(stderr, "mvdstdInit failed: %d\n", status);
         mvdstdExit();
-        return -1;
+        throw std::runtime_error("mvdstdInit failed");
     }
 
     surface_height = GSP_SCREEN_WIDTH;
@@ -93,7 +84,7 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
                                        MOON_CTR_VIDEO_TEX_H * pixel_size);
     if (!rgb_img_buffer) {
         fprintf(stderr, "Out of memory!\n");
-        return -1;
+        throw std::runtime_error("Out of memory");
     }
 
     ensure_linear_buf_size(&nal_unit_buffer, &nal_unit_buffer_size,
@@ -109,39 +100,21 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
     mvdstd_config.output_height_override = MOON_CTR_VIDEO_TEX_H;
     MVDSTD_SetConfig(&mvdstd_config);
 
-    VideoRendererContext *renderer_context = (VideoRendererContext *)context;
-    switch (renderer_context->type) {
-    case (RENDER_BOTTOM):
-        renderer = std::make_unique<N3dsRendererBottom>(
-            image_width, image_height, pixel_size);
-        break;
-    case (RENDER_DUAL_SCREEN_STRETCH):
-        renderer = std::make_unique<N3dsRendererDualScreenStretch>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    case (RENDER_DUAL_SCREEN_MIRROR):
-        renderer = std::make_unique<N3dsRendererDualScreenMirror>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    case (RENDER_DUAL_SCREEN_MAGNIFY):
-        renderer = std::make_unique<N3dsRendererDualScreenMagnify>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    default:
-        renderer = std::make_unique<N3dsRendererTop>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    }
-    return 0;
+    renderer = std::make_unique<N3dsRendererNormal>(
+        surface_width, surface_height, image_width, image_height, pixel_size);
+
+    auto pDispatcher = MessageDispatcher::get_instance();
+    pDispatcher->subscribe(MessageType::TOUCH_STATE_CHANGED, this);
+    pDispatcher->subscribe(MessageType::KEYBOARD_STATE_CHANGED, this);
 }
 
 // This function must be called after
 // decoding is finished
-static void n3ds_destroy(void) {
+MvdDecoder::~MvdDecoder() {
+    auto pDispatcher = MessageDispatcher::get_instance();
+    pDispatcher->unsubscribe(MessageType::TOUCH_STATE_CHANGED, this);
+    pDispatcher->unsubscribe(MessageType::KEYBOARD_STATE_CHANGED, this);
+
     y2rExit();
     mvdstdExit();
     linearFree(nal_unit_buffer);
@@ -149,9 +122,87 @@ static void n3ds_destroy(void) {
     renderer = nullptr;
 }
 
+void MvdDecoder::accept(IMessage *msg) {
+    switch (msg->getMessageType()) {
+    case MessageType::TOUCH_STATE_CHANGED:
+        _accept_touch_state_changed(static_cast<TouchStateChangedMsg *>(msg));
+        break;
+    case MessageType::KEYBOARD_STATE_CHANGED:
+        _accept_keyboard_state_changed(
+            static_cast<KeyboardStateChangedMsg *>(msg));
+        break;
+    default:
+        break;
+    }
+}
+
+void MvdDecoder::_accept_touch_state_changed(TouchStateChangedMsg *msg) {
+    switch (msg->ttype) {
+    case (N3dsTouchType::DISABLED):
+        renderer = std::make_unique<N3dsRendererNormal>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        break;
+    case (N3dsTouchType::GAMEPAD):
+        renderer = std::make_unique<N3dsRendererNormal>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        (static_cast<N3dsRendererNormal *>(renderer.get()))
+            ->set_bottom_screen(msg->static_image);
+        break;
+    case (N3dsTouchType::MOUSEPAD):
+        renderer = std::make_unique<N3dsRendererNormal>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        (static_cast<N3dsRendererNormal *>(renderer.get()))
+            ->set_bottom_screen(msg->static_image);
+        break;
+    case (N3dsTouchType::KEYBOARD):
+        renderer = std::make_unique<N3dsRendererNormal>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        (static_cast<N3dsRendererNormal *>(renderer.get()))
+            ->set_bottom_screen(msg->static_image);
+        break;
+    case (N3dsTouchType::ABSOLUTE_TOUCH):
+        renderer = std::make_unique<N3dsRendererDualScreenMirror>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        break;
+    case (N3dsTouchType::DS_TOUCH):
+        renderer = std::make_unique<N3dsRendererDualScreenStretch>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        break;
+    case (N3dsTouchType::MAGNIFY_TOUCH):
+        renderer = std::make_unique<N3dsRendererDualScreenMagnify>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        break;
+    case (N3dsTouchType::MENU_TOUCH):
+        renderer = std::make_unique<N3dsRendererNormal>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        (static_cast<N3dsRendererNormal *>(renderer.get()))
+            ->set_bottom_screen(msg->static_image);
+        break;
+    default:
+        renderer = std::make_unique<N3dsRendererNormal>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
+        break;
+    }
+}
+
+void MvdDecoder::_accept_keyboard_state_changed(KeyboardStateChangedMsg *msg) {
+    (static_cast<N3dsRendererNormal *>(renderer.get()))
+        ->set_bottom_screen(msg->keyboard_image, msg->key_offset,
+                            msg->key_size);
+}
+
 // packets must be decoded in order
 // indata must be inlen + AV_INPUT_BUFFER_PADDING_SIZE in length
-static inline int n3ds_decode(unsigned char *indata, int inlen) {
+int MvdDecoder::_decode(unsigned char *indata, int inlen) {
     int ret = mvdstdProcessVideoFrame(indata, inlen, 1, NULL);
     if (ret != MVD_STATUS_PARAMSET && ret != MVD_STATUS_INCOMPLETEPROCESSING) {
         mvdstdRenderVideoFrame(&mvdstd_config, true);
@@ -159,7 +210,7 @@ static inline int n3ds_decode(unsigned char *indata, int inlen) {
     return 0;
 }
 
-static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
+int MvdDecoder::submit_decode_unit(PDECODE_UNIT decodeUnit) {
     u64 start_ticks = svcGetSystemTick();
     PLENTRY entry = decodeUnit->bufferList;
     int length = 0;
@@ -175,7 +226,7 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
     }
     GSPGPU_FlushDataCache(nal_unit_buffer, length);
 
-    n3ds_decode((unsigned char *)nal_unit_buffer, length);
+    _decode((unsigned char *)nal_unit_buffer, length);
     renderer->set_perf_decode_ticks(svcGetSystemTick() - start_ticks);
 
     renderer->write_px_to_framebuffer(rgb_img_buffer);
@@ -186,6 +237,30 @@ static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
         return DR_NEED_IDR;
     }
     return DR_OK;
+}
+
+static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
+                     void *context, int drFlags) {
+    try {
+        VideoRendererContext *renderer_context =
+            (VideoRendererContext *)context;
+        instance = std::make_unique<MvdDecoder>(
+            videoFormat, width, height, redrawRate, renderer_context, drFlags);
+        return 0;
+    } catch (const std::exception &e) {
+        fprintf(stderr, "Failed to initialize N3DS MVD decoder: %s\n",
+                e.what());
+        return -1;
+    }
+}
+
+static void n3ds_destroy() { instance = nullptr; }
+
+static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
+    if (instance) {
+        return instance->submit_decode_unit(decodeUnit);
+    }
+    return -1;
 }
 
 DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd = {

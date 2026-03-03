@@ -19,6 +19,8 @@
 
 #include "n3ds_input.hpp"
 #include "../system/dispatcher.hpp"
+#include "menu_bgr.h"
+#include "n3ds/TouchHandler.hpp"
 
 #include <3ds.h>
 #include <Limelight.h>
@@ -27,7 +29,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define QUIT_BUTTONS (PLAY_FLAG | BACK_FLAG | LB_FLAG | RB_FLAG)
+#define MENU_BUTTONS (PLAY_FLAG | BACK_FLAG | LB_FLAG | RB_FLAG)
 #define TOUCH_GAMEPAD_BUTTONS (SPECIAL_FLAG | LS_CLK_FLAG | RS_CLK_FLAG)
 #define TOUCH_MOUSEPAD_BUTTONS (BUTTON_LEFT | BUTTON_RIGHT)
 #define SUPPORTED_BUTTONS                                                      \
@@ -185,8 +187,15 @@ int N3dsInput::n3dsinput_handle_event() {
         gamepad_state.rightTrigger &= ~n3ds_to_li_trigger(kUp, CUSTOM_KEY_ZR);
     }
 
-    if ((gamepad_state.buttons & QUIT_BUTTONS) == QUIT_BUTTONS)
-        return 1;
+    if (!menu_active &&
+        (gamepad_state.buttons & MENU_BUTTONS) == MENU_BUTTONS) {
+        auto message =
+            TouchStateChangedMsg(N3dsTouchType::MENU_TOUCH, menu_bgr);
+        MessageDispatcher::get_instance()->post_immediate(&message);
+        return 0;
+    } else {
+        menu_active = false;
+    }
 
     circlePosition cpad_pos;
     hidCircleRead(&cpad_pos);

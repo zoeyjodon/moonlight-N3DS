@@ -19,7 +19,7 @@
 
 #include "ffmpeg.h"
 #include "n3ds/N3dsRenderer.hpp"
-#include "video.h"
+#include "video.hpp"
 
 #include "../util.h"
 
@@ -89,8 +89,9 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
     VideoRendererContext *renderer_context = (VideoRendererContext *)context;
     switch (renderer_context->type) {
     case (RENDER_BOTTOM):
-        renderer = std::make_unique<N3dsRendererBottom>(
-            image_width, image_height, pixel_size);
+        renderer = std::make_unique<N3dsRendererInverted>(
+            surface_width, surface_height, image_width, image_height,
+            pixel_size);
         break;
     case (RENDER_DUAL_SCREEN_STRETCH):
         renderer = std::make_unique<N3dsRendererDualScreenStretch>(
@@ -108,7 +109,7 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
             pixel_size);
         break;
     default:
-        renderer = std::make_unique<N3dsRendererTop>(
+        renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
         break;

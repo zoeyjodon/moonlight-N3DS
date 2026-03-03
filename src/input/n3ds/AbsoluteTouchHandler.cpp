@@ -16,9 +16,11 @@
  * You should have received a copy of the GNU General Public License
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
-
-#include "N3dsTouchscreenInput.hpp"
+#include "TouchHandler.hpp"
 #include <Limelight.h>
+
+AbsoluteTouchHandler::AbsoluteTouchHandler(int y_offset_in, int y_scale_in)
+    : y_offset(y_offset_in), y_scale(y_scale_in) {}
 
 void AbsoluteTouchHandler::_handle_touch_down(touchPosition touch) {
     LiSendMousePositionEvent(touch.px, touch.py + y_offset,

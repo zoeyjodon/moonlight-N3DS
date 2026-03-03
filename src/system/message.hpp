@@ -1,11 +1,15 @@
 #pragma once
 
+#include "../input/n3ds/TouchHandler.hpp"
 #include <3ds.h>
 
 enum MessageType {
     TOUCHSCREEN_EVENT,
     ENABLE_ACCEL,
     ENABLE_GYRO,
+    TOUCH_STATE_CHANGED,
+    KEYBOARD_STATE_CHANGED,
+    EXIT_STREAM,
     MESSAGE_TYPE_COUNT
 };
 
@@ -24,6 +28,32 @@ class TouchscreenEventMsg : public IMessage {
     MessageType getMessageType() { return MessageType::TOUCHSCREEN_EVENT; };
     TouchscreenEventMsgType event;
     touchPosition touch;
+};
+
+class TouchStateChangedMsg : public IMessage {
+  public:
+    TouchStateChangedMsg(N3dsTouchType ttype_in,
+                         const uint8_t *static_image_in = nullptr)
+        : ttype(ttype_in), static_image(static_image_in){};
+    ~TouchStateChangedMsg() = default;
+    MessageType getMessageType() { return MessageType::TOUCH_STATE_CHANGED; };
+    N3dsTouchType ttype;
+    const uint8_t *static_image = nullptr;
+};
+
+class KeyboardStateChangedMsg : public IMessage {
+  public:
+    KeyboardStateChangedMsg(const uint8_t *keyboard_image_in, int key_offset_in,
+                            int key_size_in)
+        : keyboard_image(keyboard_image_in), key_offset(key_offset_in),
+          key_size(key_size_in){};
+    ~KeyboardStateChangedMsg() = default;
+    MessageType getMessageType() {
+        return MessageType::KEYBOARD_STATE_CHANGED;
+    };
+    const uint8_t *keyboard_image;
+    int key_offset;
+    int key_size;
 };
 
 class GenericEventMsg : public IMessage {

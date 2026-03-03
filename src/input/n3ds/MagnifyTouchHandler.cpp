@@ -18,8 +18,10 @@
  */
 
 #include "../../system/dispatcher.hpp"
-#include "N3dsTouchscreenInput.hpp"
+#include "TouchHandler.hpp"
 #include <3ds.h>
+
+MagnifyTouchHandler::MagnifyTouchHandler() {}
 
 void MagnifyTouchHandler::_handle_touch_down(touchPosition touch) {
     auto pDispatcher = MessageDispatcher::get_instance();

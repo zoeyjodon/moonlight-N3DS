@@ -44,11 +44,7 @@ class N3dsRendererBase {
                      int image_height_in, int pixel_size,
                      bool debug_in = false);
     virtual ~N3dsRendererBase();
-
-  public:
-    u64 perf_frame_target_ticks = SYSCLOCK_ARM11 * ((double)(1.0 / 60.0));
-    u64 perf_decode_ticks;
-    u64 perf_fbcopy_ticks;
+    int get_px_size() const { return px_size; }
 
   protected:
     inline void draw_perf_counters();
@@ -56,6 +52,11 @@ class N3dsRendererBase {
     void ensure_3d_enabled();
     void ensure_3d_disabled();
     inline void write24(u8 *p, u32 val);
+
+  public:
+    u64 perf_frame_target_ticks = SYSCLOCK_ARM11 * ((double)(1.0 / 60.0));
+    u64 perf_decode_ticks;
+    u64 perf_fbcopy_ticks;
 
   protected:
     gfxScreen_t screen;
@@ -70,7 +71,7 @@ class N3dsRendererBase {
     void *vramTex = NULL;
 };
 
-class N3dsRendererTop : public IN3dsRenderer, N3dsRendererBase {
+class N3dsRendererTop : public IN3dsRenderer, public N3dsRendererBase {
   public:
     N3dsRendererTop(int dest_width, int dest_height, int src_width,
                     int src_height, int px_size, bool debug_in = false);
@@ -79,13 +80,40 @@ class N3dsRendererTop : public IN3dsRenderer, N3dsRendererBase {
     void set_perf_decode_ticks(u64 ticks);
 };
 
-class N3dsRendererBottom : public IN3dsRenderer, N3dsRendererBase {
+class N3dsRendererBottom : public IN3dsRenderer, public N3dsRendererBase {
   public:
     N3dsRendererBottom(int src_width, int src_height, int px_size,
                        bool debug_in = false);
     ~N3dsRendererBottom();
     void write_px_to_framebuffer(uint8_t *source);
     void set_perf_decode_ticks(u64 ticks);
+};
+
+class N3dsRendererNormal : public IN3dsRenderer {
+  public:
+    N3dsRendererNormal(int dest_width, int dest_height, int src_width,
+                       int src_height, int px_size);
+    ~N3dsRendererNormal();
+    void write_px_to_framebuffer(uint8_t *source);
+    void set_perf_decode_ticks(u64 ticks);
+    void set_bottom_screen(const uint8_t *source, int offset = 0, int size = 0);
+
+  private:
+    N3dsRendererTop top_renderer;
+    N3dsRendererBottom bottom_renderer;
+};
+
+class N3dsRendererInverted : public IN3dsRenderer {
+  public:
+    N3dsRendererInverted(int dest_width, int dest_height, int src_width,
+                         int src_height, int px_size);
+    ~N3dsRendererInverted();
+    void write_px_to_framebuffer(uint8_t *source);
+    void set_perf_decode_ticks(u64 ticks);
+
+  private:
+    N3dsRendererTop top_renderer;
+    N3dsRendererBottom bottom_renderer;
 };
 
 class N3dsRendererDualScreenStretch : public IN3dsRenderer {

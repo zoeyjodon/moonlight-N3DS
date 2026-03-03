@@ -50,6 +50,7 @@ class N3dsInput : public ISubscriber {
     bool enable_gyro = false;
     bool enable_accel = false;
     bool use_triggers_for_mouse = false;
+    bool menu_active = false;
 
     uint32_t CUSTOM_KEY_A;
     uint32_t CUSTOM_KEY_B;

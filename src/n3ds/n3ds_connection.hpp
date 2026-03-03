@@ -19,13 +19,16 @@
 
 #pragma once
 
+#include "../system/subscriber.hpp"
 #include <Limelight.h>
 #include <memory>
 
-class N3dsConnectionListener {
+class N3dsConnectionListener : public ISubscriber {
   public:
     N3dsConnectionListener(bool debug, bool enable_motion);
     ~N3dsConnectionListener();
+
+    void accept(IMessage *msg) override;
 
     static N3dsConnectionListener *create_instance(bool debug,
                                                    bool enable_motion) {

@@ -126,11 +126,22 @@ N3dsConnectionListener::N3dsConnectionListener(bool debug, bool enable_motion) {
         debug ? connection_status_update : NULL;
     n3ds_connection_callbacks.setMotionEventState =
         enable_motion ? set_motion_event_state : NULL;
+
+    MessageDispatcher::get_instance()->subscribe(MessageType::EXIT_STREAM,
+                                                 this);
 }
 
 N3dsConnectionListener::~N3dsConnectionListener() {
+    MessageDispatcher::get_instance()->unsubscribe(MessageType::EXIT_STREAM,
+                                                   this);
+
     n3ds_connection_callbacks.connectionTerminated = NULL;
     n3ds_connection_callbacks.logMessage = NULL;
     n3ds_connection_callbacks.connectionStatusUpdate = NULL;
     n3ds_connection_callbacks.setMotionEventState = NULL;
+}
+
+void N3dsConnectionListener::accept(IMessage *msg) {
+    if (msg->getMessageType() == MessageType::EXIT_STREAM)
+        connection_terminated(ML_ERROR_GRACEFUL_TERMINATION);
 }

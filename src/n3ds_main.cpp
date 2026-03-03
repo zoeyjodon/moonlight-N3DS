@@ -23,7 +23,7 @@
 #include "n3ds/pair_record.hpp"
 
 #include "audio/audio.h"
-#include "video/video.h"
+#include "video/video.hpp"
 
 #include "input/n3ds_input.hpp"
 

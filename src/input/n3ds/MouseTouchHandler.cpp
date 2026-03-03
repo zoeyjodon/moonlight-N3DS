@@ -17,21 +17,13 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "N3dsTouchscreenInput.hpp"
-#include "touchpad_bgr.h"
+#include "TouchHandler.hpp"
 #include <Limelight.h>
 #include <cstring>
 
 #define N3DS_MOUSEPAD_SENSITIVITY 3
 
-MouseTouchHandler::MouseTouchHandler() {
-    u8 *gfxbtmadr = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
-
-    memcpy(gfxbtmadr, touchpad_bgr, touchpad_bgr_size);
-
-    gfxFlushBuffers();
-    gfxScreenSwapBuffers(GFX_BOTTOM, false);
-}
+MouseTouchHandler::MouseTouchHandler() {}
 
 void MouseTouchHandler::_handle_touch_down(touchPosition touch) {
     if (touch.py < 175) {
