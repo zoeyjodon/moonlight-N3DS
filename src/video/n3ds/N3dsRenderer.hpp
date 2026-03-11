@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "../../system/ThreadLock.hpp"
 #include "../../system/subscriber.hpp"
 #include <3ds.h>
 #include <Limelight.h>
@@ -160,4 +161,5 @@ class N3dsRendererDualScreenMagnify : public IN3dsRenderer, ISubscriber {
     N3dsRendererTop top_renderer;
     N3dsRendererBottom bottom_renderer;
     int pixel_offset = 0;
+    PLockType lock;
 };

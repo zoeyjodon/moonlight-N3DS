@@ -29,7 +29,8 @@
 std::unique_ptr<N3dsConnectionListener> N3dsConnectionListener::instance =
     nullptr;
 
-static void connection_terminated(int errorCode) {
+void N3dsConnectionListener::connection_terminated(int errorCode) {
+    ThreadLock(lock.get());
     switch (errorCode) {
     case ML_ERROR_GRACEFUL_TERMINATION:
         printf("Connection has been terminated gracefully.\n");
@@ -57,19 +58,31 @@ static void connection_terminated(int errorCode) {
         break;
     }
 
-    HIDUSER_DisableAccelerometer();
-    HIDUSER_DisableGyroscope();
-    N3dsConnectionListener::get_instance()->connection_closed = true;
+    if (enable_motion) {
+        HIDUSER_DisableAccelerometer();
+        HIDUSER_DisableGyroscope();
+    }
+    connection_closed = true;
 }
 
-static void connection_log_message(const char *format, ...) {
+void N3dsConnectionListener::connection_log_message(const char *format, ...) {
+    ThreadLock(lock.get());
+    if (!debug) {
+        return;
+    }
+
     va_list arglist;
     va_start(arglist, format);
     vprintf(format, arglist);
     va_end(arglist);
 }
 
-static void connection_status_update(int status) {
+void N3dsConnectionListener::connection_status_update(int status) {
+    ThreadLock(lock.get());
+    if (!debug) {
+        return;
+    }
+
     switch (status) {
     case CONN_STATUS_OKAY:
         printf("Connection is okay\n");
@@ -80,9 +93,14 @@ static void connection_status_update(int status) {
     }
 }
 
-static void set_motion_event_state(unsigned short controllerNumber,
-                                   unsigned char motionType,
-                                   unsigned short reportRateHz) {
+void N3dsConnectionListener::set_motion_event_state(
+    unsigned short controllerNumber, unsigned char motionType,
+    unsigned short reportRateHz) {
+    ThreadLock(lock.get());
+    if (!enable_motion) {
+        return;
+    }
+
     switch (motionType) {
     case LI_MOTION_TYPE_ACCEL:
         if (reportRateHz > 0) {
@@ -109,39 +127,66 @@ static void set_motion_event_state(unsigned short controllerNumber,
     }
 }
 
-N3dsConnectionListener::N3dsConnectionListener(bool debug, bool enable_motion) {
-    n3ds_connection_callbacks.stageStarting = NULL;
-    n3ds_connection_callbacks.stageComplete = NULL;
-    n3ds_connection_callbacks.stageFailed = NULL;
-    n3ds_connection_callbacks.connectionStarted = NULL;
-    n3ds_connection_callbacks.rumble = NULL;
-    n3ds_connection_callbacks.setHdrMode = NULL;
-    n3ds_connection_callbacks.rumbleTriggers = NULL;
-    n3ds_connection_callbacks.setControllerLED = NULL;
-
-    n3ds_connection_callbacks.connectionTerminated = connection_terminated;
-    n3ds_connection_callbacks.logMessage =
-        debug ? connection_log_message : NULL;
-    n3ds_connection_callbacks.connectionStatusUpdate =
-        debug ? connection_status_update : NULL;
-    n3ds_connection_callbacks.setMotionEventState =
-        enable_motion ? set_motion_event_state : NULL;
-
+N3dsConnectionListener::N3dsConnectionListener(bool debug, bool enable_motion)
+    : lock(ThreadLock::CreateLock()), debug(debug),
+      enable_motion(enable_motion) {
+    ThreadLock(lock.get());
     MessageDispatcher::get_instance()->subscribe(MessageType::EXIT_STREAM,
                                                  this);
 }
 
 N3dsConnectionListener::~N3dsConnectionListener() {
+    ThreadLock(lock.get());
     MessageDispatcher::get_instance()->unsubscribe(MessageType::EXIT_STREAM,
                                                    this);
-
-    n3ds_connection_callbacks.connectionTerminated = NULL;
-    n3ds_connection_callbacks.logMessage = NULL;
-    n3ds_connection_callbacks.connectionStatusUpdate = NULL;
-    n3ds_connection_callbacks.setMotionEventState = NULL;
 }
 
 void N3dsConnectionListener::accept(IMessage *msg) {
+    ThreadLock(lock.get());
     if (msg->getMessageType() == MessageType::EXIT_STREAM)
         connection_terminated(ML_ERROR_GRACEFUL_TERMINATION);
 }
+
+bool N3dsConnectionListener::is_connection_closed() {
+    ThreadLock(lock.get());
+    return connection_closed;
+};
+
+static void local_connection_terminated(int errorCode) {
+    auto instance = N3dsConnectionListener::get_instance();
+    if (instance != nullptr) {
+        instance->connection_terminated(errorCode);
+    }
+}
+
+static void local_connection_log_message(const char *format, ...) {
+    auto instance = N3dsConnectionListener::get_instance();
+    if (instance != nullptr) {
+        va_list arglist;
+        instance->connection_log_message(format, arglist);
+    }
+}
+
+static void local_connection_status_update(int status) {
+    auto instance = N3dsConnectionListener::get_instance();
+    if (instance != nullptr) {
+        instance->connection_status_update(status);
+    }
+}
+
+static void local_set_motion_event_state(unsigned short controllerNumber,
+                                         unsigned char motionType,
+                                         unsigned short reportRateHz) {
+    auto instance = N3dsConnectionListener::get_instance();
+    if (instance != nullptr) {
+        instance->set_motion_event_state(controllerNumber, motionType,
+                                         reportRateHz);
+    }
+}
+
+CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks{
+    .connectionTerminated = local_connection_terminated,
+    .logMessage = local_connection_log_message,
+    .connectionStatusUpdate = local_connection_status_update,
+    .setMotionEventState = local_set_motion_event_state,
+};

@@ -86,34 +86,8 @@ static int n3ds_setup(int videoFormat, int width, int height, int redrawRate,
         return -1;
     }
 
-    VideoRendererContext *renderer_context = (VideoRendererContext *)context;
-    switch (renderer_context->type) {
-    case (RENDER_BOTTOM):
-        renderer = std::make_unique<N3dsRendererInverted>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    case (RENDER_DUAL_SCREEN_STRETCH):
-        renderer = std::make_unique<N3dsRendererDualScreenStretch>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    case (RENDER_DUAL_SCREEN_MIRROR):
-        renderer = std::make_unique<N3dsRendererDualScreenMirror>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    case (RENDER_DUAL_SCREEN_MAGNIFY):
-        renderer = std::make_unique<N3dsRendererDualScreenMagnify>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    default:
-        renderer = std::make_unique<N3dsRendererNormal>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    }
+    renderer = std::make_unique<N3dsRendererNormal>(
+        surface_width, surface_height, image_width, image_height, pixel_size);
     return 0;
 }
 
@@ -204,4 +178,20 @@ DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds = {
     .submitDecodeUnit = n3ds_submit_decode_unit,
     .capabilities =
         CAPABILITY_DIRECT_SUBMIT | CAPABILITY_REFERENCE_FRAME_INVALIDATION_AVC,
+};
+
+static int mockDrSetup(int videoFormat, int width, int height, int redrawRate,
+                       void *context, int drFlags) {
+    return 0;
+}
+static void mockDrStart(void) {}
+static void mockDrStop(void) {}
+static void mockDrCleanup(void) {}
+static int mockDrSubmitDecodeUnit(PDECODE_UNIT decodeUnit) { return DR_OK; }
+DECODER_RENDERER_CALLBACKS decoder_callbacks_mock = {
+    .setup = mockDrSetup,
+    .start = mockDrStart,
+    .stop = mockDrStop,
+    .cleanup = mockDrCleanup,
+    .submitDecodeUnit = mockDrSubmitDecodeUnit,
 };

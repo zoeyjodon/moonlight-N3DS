@@ -3,7 +3,7 @@
 
 std::shared_ptr<MessageDispatcher> MessageDispatcher::instance = nullptr;
 
-MessageDispatcher::MessageDispatcher() {
+MessageDispatcher::MessageDispatcher() : lock(ThreadLock::CreateLock()) {
     for (uint8_t i = 0; i < MessageType::MESSAGE_TYPE_COUNT; i++) {
         subscribers[static_cast<MessageType>(i)] = std::vector<ISubscriber *>();
     }
@@ -13,6 +13,8 @@ void MessageDispatcher::subscribe(MessageType type, ISubscriber *sub) {
     if (sub == nullptr) {
         return;
     }
+
+    ThreadLock(lock.get());
     std::vector<ISubscriber *> &sub_list = subscribers[type];
     auto sub_pos = std::find(sub_list.begin(), sub_list.end(), sub);
     // Prevent duplication
@@ -25,6 +27,7 @@ void MessageDispatcher::unsubscribe(MessageType type, ISubscriber *sub) {
     if (sub == nullptr) {
         return;
     }
+    ThreadLock(lock.get());
     std::vector<ISubscriber *> &sub_list = subscribers[type];
     auto sub_pos = std::find(sub_list.begin(), sub_list.end(), sub);
     if (sub_pos != sub_list.end()) {
@@ -33,6 +36,7 @@ void MessageDispatcher::unsubscribe(MessageType type, ISubscriber *sub) {
 }
 
 void MessageDispatcher::post_immediate(IMessage *m) {
+    ThreadLock(lock.get());
     std::vector<ISubscriber *> &sub_list = subscribers[m->getMessageType()];
     for (ISubscriber *sub : sub_list) {
         if (sub == nullptr) {

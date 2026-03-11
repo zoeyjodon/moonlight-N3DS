@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ThreadLock.hpp"
 #include "message.hpp"
 #include "subscriber.hpp"
 #include <map>
@@ -25,4 +26,5 @@ class MessageDispatcher {
   private:
     static std::shared_ptr<MessageDispatcher> instance;
     std::map<MessageType, std::vector<ISubscriber *>> subscribers{};
+    PLockType lock;
 };

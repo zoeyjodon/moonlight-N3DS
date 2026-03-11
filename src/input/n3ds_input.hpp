@@ -19,6 +19,7 @@
 
 #pragma once
 
+#include "../system/ThreadLock.hpp"
 #include "../system/subscriber.hpp"
 #include "n3ds/N3dsTouchscreenInput.hpp"
 #include <stdbool.h>
@@ -30,6 +31,7 @@ class N3dsInput : public ISubscriber {
     ~N3dsInput();
     void accept(IMessage *msg) override;
     int n3dsinput_handle_event();
+    void force_touchscreen_menu();
 
   private:
     void _add_gamepad();
@@ -42,6 +44,7 @@ class N3dsInput : public ISubscriber {
   private:
     GAMEPAD_STATE gamepad_state, previous_state;
     std::unique_ptr<N3dsTouchscreenInput> touch_handler = nullptr;
+    PLockType lock;
 
     float gyro_coeff = 0;
     // Note: This was found experimentally and may need a calibration option in

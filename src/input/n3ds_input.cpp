@@ -18,6 +18,7 @@
  */
 
 #include "n3ds_input.hpp"
+#include "../system/ThreadLock.hpp"
 #include "../system/dispatcher.hpp"
 #include "menu_bgr.h"
 #include "n3ds/TouchHandler.hpp"
@@ -46,7 +47,9 @@
 
 N3dsInput::N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
                      bool swap_triggers_and_shoulders,
-                     bool use_triggers_for_mouse_in) {
+                     bool use_triggers_for_mouse_in)
+    : lock(ThreadLock::CreateLock()) {
+    ThreadLock(lock.get());
     hidInit();
     HIDUSER_GetGyroscopeRawToDpsCoefficient(&gyro_coeff);
     _add_gamepad();
@@ -65,7 +68,7 @@ N3dsInput::N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
     CUSTOM_KEY_ZR = swap_triggers_and_shoulders ? KEY_R : KEY_ZR;
 
     touch_handler =
-        std::make_unique<N3dsTouchscreenInput>(&gamepad_state, touch_type);
+        std::make_unique<N3dsTouchscreenInput>(&gamepad_state);
 
     auto pDispatcher = MessageDispatcher::get_instance();
     pDispatcher->subscribe(MessageType::ENABLE_ACCEL, this);
@@ -73,6 +76,7 @@ N3dsInput::N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
 }
 
 N3dsInput::~N3dsInput() {
+    ThreadLock(lock.get());
     auto pDispatcher = MessageDispatcher::get_instance();
     pDispatcher->unsubscribe(MessageType::ENABLE_ACCEL, this);
     pDispatcher->unsubscribe(MessageType::ENABLE_GYRO, this);
@@ -84,6 +88,7 @@ N3dsInput::~N3dsInput() {
 }
 
 void N3dsInput::accept(IMessage *msg) {
+    ThreadLock(lock.get());
     if (msg->getMessageType() == MessageType::ENABLE_ACCEL) {
         enable_accel = true;
     } else if (msg->getMessageType() == MessageType::ENABLE_GYRO) {
@@ -168,7 +173,14 @@ bool N3dsInput::_gyroscope_state_changed() {
            (previous_state.gyro_rate_z != gamepad_state.gyro_rate_z);
 }
 
+void N3dsInput::force_touchscreen_menu() {
+    ThreadLock(lock.get());
+    auto message = TouchStateChangedMsg(N3dsTouchType::MENU_TOUCH, menu_bgr);
+    MessageDispatcher::get_instance()->post_immediate(&message);
+}
+
 int N3dsInput::n3dsinput_handle_event() {
+    ThreadLock(lock.get());
     hidScanInput();
     u32 kDown = hidKeysDown();
     u32 kUp = hidKeysUp();
@@ -187,11 +199,11 @@ int N3dsInput::n3dsinput_handle_event() {
         gamepad_state.rightTrigger &= ~n3ds_to_li_trigger(kUp, CUSTOM_KEY_ZR);
     }
 
-    if (!menu_active &&
-        (gamepad_state.buttons & MENU_BUTTONS) == MENU_BUTTONS) {
-        auto message =
-            TouchStateChangedMsg(N3dsTouchType::MENU_TOUCH, menu_bgr);
-        MessageDispatcher::get_instance()->post_immediate(&message);
+    if ((gamepad_state.buttons & MENU_BUTTONS) == MENU_BUTTONS) {
+        if (!menu_active) {
+            force_touchscreen_menu();
+            menu_active = true;
+        }
         return 0;
     } else {
         menu_active = false;

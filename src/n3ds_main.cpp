@@ -59,7 +59,6 @@
 static u32 *SOC_buffer = NULL;
 
 static PrintConsole topScreen;
-static PrintConsole bottomScreen;
 
 static inline void wait_for_button(std::string prompt = "") {
     if (prompt.empty()) {
@@ -209,23 +208,6 @@ static bool prompt_for_boolean(std::string prompt, bool default_val) {
     return idx == 0;
 }
 
-static int prompt_for_display_type(int default_val) {
-    std::vector<std::string> options = {
-        "top",
-        "bottom",
-        "dual screen (stretch)",
-        "dual screen (mirror)",
-        "dual screen (magnify)",
-    };
-    int idx = console_selection_prompt(
-        "Which screen should be used to display the stream?", options,
-        default_val);
-    if (idx < 0) {
-        return default_val;
-    }
-    return idx;
-}
-
 static int prompt_for_int(std::string initial_text) {
     char *setting_buff = (char *)malloc(MAX_INPUT_CHAR);
     memset(setting_buff, 0, MAX_INPUT_CHAR);
@@ -246,7 +228,6 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         "width",
         "height",
         "fps",
-        "display_type",
         "motion_controls",
         "bitrate",
         "packetsize",
@@ -283,9 +264,6 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         } else if ("height" == setting_names[idx]) {
             config->stream.height =
                 prompt_for_int(std::to_string(config->stream.height));
-        } else if ("display_type" == setting_names[idx]) {
-            config->display_type =
-                prompt_for_display_type(config->display_type);
         } else if ("motion_controls" == setting_names[idx]) {
             config->motion_controls = prompt_for_boolean(
                 "Enable Motion Controls", config->motion_controls);
@@ -394,8 +372,9 @@ static inline void stream_loop(PCONFIGURATION config,
                                N3dsConnectionListener *connection_listener,
                                std::shared_ptr<N3dsInput> input_handler) {
     bool done = false;
+    input_handler->force_touchscreen_menu();
     while (!done && aptMainLoop()) {
-        done = connection_listener->connection_closed;
+        done = connection_listener->is_connection_closed();
         if (!config->viewonly) {
             done |= input_handler->n3dsinput_handle_event();
         }
@@ -429,12 +408,8 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
         return;
     }
 
-    VideoRendererContext video_context = {
-        .type = static_cast<N3dsRenderType>(config->display_type),
-    };
-
     AUDIO_RENDERER_CALLBACKS *audio_callbacks =
-        config->localaudio ? &audio_callbacks_n3ds : &audio_callbacks_mock;
+        config->localaudio ? &audio_callbacks_mock : &audio_callbacks_n3ds;
     PDECODER_RENDERER_CALLBACKS video_callbacks =
         config->hwdecode ? &decoder_callbacks_n3ds_mvd
                          : &decoder_callbacks_n3ds;
@@ -442,25 +417,23 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
     printf(
         "Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
  viewonly=%d, encryption=%x, hwdecode=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d,\
- usetriggersformouse=%d, display_type=%d, motion_controls=%d, debug=%d\n",
+ usetriggersformouse=%d, motion_controls=%d, debug=%d\n",
         config->stream.width, config->stream.height, config->stream.fps,
         config->stream.bitrate, config->sops, config->localaudio,
         config->quitappafter, config->viewonly, config->stream.encryptionFlags,
         config->hwdecode, config->swap_face_buttons,
         config->swap_triggers_and_shoulders, config->use_triggers_for_mouse,
-        config->display_type, config->motion_controls, config->debug_level);
+        config->motion_controls, config->debug_level);
 
     auto connection_listener = N3dsConnectionListener::create_instance(
         config->debug_level, config->motion_controls);
-    int status =
-        LiStartConnection(&server->serverInfo, &config->stream,
-                          &connection_listener->n3ds_connection_callbacks,
-                          video_callbacks, audio_callbacks, &video_context,
-                          DISPLAY_FULLSCREEN, config->audio_device, 0);
+    int status = LiStartConnection(&server->serverInfo, &config->stream,
+                                   &n3ds_connection_callbacks, video_callbacks,
+                                   audio_callbacks, NULL, DISPLAY_FULLSCREEN,
+                                   config->audio_device, 0);
 
     if (status != 0) {
-        connection_listener->n3ds_connection_callbacks.connectionTerminated(
-            status);
+        n3ds_connection_callbacks.connectionTerminated(status);
         printf("Connection failed with error: %d\n", status);
         wait_for_button();
         return;
@@ -525,20 +498,6 @@ static void action_stream(CONFIGURATION *config, SERVER_DATA *server) {
     config->stream.supportedVideoFormats = VIDEO_FORMAT_H264;
 
     consoleClear();
-    N3dsTouchType touch_type = DISABLED;
-    if (config->debug_level) {
-        consoleInit(GFX_BOTTOM, &bottomScreen);
-        consoleSelect(&bottomScreen);
-    } else if (config->display_type == RENDER_DUAL_SCREEN_STRETCH) {
-        touch_type = DS_TOUCH;
-    } else if (config->display_type == RENDER_DUAL_SCREEN_MAGNIFY) {
-        touch_type = MAGNIFY_TOUCH;
-    } else if (config->display_type == RENDER_BOTTOM ||
-               config->display_type == RENDER_DUAL_SCREEN_MIRROR) {
-        touch_type = ABSOLUTE_TOUCH;
-    } else {
-        touch_type = GAMEPAD;
-    }
 
     std::shared_ptr<N3dsInput> input_handler = nullptr;
     if (config->viewonly) {
@@ -546,10 +505,10 @@ static void action_stream(CONFIGURATION *config, SERVER_DATA *server) {
             printf("View-only mode enabled, no input will be sent "
                    "to the host computer\n");
     } else {
-        input_handler =
-            std::make_shared<N3dsInput>(touch_type, config->swap_face_buttons,
-                                        config->swap_triggers_and_shoulders,
-                                        config->use_triggers_for_mouse);
+        input_handler = std::make_shared<N3dsInput>(
+            N3dsTouchType::MENU_TOUCH, config->swap_face_buttons,
+            config->swap_triggers_and_shoulders,
+            config->use_triggers_for_mouse);
     }
     stream(server, config, appId, input_handler);
 }

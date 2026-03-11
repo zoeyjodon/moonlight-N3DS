@@ -18,20 +18,11 @@
  */
 #pragma once
 
+#include "../../system/message.hpp"
 #include "keycode_map.hpp"
 #include <3ds.h>
 #include <memory>
 
-enum N3dsTouchType {
-    DISABLED,
-    GAMEPAD,
-    MOUSEPAD,
-    KEYBOARD,
-    ABSOLUTE_TOUCH,
-    DS_TOUCH,
-    MAGNIFY_TOUCH,
-    MENU_TOUCH,
-};
 typedef struct _GAMEPAD_STATE {
     unsigned char leftTrigger, rightTrigger;
     short leftStickX, leftStickY;
@@ -64,6 +55,9 @@ class MenuTouchHandler : public TouchHandlerBase {
     void _handle_touch_down(touchPosition touch);
     void _handle_touch_up(touchPosition touch);
     void _handle_touch_hold(touchPosition touch);
+
+  private:
+    std::unique_ptr<IMessage> message = nullptr;
 };
 
 class GamepadTouchHandler : public TouchHandlerBase {

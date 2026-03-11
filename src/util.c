@@ -68,19 +68,18 @@ bool ensure_buf_size(void **buf, size_t *buf_size, size_t required_size) {
     return true;
 }
 
-bool ensure_linear_buf_size(void **buf, size_t *buf_size,
-                            size_t required_size) {
+int ensure_linear_buf_size(void **buf, size_t *buf_size, size_t required_size) {
     if (*buf_size >= required_size)
-        return false;
+        return 0;
 
-    linearFree(*buf);
+    if (buf != NULL)
+        linearFree(*buf);
 
     *buf_size = required_size;
     *buf = linearAlloc(*buf_size);
     if (!*buf) {
         fprintf(stderr, "Failed to allocate %zu bytes\n", *buf_size);
-        abort();
+        return 1;
     }
-
-    return true;
+    return 0;
 }

@@ -35,7 +35,10 @@
 static std::unique_ptr<MvdDecoder> instance = nullptr;
 
 MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
-                       VideoRendererContext *context, int drFlags) {
+                       void *context, int drFlags)
+    : lock(ThreadLock::CreateLock()) {
+
+    ThreadLock(lock.get());
     bool is_new_3ds;
     APT_CheckNew3DS(&is_new_3ds);
     if (!is_new_3ds) {
@@ -87,9 +90,13 @@ MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
         throw std::runtime_error("Out of memory");
     }
 
-    ensure_linear_buf_size(&nal_unit_buffer, &nal_unit_buffer_size,
-                           INITIAL_DECODER_BUFFER_SIZE +
-                               AV_INPUT_BUFFER_PADDING_SIZE);
+    status = ensure_linear_buf_size(&nal_unit_buffer, &nal_unit_buffer_size,
+                                    INITIAL_DECODER_BUFFER_SIZE +
+                                        AV_INPUT_BUFFER_PADDING_SIZE);
+    if (status) {
+        fprintf(stderr, "Out of linear memory!\n");
+        throw std::runtime_error("Out of linear memory");
+    }
     mvdstdGenerateDefaultConfig(&mvdstd_config, width, height, image_width,
                                 image_height, NULL, (u32 *)rgb_img_buffer,
                                 NULL);
@@ -100,9 +107,6 @@ MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
     mvdstd_config.output_height_override = MOON_CTR_VIDEO_TEX_H;
     MVDSTD_SetConfig(&mvdstd_config);
 
-    renderer = std::make_unique<N3dsRendererNormal>(
-        surface_width, surface_height, image_width, image_height, pixel_size);
-
     auto pDispatcher = MessageDispatcher::get_instance();
     pDispatcher->subscribe(MessageType::TOUCH_STATE_CHANGED, this);
     pDispatcher->subscribe(MessageType::KEYBOARD_STATE_CHANGED, this);
@@ -111,6 +115,7 @@ MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
 // This function must be called after
 // decoding is finished
 MvdDecoder::~MvdDecoder() {
+    ThreadLock(lock.get());
     auto pDispatcher = MessageDispatcher::get_instance();
     pDispatcher->unsubscribe(MessageType::TOUCH_STATE_CHANGED, this);
     pDispatcher->unsubscribe(MessageType::KEYBOARD_STATE_CHANGED, this);
@@ -123,6 +128,7 @@ MvdDecoder::~MvdDecoder() {
 }
 
 void MvdDecoder::accept(IMessage *msg) {
+    ThreadLock(lock.get());
     switch (msg->getMessageType()) {
     case MessageType::TOUCH_STATE_CHANGED:
         _accept_touch_state_changed(static_cast<TouchStateChangedMsg *>(msg));
@@ -147,22 +153,25 @@ void MvdDecoder::_accept_touch_state_changed(TouchStateChangedMsg *msg) {
         renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
-        (static_cast<N3dsRendererNormal *>(renderer.get()))
-            ->set_bottom_screen(msg->static_image);
+        if (msg->static_image)
+            (static_cast<N3dsRendererNormal *>(renderer.get()))
+                ->set_bottom_screen(msg->static_image);
         break;
     case (N3dsTouchType::MOUSEPAD):
         renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
-        (static_cast<N3dsRendererNormal *>(renderer.get()))
-            ->set_bottom_screen(msg->static_image);
+        if (msg->static_image)
+            (static_cast<N3dsRendererNormal *>(renderer.get()))
+                ->set_bottom_screen(msg->static_image);
         break;
     case (N3dsTouchType::KEYBOARD):
         renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
-        (static_cast<N3dsRendererNormal *>(renderer.get()))
-            ->set_bottom_screen(msg->static_image);
+        if (msg->static_image)
+            (static_cast<N3dsRendererNormal *>(renderer.get()))
+                ->set_bottom_screen(msg->static_image);
         break;
     case (N3dsTouchType::ABSOLUTE_TOUCH):
         renderer = std::make_unique<N3dsRendererDualScreenMirror>(
@@ -183,8 +192,9 @@ void MvdDecoder::_accept_touch_state_changed(TouchStateChangedMsg *msg) {
         renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
-        (static_cast<N3dsRendererNormal *>(renderer.get()))
-            ->set_bottom_screen(msg->static_image);
+        if (msg->static_image)
+            (static_cast<N3dsRendererNormal *>(renderer.get()))
+                ->set_bottom_screen(msg->static_image);
         break;
     default:
         renderer = std::make_unique<N3dsRendererNormal>(
@@ -195,6 +205,9 @@ void MvdDecoder::_accept_touch_state_changed(TouchStateChangedMsg *msg) {
 }
 
 void MvdDecoder::_accept_keyboard_state_changed(KeyboardStateChangedMsg *msg) {
+    if (renderer == nullptr) {
+        return;
+    }
     (static_cast<N3dsRendererNormal *>(renderer.get()))
         ->set_bottom_screen(msg->keyboard_image, msg->key_offset,
                             msg->key_size);
@@ -202,22 +215,34 @@ void MvdDecoder::_accept_keyboard_state_changed(KeyboardStateChangedMsg *msg) {
 
 // packets must be decoded in order
 // indata must be inlen + AV_INPUT_BUFFER_PADDING_SIZE in length
-int MvdDecoder::_decode(unsigned char *indata, int inlen) {
+DecodeReturnStatus MvdDecoder::_decode(unsigned char *indata, int inlen) {
     int ret = mvdstdProcessVideoFrame(indata, inlen, 1, NULL);
-    if (ret != MVD_STATUS_PARAMSET && ret != MVD_STATUS_INCOMPLETEPROCESSING) {
-        mvdstdRenderVideoFrame(&mvdstd_config, true);
+    if (!MVD_CHECKNALUPROC_SUCCESS(ret)) {
+        return DecodeReturnStatus::ERROR;
     }
-    return 0;
+
+    if (ret != MVD_STATUS_PARAMSET && ret != MVD_STATUS_INCOMPLETEPROCESSING) {
+        return DecodeReturnStatus::NO_FRAME_PRODUCED;
+    }
+    ret = mvdstdRenderVideoFrame(&mvdstd_config, true);
+    if (ret != MVD_STATUS_OK) {
+        return DecodeReturnStatus::ERROR;
+    }
+    return DecodeReturnStatus::SUCCESS;
 }
 
 int MvdDecoder::submit_decode_unit(PDECODE_UNIT decodeUnit) {
+    ThreadLock(lock.get());
     u64 start_ticks = svcGetSystemTick();
     PLENTRY entry = decodeUnit->bufferList;
     int length = 0;
 
-    ensure_linear_buf_size(&nal_unit_buffer, &nal_unit_buffer_size,
-                           decodeUnit->fullLength +
-                               AV_INPUT_BUFFER_PADDING_SIZE);
+    if (ensure_linear_buf_size(&nal_unit_buffer, &nal_unit_buffer_size,
+                               decodeUnit->fullLength +
+                                   AV_INPUT_BUFFER_PADDING_SIZE)) {
+        printf("Out of linear memory!\n");
+        return DR_OK;
+    }
 
     while (entry != NULL) {
         memcpy(nal_unit_buffer + length, entry->data, entry->length);
@@ -228,7 +253,6 @@ int MvdDecoder::submit_decode_unit(PDECODE_UNIT decodeUnit) {
 
     _decode((unsigned char *)nal_unit_buffer, length);
     renderer->set_perf_decode_ticks(svcGetSystemTick() - start_ticks);
-
     renderer->write_px_to_framebuffer(rgb_img_buffer);
 
     // If MVD never gets an IDR frame, everything shows up gray
@@ -242,10 +266,8 @@ int MvdDecoder::submit_decode_unit(PDECODE_UNIT decodeUnit) {
 static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
                      void *context, int drFlags) {
     try {
-        VideoRendererContext *renderer_context =
-            (VideoRendererContext *)context;
-        instance = std::make_unique<MvdDecoder>(
-            videoFormat, width, height, redrawRate, renderer_context, drFlags);
+        instance = std::make_unique<MvdDecoder>(videoFormat, width, height,
+                                                redrawRate, context, drFlags);
         return 0;
     } catch (const std::exception &e) {
         fprintf(stderr, "Failed to initialize N3DS MVD decoder: %s\n",
@@ -257,10 +279,10 @@ static int n3ds_init(int videoFormat, int width, int height, int redrawRate,
 static void n3ds_destroy() { instance = nullptr; }
 
 static int n3ds_submit_decode_unit(PDECODE_UNIT decodeUnit) {
-    if (instance) {
-        return instance->submit_decode_unit(decodeUnit);
+    if (instance == nullptr) {
+        return DR_OK;
     }
-    return -1;
+    return instance->submit_decode_unit(decodeUnit);
 }
 
 DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd = {

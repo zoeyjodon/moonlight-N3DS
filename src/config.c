@@ -45,37 +45,19 @@ extern ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
     fprintf(fd, "%s = %s\n", key, value ? "true" : "false")
 
 static struct option long_options[] = {
-    {"720", no_argument, NULL, 'a'},
-    {"1080", no_argument, NULL, 'b'},
-    {"4k", no_argument, NULL, '0'},
     {"width", required_argument, NULL, 'c'},
     {"height", required_argument, NULL, 'd'},
     {"bitrate", required_argument, NULL, 'g'},
     {"packetsize", required_argument, NULL, 'h'},
     {"app", required_argument, NULL, 'i'},
-    {"mapping", required_argument, NULL, 'k'},
     {"sops", required_argument, NULL, 'l'},
-    {"audio", required_argument, NULL, 'm'},
     {"localaudio", required_argument, NULL, 'n'},
-    {"config", required_argument, NULL, 'o'},
-    {"platform", required_argument, NULL, 'p'},
-    {"save", required_argument, NULL, 'q'},
-    {"keydir", required_argument, NULL, 'r'},
-    {"remote", required_argument, NULL, 's'},
-    {"windowed", no_argument, NULL, 't'},
-    {"surround", required_argument, NULL, 'u'},
     {"fps", required_argument, NULL, 'v'},
-    {"nounsupported", no_argument, NULL, 'y'},
     {"quitappafter", required_argument, NULL, '1'},
     {"viewonly", required_argument, NULL, '2'},
-    {"verbose", no_argument, NULL, 'z'},
     {"debug", required_argument, NULL, 'Z'},
-    {"nomouseemulation", no_argument, NULL, '4'},
-    {"pin", required_argument, NULL, '5'},
     {"port", required_argument, NULL, '6'},
-    {"hdr", no_argument, NULL, '7'},
     {"hwdecode", required_argument, NULL, '8'},
-    {"display_type", required_argument, NULL, '9'},
     {"motion_controls", required_argument, NULL, 'e'},
     {"swapfacebuttons", required_argument, NULL, 'A'},
     {"swaptriggersandshoulders", required_argument, NULL, 'B'},
@@ -85,18 +67,6 @@ static struct option long_options[] = {
 
 void parse_argument(int c, char *value, PCONFIGURATION config) {
     switch (c) {
-    case 'a':
-        config->stream.width = 1280;
-        config->stream.height = 720;
-        break;
-    case 'b':
-        config->stream.width = 1920;
-        config->stream.height = 1080;
-        break;
-    case '0':
-        config->stream.width = 3840;
-        config->stream.height = 2160;
-        break;
     case 'c':
         config->stream.width = atoi(value);
         break;
@@ -119,47 +89,11 @@ void parse_argument(int c, char *value, PCONFIGURATION config) {
     case 'l':
         config->sops = ((value == NULL) || (strcmp(value, "false") != 0));
         break;
-    case 'm':
-        config->audio_device = value;
-        break;
     case 'n':
         config->localaudio = ((value != NULL) && (strcmp(value, "true") == 0));
         break;
-    case 'o':
-        if (!config_file_parse(value, config))
-            exit(EXIT_FAILURE);
-
-        break;
-    case 'p':
-        config->platform = value;
-        break;
-    case 'q':
-        config->config_file = value;
-        break;
-    case 'r':
-        strcpy(config->key_dir, value);
-        break;
-    case 's':
-        if (strcasecmp(value, "auto") == 0)
-            config->stream.streamingRemotely = STREAM_CFG_AUTO;
-        else if (strcasecmp(value, "true") == 0 ||
-                 strcasecmp(value, "yes") == 0)
-            config->stream.streamingRemotely = STREAM_CFG_REMOTE;
-        else if (strcasecmp(value, "false") == 0 ||
-                 strcasecmp(value, "no") == 0)
-            config->stream.streamingRemotely = STREAM_CFG_LOCAL;
-        break;
-    case 'u':
-        if (strcasecmp(value, "5.1") == 0)
-            config->stream.audioConfiguration = AUDIO_CONFIGURATION_51_SURROUND;
-        else if (strcasecmp(value, "7.1") == 0)
-            config->stream.audioConfiguration = AUDIO_CONFIGURATION_71_SURROUND;
-        break;
     case 'v':
         config->stream.fps = atoi(value);
-        break;
-    case 'y':
-        config->unsupported = false;
         break;
     case '1':
         config->quitappafter =
@@ -168,9 +102,6 @@ void parse_argument(int c, char *value, PCONFIGURATION config) {
     case '2':
         config->viewonly = ((value != NULL) && (strcmp(value, "true") == 0));
         break;
-    case 'z':
-        config->debug_level = 1;
-        break;
     case 'Z':
         if ((value != NULL) && (strcmp(value, "true") == 0)) {
             config->debug_level = 2;
@@ -178,27 +109,11 @@ void parse_argument(int c, char *value, PCONFIGURATION config) {
             config->debug_level = 0;
         }
         break;
-    case '4':
-        config->mouse_emulation = false;
-        break;
-    case '5':
-        config->pin = atoi(value);
-        break;
     case '6':
         config->port = atoi(value);
         break;
-    case '7':
-        config->hdr = true;
-        break;
     case '8':
         config->hwdecode = ((value != NULL) && (strcmp(value, "true") == 0));
-        break;
-    case '9':
-        if (value != NULL) {
-            config->display_type = atoi(value);
-        } else {
-            config->display_type = 0;
-        }
         break;
     case 'A':
         config->swap_face_buttons =
@@ -278,7 +193,6 @@ void config_save(char *filename, PCONFIGURATION config) {
     write_config_bool(fd, "usetriggersformouse",
                       config->use_triggers_for_mouse);
     write_config_bool(fd, "debug", config->debug_level);
-    write_config_int(fd, "display_type", config->display_type);
     write_config_bool(fd, "motion_controls", config->motion_controls);
 
     if (strcmp(config->app, "Steam") != 0)
@@ -290,9 +204,6 @@ void config_save(char *filename, PCONFIGURATION config) {
 void config_parse(int argc, char *argv[], PCONFIGURATION config) {
     LiInitializeStreamConfiguration(&config->stream);
 
-    config->stream.width = 1280;
-    config->stream.height = 720;
-    config->stream.fps = 60;
     config->stream.bitrate = -1;
     config->stream.packetSize = 1392;
     config->stream.streamingRemotely = STREAM_CFG_AUTO;
@@ -311,13 +222,8 @@ void config_parse(int argc, char *argv[], PCONFIGURATION config) {
     config->unsupported = true;
     config->quitappafter = false;
     config->viewonly = false;
-    config->mouse_emulation = true;
-    config->hdr = false;
-    config->pin = 0;
     config->port = 47989;
 
-    config->inputsCount = 0;
-    config->mapping = (char *)"";
     strcpy(config->key_dir, MOONLIGHT_3DS_PATH "/keys");
 
     config->stream.width = 800;
@@ -325,7 +231,6 @@ void config_parse(int argc, char *argv[], PCONFIGURATION config) {
     config->stream.fps = 60;
     config->stream.encryptionFlags = ENCFLG_NONE;
     config->hwdecode = true;
-    config->display_type = 0;
     config->motion_controls = false;
     config->swap_face_buttons = false;
     config->swap_triggers_and_shoulders = false;

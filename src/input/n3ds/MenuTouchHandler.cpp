@@ -29,11 +29,18 @@ static const int button_size_y = 30;
 MenuTouchHandler::MenuTouchHandler() {}
 
 void MenuTouchHandler::_handle_touch_down(touchPosition touch) {
-    auto pDispatcher = MessageDispatcher::get_instance();
+    _handle_touch_hold(touch);
+}
+
+void MenuTouchHandler::_handle_touch_up(touchPosition touch) {
+    if (message != nullptr)
+        MessageDispatcher::get_instance()->post_immediate(message.get());
+}
+
+void MenuTouchHandler::_handle_touch_hold(touchPosition touch) {
     if (touch.py >= GSP_SCREEN_WIDTH - button_size_y) {
         // Signal to exit the stream
-        auto message = GenericEventMsg(MessageType::EXIT_STREAM);
-        pDispatcher->post_immediate(&message);
+        message = std::make_unique<GenericEventMsg>(MessageType::EXIT_STREAM);
         return;
     }
 
@@ -60,12 +67,10 @@ void MenuTouchHandler::_handle_touch_down(touchPosition touch) {
     } else if (touch.py <= 6 * button_size_y) {
         // Switch to magnify
         touch_type = N3dsTouchType::MAGNIFY_TOUCH;
+    } else {
+        // Undefined button
+        message = nullptr;
     }
     // Alert the system about the new touch type
-    auto message = TouchStateChangedMsg(touch_type, control_image);
-    pDispatcher->post_immediate(&message);
+    message = std::make_unique<TouchStateChangedMsg>(touch_type, control_image);
 }
-
-void MenuTouchHandler::_handle_touch_up(touchPosition touch) {}
-
-void MenuTouchHandler::_handle_touch_hold(touchPosition touch) {}

@@ -1,6 +1,5 @@
 #pragma once
 
-#include "../input/n3ds/TouchHandler.hpp"
 #include <3ds.h>
 
 enum MessageType {
@@ -30,6 +29,16 @@ class TouchscreenEventMsg : public IMessage {
     touchPosition touch;
 };
 
+enum N3dsTouchType {
+    DISABLED,
+    GAMEPAD,
+    MOUSEPAD,
+    KEYBOARD,
+    ABSOLUTE_TOUCH,
+    DS_TOUCH,
+    MAGNIFY_TOUCH,
+    MENU_TOUCH,
+};
 class TouchStateChangedMsg : public IMessage {
   public:
     TouchStateChangedMsg(N3dsTouchType ttype_in,

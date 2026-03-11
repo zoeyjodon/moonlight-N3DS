@@ -30,7 +30,9 @@ N3dsRendererDualScreenMagnify::N3dsRendererDualScreenMagnify(
     int dest_width, int dest_height, int src_width, int src_height, int px_size)
     : image_width(src_width), image_height(src_height), px_size(px_size),
       top_renderer(dest_width, dest_height, src_width, src_height, px_size),
-      bottom_renderer(GSP_SCREEN_HEIGHT_BOTTOM, GSP_SCREEN_WIDTH, px_size) {
+      bottom_renderer(GSP_SCREEN_HEIGHT_BOTTOM, GSP_SCREEN_WIDTH, px_size),
+      lock(ThreadLock::CreateLock()) {
+    ThreadLock(lock.get());
     set_crop_region(GSP_SCREEN_HEIGHT_BOTTOM / 2, GSP_SCREEN_WIDTH / 2);
 
     auto pDispatcher = MessageDispatcher::get_instance();
@@ -38,11 +40,13 @@ N3dsRendererDualScreenMagnify::N3dsRendererDualScreenMagnify(
 }
 
 N3dsRendererDualScreenMagnify::~N3dsRendererDualScreenMagnify() {
+    ThreadLock(lock.get());
     auto pDispatcher = MessageDispatcher::get_instance();
     pDispatcher->unsubscribe(MessageType::TOUCHSCREEN_EVENT, this);
 }
 
 void N3dsRendererDualScreenMagnify::accept(IMessage *msg) {
+    ThreadLock(lock.get());
     if (msg->getMessageType() != MessageType::TOUCHSCREEN_EVENT) {
         return;
     }
@@ -76,6 +80,7 @@ void N3dsRendererDualScreenMagnify::set_crop_region(int center_x,
 }
 
 void N3dsRendererDualScreenMagnify::write_px_to_framebuffer(uint8_t *source) {
+    ThreadLock(lock.get());
     // Render full resolution on top screen
     top_renderer.write_px_to_framebuffer(source);
     // Render magnified region on bottom screen
@@ -83,5 +88,6 @@ void N3dsRendererDualScreenMagnify::write_px_to_framebuffer(uint8_t *source) {
 }
 
 void N3dsRendererDualScreenMagnify::set_perf_decode_ticks(u64 ticks) {
+    ThreadLock(lock.get());
     top_renderer.set_perf_decode_ticks(ticks);
 }

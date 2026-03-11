@@ -20,21 +20,22 @@
 #include "N3dsTouchscreenInput.hpp"
 #include "../../system/dispatcher.hpp"
 
-N3dsTouchscreenInput::N3dsTouchscreenInput(GAMEPAD_STATE *gamepad_in,
-                                           N3dsTouchType touch_type)
-    : gamepad_state(gamepad_in) {
-    n3dsinput_set_touch(touch_type);
-
+N3dsTouchscreenInput::N3dsTouchscreenInput(GAMEPAD_STATE *gamepad_in)
+    : gamepad_state(gamepad_in), lock(ThreadLock::CreateLock()) {
+    ThreadLock(lock.get());
     MessageDispatcher::get_instance()->subscribe(
         MessageType::TOUCH_STATE_CHANGED, this);
 };
 
 N3dsTouchscreenInput::~N3dsTouchscreenInput() {
+    ThreadLock(lock.get());
+    handler = nullptr;
     MessageDispatcher::get_instance()->unsubscribe(
         MessageType::TOUCH_STATE_CHANGED, this);
 }
 
 void N3dsTouchscreenInput::accept(IMessage *msg) {
+    ThreadLock(lock.get());
     if (msg->getMessageType() != MessageType::TOUCH_STATE_CHANGED) {
         return;
     }
@@ -44,6 +45,7 @@ void N3dsTouchscreenInput::accept(IMessage *msg) {
 }
 
 void N3dsTouchscreenInput::n3dsinput_set_touch(N3dsTouchType touch_type) {
+    ThreadLock(lock.get());
     switch (touch_type) {
     case GAMEPAD:
         handler = std::make_unique<GamepadTouchHandler>(gamepad_state);
@@ -58,9 +60,11 @@ void N3dsTouchscreenInput::n3dsinput_set_touch(N3dsTouchType touch_type) {
         handler = std::make_unique<AbsoluteTouchHandler>(0, 1);
         break;
     case DS_TOUCH:
+        // Not working? Shows up as mirror?
         handler = std::make_unique<AbsoluteTouchHandler>(GSP_SCREEN_WIDTH, 2);
         break;
     case MAGNIFY_TOUCH:
+        // Causes crash, even when not accessed though the menu
         handler = std::make_unique<MagnifyTouchHandler>();
         break;
     case MENU_TOUCH:
@@ -73,7 +77,8 @@ void N3dsTouchscreenInput::n3dsinput_set_touch(N3dsTouchType touch_type) {
 }
 
 void N3dsTouchscreenInput::n3dsinput_handle_touch(u32 kDown, u32 kUp) {
-    if (!handler) {
+    ThreadLock(lock.get());
+    if (handler == nullptr) {
         return;
     }
 

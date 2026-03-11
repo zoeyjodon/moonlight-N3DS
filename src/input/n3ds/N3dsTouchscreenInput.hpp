@@ -18,6 +18,7 @@
  */
 #pragma once
 
+#include "../../system/ThreadLock.hpp"
 #include "../../system/subscriber.hpp"
 #include "TouchHandler.hpp"
 #include <3ds.h>
@@ -25,7 +26,7 @@
 
 class N3dsTouchscreenInput : public ISubscriber {
   public:
-    N3dsTouchscreenInput(GAMEPAD_STATE *gamepad_in, N3dsTouchType touch_type);
+    N3dsTouchscreenInput(GAMEPAD_STATE *gamepad_in);
     ~N3dsTouchscreenInput();
 
     void accept(IMessage *msg) override;
@@ -36,4 +37,5 @@ class N3dsTouchscreenInput : public ISubscriber {
   private:
     GAMEPAD_STATE *gamepad_state;
     std::unique_ptr<TouchHandlerBase> handler = nullptr;
+    PLockType lock;
 };
