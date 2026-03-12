@@ -95,6 +95,7 @@ static void n3ds_renderer_cleanup() {
         free(audioBuffer);
         audioBuffer = NULL;
     }
+    printf("Audio renderer shutdown successfully\n");
 }
 
 static void n3ds_renderer_decode_and_play_sample(char *data, int length) {

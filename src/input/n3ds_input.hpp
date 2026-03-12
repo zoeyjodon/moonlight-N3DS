@@ -30,7 +30,7 @@ class N3dsInput : public ISubscriber {
               bool swap_triggers_and_shoulders, bool use_triggers_for_mouse_in);
     ~N3dsInput();
     void accept(IMessage *msg) override;
-    int n3dsinput_handle_event();
+    void n3dsinput_handle_event();
     void force_touchscreen_menu();
 
   private:

@@ -1,7 +1,7 @@
 /*
  * This file is part of Moonlight Embedded.
  *
- * Copyright (C) 2015 Iwan Timmer
+ * Copyright (C) 2015-2017 Iwan Timmer
  *
  * Moonlight is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,19 +17,23 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "N3dsRenderer.hpp"
-
-#include <cstdlib>
+#include "TouchHandler.hpp"
+#include <Limelight.h>
 #include <cstring>
-#include <stdbool.h>
-#include <stdexcept>
-#include <unistd.h>
 
-N3dsRendererBottom::N3dsRendererBottom(int src_width, int src_height,
-                                       int px_size, bool debug_in)
-    : N3dsRendererBase(GFX_BOTTOM, GSP_SCREEN_HEIGHT_BOTTOM, GSP_SCREEN_WIDTH,
-                       src_width, src_height, px_size, debug_in) {}
+#define N3DS_MOUSEPAD_SENSITIVITY 3
 
-void N3dsRendererBottom::write_px_to_framebuffer(uint8_t *source) {
-    write_px_to_framebuffer_gpu(source);
+PrintConsole DebugTouchHandler::topScreen;
+
+DebugTouchHandler::DebugTouchHandler() {
+    consoleInit(GFX_BOTTOM, &bottomConsole);
+    consoleSelect(&bottomConsole);
 }
+
+DebugTouchHandler::~DebugTouchHandler() { consoleSelect(&topScreen); }
+
+void DebugTouchHandler::_handle_touch_down(touchPosition touch) {}
+
+void DebugTouchHandler::_handle_touch_up(touchPosition touch) {}
+
+void DebugTouchHandler::_handle_touch_hold(touchPosition touch) {}

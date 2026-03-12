@@ -25,18 +25,10 @@
 #include <stdexcept>
 #include <unistd.h>
 
-N3dsRendererInverted::N3dsRendererInverted(int dest_width, int dest_height,
-                                           int src_width, int src_height,
-                                           int px_size)
-    : top_renderer(dest_width, dest_height, src_width, src_height, px_size),
-      bottom_renderer(src_width, src_height, px_size) {}
+N3dsRendererMock::N3dsRendererMock() {}
 
-N3dsRendererInverted::~N3dsRendererInverted() = default;
+N3dsRendererMock::~N3dsRendererMock() = default;
 
-void N3dsRendererInverted::write_px_to_framebuffer(uint8_t *source) {
-    bottom_renderer.write_px_to_framebuffer(source);
-}
+void N3dsRendererMock::write_px_to_framebuffer(uint8_t *source) {}
 
-void N3dsRendererInverted::set_perf_decode_ticks(u64 ticks) {
-    bottom_renderer.set_perf_decode_ticks(ticks);
-}
+void N3dsRendererMock::set_perf_decode_ticks(u64 ticks) {}

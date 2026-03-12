@@ -60,7 +60,6 @@ N3dsRendererBase::~N3dsRendererBase() {
     if (surface_width == GSP_SCREEN_HEIGHT_TOP_2X) {
         gfxSetWide(false);
     }
-    printf("Closing stream...");
 }
 
 void N3dsRendererBase::ensure_3d_enabled() {

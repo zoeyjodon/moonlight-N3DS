@@ -31,7 +31,6 @@ extern "C" {
 
 typedef struct _CONFIGURATION {
     STREAM_CONFIGURATION stream;
-    int debug_level;
     char *app;
     char *action;
     char *address;

@@ -67,8 +67,7 @@ N3dsInput::N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
     CUSTOM_KEY_ZL = swap_triggers_and_shoulders ? KEY_L : KEY_ZL;
     CUSTOM_KEY_ZR = swap_triggers_and_shoulders ? KEY_R : KEY_ZR;
 
-    touch_handler =
-        std::make_unique<N3dsTouchscreenInput>(&gamepad_state);
+    touch_handler = std::make_unique<N3dsTouchscreenInput>(&gamepad_state);
 
     auto pDispatcher = MessageDispatcher::get_instance();
     pDispatcher->subscribe(MessageType::ENABLE_ACCEL, this);
@@ -85,6 +84,7 @@ N3dsInput::~N3dsInput() {
     gamepad_state = GAMEPAD_STATE();
     previous_state = GAMEPAD_STATE();
     touch_handler = nullptr;
+    printf("Input handler shutdown successfully\n");
 }
 
 void N3dsInput::accept(IMessage *msg) {
@@ -179,7 +179,7 @@ void N3dsInput::force_touchscreen_menu() {
     MessageDispatcher::get_instance()->post_immediate(&message);
 }
 
-int N3dsInput::n3dsinput_handle_event() {
+void N3dsInput::n3dsinput_handle_event() {
     ThreadLock(lock.get());
     hidScanInput();
     u32 kDown = hidKeysDown();
@@ -204,7 +204,7 @@ int N3dsInput::n3dsinput_handle_event() {
             force_touchscreen_menu();
             menu_active = true;
         }
-        return 0;
+        return;
     } else {
         menu_active = false;
     }
@@ -276,5 +276,5 @@ int N3dsInput::n3dsinput_handle_event() {
         }
     }
 
-    return 0;
+    return;
 }

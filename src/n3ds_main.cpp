@@ -58,8 +58,6 @@
 
 static u32 *SOC_buffer = NULL;
 
-static PrintConsole topScreen;
-
 static inline void wait_for_button(std::string prompt = "") {
     if (prompt.empty()) {
         printf("\nPress any button to continue\n");
@@ -239,7 +237,6 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         "swapfacebuttons",
         "swaptriggersandshoulders",
         "usetriggersformouse",
-        "debug",
     };
     int idx = 0;
     while (1) {
@@ -303,9 +300,6 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
             config->use_triggers_for_mouse =
                 prompt_for_boolean("Use ZL/ZR as left/right mouse buttons",
                                    config->use_triggers_for_mouse);
-        } else if ("debug" == setting_names[idx]) {
-            config->debug_level =
-                prompt_for_boolean("Enable debug logs", config->debug_level);
         }
     }
 
@@ -321,8 +315,8 @@ static void init_3ds() {
     gfxSetDoubleBuffering(GFX_TOP, false);
     gfxSetDoubleBuffering(GFX_BOTTOM, false);
 
-    consoleInit(GFX_TOP, &topScreen);
-    consoleSelect(&topScreen);
+    consoleInit(GFX_TOP, &DebugTouchHandler::topScreen);
+    consoleSelect(&DebugTouchHandler::topScreen);
     atexit(n3ds_exit_handler);
 
     osSetSpeedupEnable(true);
@@ -374,10 +368,10 @@ static inline void stream_loop(PCONFIGURATION config,
     bool done = false;
     input_handler->force_touchscreen_menu();
     while (!done && aptMainLoop()) {
-        done = connection_listener->is_connection_closed();
         if (!config->viewonly) {
-            done |= input_handler->n3dsinput_handle_event();
+            input_handler->n3dsinput_handle_event();
         }
+        done = connection_listener->is_connection_closed();
         hidWaitForAnyEvent(true, 0, 1000000000);
     }
 }
@@ -417,16 +411,16 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
     printf(
         "Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
  viewonly=%d, encryption=%x, hwdecode=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d,\
- usetriggersformouse=%d, motion_controls=%d, debug=%d\n",
+ usetriggersformouse=%d, motion_controls=%d\n",
         config->stream.width, config->stream.height, config->stream.fps,
         config->stream.bitrate, config->sops, config->localaudio,
         config->quitappafter, config->viewonly, config->stream.encryptionFlags,
         config->hwdecode, config->swap_face_buttons,
         config->swap_triggers_and_shoulders, config->use_triggers_for_mouse,
-        config->motion_controls, config->debug_level);
+        config->motion_controls);
 
-    auto connection_listener = N3dsConnectionListener::create_instance(
-        config->debug_level, config->motion_controls);
+    auto connection_listener =
+        N3dsConnectionListener::create_instance(config->motion_controls);
     int status = LiStartConnection(&server->serverInfo, &config->stream,
                                    &n3ds_connection_callbacks, video_callbacks,
                                    audio_callbacks, NULL, DISPLAY_FULLSCREEN,
@@ -455,7 +449,7 @@ static int init_server(CONFIGURATION *config, SERVER_DATA *server) {
     printf("Connecting to %s:%d...\n", config->address, config->port);
     gs_cleanup();
     int status = gs_init(server, config->address, config->port, config->key_dir,
-                         config->debug_level, config->unsupported);
+                         2, config->unsupported);
     if (status == GS_OUT_OF_MEMORY) {
         printf("Not enough memory\n");
         return 1;
@@ -474,13 +468,12 @@ static int init_server(CONFIGURATION *config, SERVER_DATA *server) {
         return 1;
     }
 
-    if (config->debug_level > 0) {
-        printf("GPU: %s, GFE: %s (%s, %s)\n", server->gpuType,
-               server->serverInfo.serverInfoGfeVersion, server->gsVersion,
-               server->serverInfo.serverInfoAppVersion);
-        printf("Server codec flags: 0x%x\n",
-               server->serverInfo.serverCodecModeSupport);
-    }
+    printf("GPU: %s, GFE: %s (%s, %s)\n", server->gpuType,
+           server->serverInfo.serverInfoGfeVersion, server->gsVersion,
+           server->serverInfo.serverInfoAppVersion);
+    printf("Server codec flags: 0x%x\n",
+           server->serverInfo.serverCodecModeSupport);
+
     if (server->paired) {
         add_pair_address(config->address, config->port);
     } else {
@@ -501,9 +494,8 @@ static void action_stream(CONFIGURATION *config, SERVER_DATA *server) {
 
     std::shared_ptr<N3dsInput> input_handler = nullptr;
     if (config->viewonly) {
-        if (config->debug_level > 0)
-            printf("View-only mode enabled, no input will be sent "
-                   "to the host computer\n");
+        printf("View-only mode enabled, no input will be sent "
+               "to the host computer\n");
     } else {
         input_handler = std::make_shared<N3dsInput>(
             N3dsTouchType::MENU_TOUCH, config->swap_face_buttons,

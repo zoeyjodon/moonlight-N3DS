@@ -127,24 +127,36 @@ void N3dsConnectionListener::set_motion_event_state(
     }
 }
 
-N3dsConnectionListener::N3dsConnectionListener(bool debug, bool enable_motion)
-    : lock(ThreadLock::CreateLock()), debug(debug),
-      enable_motion(enable_motion) {
+N3dsConnectionListener::N3dsConnectionListener(bool enable_motion)
+    : lock(ThreadLock::CreateLock()), enable_motion(enable_motion) {
     ThreadLock(lock.get());
+    MessageDispatcher::get_instance()->subscribe(
+        MessageType::TOUCH_STATE_CHANGED, this);
     MessageDispatcher::get_instance()->subscribe(MessageType::EXIT_STREAM,
                                                  this);
 }
 
 N3dsConnectionListener::~N3dsConnectionListener() {
     ThreadLock(lock.get());
+    MessageDispatcher::get_instance()->unsubscribe(
+        MessageType::TOUCH_STATE_CHANGED, this);
     MessageDispatcher::get_instance()->unsubscribe(MessageType::EXIT_STREAM,
                                                    this);
 }
 
 void N3dsConnectionListener::accept(IMessage *msg) {
     ThreadLock(lock.get());
-    if (msg->getMessageType() == MessageType::EXIT_STREAM)
+    switch (msg->getMessageType()) {
+    case MessageType::TOUCH_STATE_CHANGED: {
+        auto ttype = static_cast<TouchStateChangedMsg *>(msg)->ttype;
+        debug = ttype == N3dsTouchType::DISABLED;
+    } break;
+    case MessageType::EXIT_STREAM: {
         connection_terminated(ML_ERROR_GRACEFUL_TERMINATION);
+    } break;
+    default:
+        break;
+    }
 }
 
 bool N3dsConnectionListener::is_connection_closed() {

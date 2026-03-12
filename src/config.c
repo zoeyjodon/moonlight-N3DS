@@ -55,7 +55,6 @@ static struct option long_options[] = {
     {"fps", required_argument, NULL, 'v'},
     {"quitappafter", required_argument, NULL, '1'},
     {"viewonly", required_argument, NULL, '2'},
-    {"debug", required_argument, NULL, 'Z'},
     {"port", required_argument, NULL, '6'},
     {"hwdecode", required_argument, NULL, '8'},
     {"motion_controls", required_argument, NULL, 'e'},
@@ -101,13 +100,6 @@ void parse_argument(int c, char *value, PCONFIGURATION config) {
         break;
     case '2':
         config->viewonly = ((value != NULL) && (strcmp(value, "true") == 0));
-        break;
-    case 'Z':
-        if ((value != NULL) && (strcmp(value, "true") == 0)) {
-            config->debug_level = 2;
-        } else {
-            config->debug_level = 0;
-        }
         break;
     case '6':
         config->port = atoi(value);
@@ -192,7 +184,6 @@ void config_save(char *filename, PCONFIGURATION config) {
                       config->swap_triggers_and_shoulders);
     write_config_bool(fd, "usetriggersformouse",
                       config->use_triggers_for_mouse);
-    write_config_bool(fd, "debug", config->debug_level);
     write_config_bool(fd, "motion_controls", config->motion_controls);
 
     if (strcmp(config->app, "Steam") != 0)
@@ -210,7 +201,6 @@ void config_parse(int argc, char *argv[], PCONFIGURATION config) {
     config->stream.audioConfiguration = AUDIO_CONFIGURATION_STEREO;
     config->stream.supportedVideoFormats = SCM_H264;
 
-    config->debug_level = 0;
     config->platform = "auto";
     config->app = "Steam";
     config->action = NULL;

@@ -27,8 +27,9 @@
 
 N3dsRendererNormal::N3dsRendererNormal(int dest_width, int dest_height,
                                        int src_width, int src_height,
-                                       int px_size)
-    : top_renderer(dest_width, dest_height, src_width, src_height, px_size),
+                                       int px_size, bool debug)
+    : top_renderer(dest_width, dest_height, src_width, src_height, px_size,
+                   debug),
       bottom_renderer(src_width, src_height, px_size) {}
 
 N3dsRendererNormal::~N3dsRendererNormal() = default;

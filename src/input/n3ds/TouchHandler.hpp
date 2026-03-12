@@ -47,6 +47,23 @@ class TouchHandlerBase {
     bool isActive = false;
 };
 
+class DebugTouchHandler : public TouchHandlerBase {
+  public:
+    DebugTouchHandler();
+    ~DebugTouchHandler();
+
+  private:
+    void _handle_touch_down(touchPosition touch);
+    void _handle_touch_up(touchPosition touch);
+    void _handle_touch_hold(touchPosition touch);
+
+  public:
+    static PrintConsole topScreen;
+
+  private:
+    PrintConsole bottomConsole;
+};
+
 class MenuTouchHandler : public TouchHandlerBase {
   public:
     MenuTouchHandler();

@@ -26,7 +26,6 @@
 
 static CURL *curl;
 static const uint32_t CONNECTION_TIMEOUT_S = 3 * 60;
-static bool debug;
 
 static size_t _write_curl(void *contents, size_t size, size_t nmemb,
                           void *userp) {
@@ -46,7 +45,6 @@ static size_t _write_curl(void *contents, size_t size, size_t nmemb,
 
 int http_init(const char *keyDirectory, int logLevel) {
     curl = curl_easy_init();
-    debug = logLevel >= 2;
     if (!curl)
         return GS_FAILED;
 
@@ -80,8 +78,7 @@ int http_request(char *url, PHTTP_DATA data) {
     curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
 #endif
 
-    if (debug)
-        printf("Request %s\n", url);
+    printf("Request %s\n", url);
 
     if (data->size > 0) {
         free(data->memory);
@@ -100,8 +97,7 @@ int http_request(char *url, PHTTP_DATA data) {
         return GS_OUT_OF_MEMORY;
     }
 
-    if (debug)
-        printf("Response:\n%s\n\n", data->memory);
+    printf("Response:\n%s\n\n", data->memory);
 
     return GS_OK;
 }

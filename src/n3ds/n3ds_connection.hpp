@@ -26,16 +26,14 @@
 
 class N3dsConnectionListener : public ISubscriber {
   public:
-    N3dsConnectionListener(bool debug, bool enable_motion);
+    N3dsConnectionListener(bool enable_motion);
     ~N3dsConnectionListener();
 
     void accept(IMessage *msg) override;
 
-    static N3dsConnectionListener *create_instance(bool debug,
-                                                   bool enable_motion) {
+    static N3dsConnectionListener *create_instance(bool enable_motion) {
         if (instance == nullptr) {
-            instance =
-                std::make_unique<N3dsConnectionListener>(debug, enable_motion);
+            instance = std::make_unique<N3dsConnectionListener>(enable_motion);
         }
         return instance.get();
     }
@@ -56,7 +54,7 @@ class N3dsConnectionListener : public ISubscriber {
   private:
     static std::unique_ptr<N3dsConnectionListener> instance;
     PLockType lock;
-    bool debug;
+    bool debug = false;
     bool enable_motion;
     bool connection_closed = false;
 };

@@ -110,6 +110,7 @@ MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
     auto pDispatcher = MessageDispatcher::get_instance();
     pDispatcher->subscribe(MessageType::TOUCH_STATE_CHANGED, this);
     pDispatcher->subscribe(MessageType::KEYBOARD_STATE_CHANGED, this);
+    pDispatcher->subscribe(MessageType::EXIT_STREAM, this);
 }
 
 // This function must be called after
@@ -117,6 +118,7 @@ MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
 MvdDecoder::~MvdDecoder() {
     ThreadLock(lock.get());
     auto pDispatcher = MessageDispatcher::get_instance();
+    pDispatcher->unsubscribe(MessageType::EXIT_STREAM, this);
     pDispatcher->unsubscribe(MessageType::TOUCH_STATE_CHANGED, this);
     pDispatcher->unsubscribe(MessageType::KEYBOARD_STATE_CHANGED, this);
 
@@ -125,6 +127,7 @@ MvdDecoder::~MvdDecoder() {
     linearFree(nal_unit_buffer);
     linearFree(rgb_img_buffer);
     renderer = nullptr;
+    printf("Video decoder shutdown successfully\n");
 }
 
 void MvdDecoder::accept(IMessage *msg) {
@@ -137,6 +140,10 @@ void MvdDecoder::accept(IMessage *msg) {
         _accept_keyboard_state_changed(
             static_cast<KeyboardStateChangedMsg *>(msg));
         break;
+    case MessageType::EXIT_STREAM: {
+        renderer = std::make_unique<N3dsRendererMock>();
+        printf("Exiting stream...\n");
+    } break;
     default:
         break;
     }
@@ -144,10 +151,10 @@ void MvdDecoder::accept(IMessage *msg) {
 
 void MvdDecoder::_accept_touch_state_changed(TouchStateChangedMsg *msg) {
     switch (msg->ttype) {
-    case (N3dsTouchType::DISABLED):
+    case (N3dsTouchType::DEBUG_TOUCH):
         renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
-            pixel_size);
+            pixel_size, true);
         break;
     case (N3dsTouchType::GAMEPAD):
         renderer = std::make_unique<N3dsRendererNormal>(
