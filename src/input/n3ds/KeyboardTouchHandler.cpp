@@ -29,6 +29,10 @@
 
 KeyboardTouchHandler::KeyboardTouchHandler()
     : selected_keycodes(&default_keycodes) {
+
+    GSPGPU_FramebufferFormat px_fmt_btm = gfxGetScreenFormat(GFX_BOTTOM);
+    key_px_size = gspGetBytesPerPixel(px_fmt_btm);
+
     handle_default();
 }
 
