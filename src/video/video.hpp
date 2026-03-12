@@ -45,30 +45,56 @@
 
 enum DecodeReturnStatus { SUCCESS, NO_FRAME_PRODUCED, ERROR };
 
-class MvdDecoder : public ISubscriber {
+class VideoDecoderBase : public ISubscriber {
   public:
-    MvdDecoder(int videoFormat, int width, int height, int redrawRate,
-               void *context, int drFlags);
-    ~MvdDecoder();
+    VideoDecoderBase(int width, int height);
+    virtual ~VideoDecoderBase();
     void accept(IMessage *msg) override;
-    int submit_decode_unit(PDECODE_UNIT decodeUnit);
 
   private:
     void _accept_touch_state_changed(TouchStateChangedMsg *msg);
     void _accept_keyboard_state_changed(KeyboardStateChangedMsg *msg);
+
+  protected:
+    int image_width, image_height, surface_width, surface_height, pixel_size;
+    std::unique_ptr<IN3dsRenderer> renderer = nullptr;
+    PLockType lock;
+};
+
+class SoftVideoDecoder : public VideoDecoderBase {
+  public:
+    SoftVideoDecoder(int videoFormat, int width, int height, int redrawRate,
+                     void *context, int drFlags);
+    ~SoftVideoDecoder();
+    int submit_decode_unit(PDECODE_UNIT decodeUnit);
+
+  private:
+    inline int _write_yuv_to_framebuffer(const u8 **source, int width,
+                                         int height, int px_size);
+
+  private:
+    void *ffmpeg_buffer;
+    size_t ffmpeg_buffer_size;
+    u8 *rgb_img_buffer;
+};
+
+class MvdDecoder : public VideoDecoderBase {
+  public:
+    MvdDecoder(int videoFormat, int width, int height, int redrawRate,
+               void *context, int drFlags);
+    ~MvdDecoder();
+    int submit_decode_unit(PDECODE_UNIT decodeUnit);
+
+  private:
     DecodeReturnStatus _decode(unsigned char *indata, int inlen);
 
   private:
     void *nal_unit_buffer = NULL;
     size_t nal_unit_buffer_size = 0;
     MVDSTD_Config mvdstd_config;
-    int image_width, image_height, surface_width, surface_height, pixel_size;
     u8 *rgb_img_buffer;
     bool first_frame = true;
-    std::unique_ptr<IN3dsRenderer> renderer = nullptr;
-    PLockType lock;
 };
 
-extern DECODER_RENDERER_CALLBACKS decoder_callbacks_mock;
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds;
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd;

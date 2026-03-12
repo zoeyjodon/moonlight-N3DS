@@ -17,7 +17,6 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "../system/dispatcher.hpp"
 #include "video.hpp"
 
 #include <3ds.h>
@@ -36,9 +35,10 @@ static std::unique_ptr<MvdDecoder> instance = nullptr;
 
 MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
                        void *context, int drFlags)
-    : lock(ThreadLock::CreateLock()) {
+    : VideoDecoderBase(width, height) {
 
     ThreadLock(lock.get());
+
     bool is_new_3ds;
     APT_CheckNew3DS(&is_new_3ds);
     if (!is_new_3ds) {
@@ -73,16 +73,6 @@ MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
         throw std::runtime_error("mvdstdInit failed");
     }
 
-    surface_height = GSP_SCREEN_WIDTH;
-    surface_width = width > GSP_SCREEN_HEIGHT_TOP ? GSP_SCREEN_HEIGHT_TOP_2X
-                                                  : GSP_SCREEN_HEIGHT_TOP;
-    // Clamp output image to max dimensions supported by the renderer
-    image_width = width > MOON_CTR_VIDEO_TEX_W ? MOON_CTR_VIDEO_TEX_W : width;
-    image_height =
-        height > MOON_CTR_VIDEO_TEX_H ? MOON_CTR_VIDEO_TEX_H : height;
-
-    GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
-    pixel_size = gspGetBytesPerPixel(px_fmt);
     rgb_img_buffer = (u8 *)linearAlloc(MOON_CTR_VIDEO_TEX_W *
                                        MOON_CTR_VIDEO_TEX_H * pixel_size);
     if (!rgb_img_buffer) {
@@ -106,118 +96,18 @@ MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
     mvdstd_config.output_width_override = MOON_CTR_VIDEO_TEX_W;
     mvdstd_config.output_height_override = MOON_CTR_VIDEO_TEX_H;
     MVDSTD_SetConfig(&mvdstd_config);
-
-    auto pDispatcher = MessageDispatcher::get_instance();
-    pDispatcher->subscribe(MessageType::TOUCH_STATE_CHANGED, this);
-    pDispatcher->subscribe(MessageType::KEYBOARD_STATE_CHANGED, this);
-    pDispatcher->subscribe(MessageType::EXIT_STREAM, this);
 }
 
 // This function must be called after
 // decoding is finished
 MvdDecoder::~MvdDecoder() {
     ThreadLock(lock.get());
-    auto pDispatcher = MessageDispatcher::get_instance();
-    pDispatcher->unsubscribe(MessageType::EXIT_STREAM, this);
-    pDispatcher->unsubscribe(MessageType::TOUCH_STATE_CHANGED, this);
-    pDispatcher->unsubscribe(MessageType::KEYBOARD_STATE_CHANGED, this);
 
     y2rExit();
     mvdstdExit();
     linearFree(nal_unit_buffer);
     linearFree(rgb_img_buffer);
-    renderer = nullptr;
     printf("Video decoder shutdown successfully\n");
-}
-
-void MvdDecoder::accept(IMessage *msg) {
-    ThreadLock(lock.get());
-    switch (msg->getMessageType()) {
-    case MessageType::TOUCH_STATE_CHANGED:
-        _accept_touch_state_changed(static_cast<TouchStateChangedMsg *>(msg));
-        break;
-    case MessageType::KEYBOARD_STATE_CHANGED:
-        _accept_keyboard_state_changed(
-            static_cast<KeyboardStateChangedMsg *>(msg));
-        break;
-    case MessageType::EXIT_STREAM: {
-        renderer = std::make_unique<N3dsRendererMock>();
-        printf("Exiting stream...\n");
-    } break;
-    default:
-        break;
-    }
-}
-
-void MvdDecoder::_accept_touch_state_changed(TouchStateChangedMsg *msg) {
-    switch (msg->ttype) {
-    case (N3dsTouchType::DEBUG_TOUCH):
-        renderer = std::make_unique<N3dsRendererNormal>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size, true);
-        break;
-    case (N3dsTouchType::GAMEPAD):
-        renderer = std::make_unique<N3dsRendererNormal>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        if (msg->static_image)
-            (static_cast<N3dsRendererNormal *>(renderer.get()))
-                ->set_bottom_screen(msg->static_image);
-        break;
-    case (N3dsTouchType::MOUSEPAD):
-        renderer = std::make_unique<N3dsRendererNormal>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        if (msg->static_image)
-            (static_cast<N3dsRendererNormal *>(renderer.get()))
-                ->set_bottom_screen(msg->static_image);
-        break;
-    case (N3dsTouchType::KEYBOARD):
-        renderer = std::make_unique<N3dsRendererNormal>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        if (msg->static_image)
-            (static_cast<N3dsRendererNormal *>(renderer.get()))
-                ->set_bottom_screen(msg->static_image);
-        break;
-    case (N3dsTouchType::ABSOLUTE_TOUCH):
-        renderer = std::make_unique<N3dsRendererDualScreenMirror>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    case (N3dsTouchType::DS_TOUCH):
-        renderer = std::make_unique<N3dsRendererDualScreenStretch>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    case (N3dsTouchType::MAGNIFY_TOUCH):
-        renderer = std::make_unique<N3dsRendererDualScreenMagnify>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    case (N3dsTouchType::MENU_TOUCH):
-        renderer = std::make_unique<N3dsRendererNormal>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        if (msg->static_image)
-            (static_cast<N3dsRendererNormal *>(renderer.get()))
-                ->set_bottom_screen(msg->static_image);
-        break;
-    default:
-        renderer = std::make_unique<N3dsRendererNormal>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
-        break;
-    }
-}
-
-void MvdDecoder::_accept_keyboard_state_changed(KeyboardStateChangedMsg *msg) {
-    if (renderer == nullptr) {
-        return;
-    }
-    (static_cast<N3dsRendererNormal *>(renderer.get()))
-        ->set_bottom_screen(msg->keyboard_image, msg->key_offset,
-                            msg->key_size);
 }
 
 // packets must be decoded in order
