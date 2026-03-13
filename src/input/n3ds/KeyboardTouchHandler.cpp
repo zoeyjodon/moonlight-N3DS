@@ -37,8 +37,9 @@ KeyboardTouchHandler::KeyboardTouchHandler()
 }
 
 void KeyboardTouchHandler::set_screen(const uint8_t *bgr_buffer, int bgr_size) {
-    KeyboardStateChangedMsg message(bgr_buffer, 0, bgr_size);
-    MessageDispatcher::get_instance()->post_immediate(&message);
+    auto message =
+        std::make_shared<KeyboardStateChangedMsg>(bgr_buffer, 0, bgr_size);
+    MessageDispatcher::get_instance()->post_immediate(message);
 }
 
 void KeyboardTouchHandler::set_screen_key(KeyInfo &key_info) {
@@ -64,9 +65,9 @@ void KeyboardTouchHandler::set_screen_key(KeyInfo &key_info) {
             key_px_size;
         int bgr_size = (key_info.max_y - key_info.min_y) * key_px_size;
 
-        KeyboardStateChangedMsg message(bgr_buffer + bgr_offset, bgr_offset,
-                                        bgr_size);
-        MessageDispatcher::get_instance()->post_immediate(&message);
+        auto message = std::make_shared<KeyboardStateChangedMsg>(
+            bgr_buffer + bgr_offset, bgr_offset, bgr_size);
+        MessageDispatcher::get_instance()->post_immediate(message);
     }
 }
 

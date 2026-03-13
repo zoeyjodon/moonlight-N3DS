@@ -107,8 +107,8 @@ void N3dsConnectionListener::set_motion_event_state(
             HIDUSER_EnableAccelerometer();
             // Alert the input handler
             auto pDispatcher = MessageDispatcher::get_instance();
-            GenericEventMsg msg(ENABLE_ACCEL);
-            pDispatcher->post_immediate(&msg);
+            auto msg = std::make_shared<GenericEventMsg>(ENABLE_ACCEL);
+            pDispatcher->post(msg);
         } else {
             HIDUSER_DisableAccelerometer();
         }
@@ -118,8 +118,8 @@ void N3dsConnectionListener::set_motion_event_state(
             HIDUSER_EnableGyroscope();
             // Alert the input handler
             auto pDispatcher = MessageDispatcher::get_instance();
-            GenericEventMsg msg(ENABLE_GYRO);
-            pDispatcher->post_immediate(&msg);
+            auto msg = std::make_shared<GenericEventMsg>(ENABLE_GYRO);
+            pDispatcher->post(msg);
         } else {
             HIDUSER_DisableGyroscope();
         }

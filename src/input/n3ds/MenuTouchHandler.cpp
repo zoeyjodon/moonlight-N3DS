@@ -37,7 +37,9 @@ static std::map<int, std::map<int, N3dsTouchType>> button_map{
     {3, {{0, N3dsTouchType::DEBUG_TOUCH}, {1, N3dsTouchType::DISABLED}}},
 };
 
-MenuTouchHandler::MenuTouchHandler() {}
+MenuTouchHandler::MenuTouchHandler() { aptSetHomeAllowed(true); }
+
+MenuTouchHandler::~MenuTouchHandler() { aptSetHomeAllowed(false); }
 
 void MenuTouchHandler::_handle_touch_down(touchPosition touch) {
     _handle_touch_hold(touch);
@@ -45,7 +47,7 @@ void MenuTouchHandler::_handle_touch_down(touchPosition touch) {
 
 void MenuTouchHandler::_handle_touch_up(touchPosition touch) {
     if (message != nullptr)
-        MessageDispatcher::get_instance()->post_immediate(message.get());
+        MessageDispatcher::get_instance()->post(message);
 }
 
 void MenuTouchHandler::_handle_touch_hold(touchPosition touch) {
@@ -58,22 +60,22 @@ void MenuTouchHandler::_handle_touch_hold(touchPosition touch) {
     switch (touch_type) {
     case (N3dsTouchType::GAMEPAD):
         message =
-            std::make_unique<TouchStateChangedMsg>(touch_type, gamepad_bgr);
+            std::make_shared<TouchStateChangedMsg>(touch_type, gamepad_bgr);
         break;
     case (N3dsTouchType::MOUSEPAD):
         message =
-            std::make_unique<TouchStateChangedMsg>(touch_type, touchpad_bgr);
+            std::make_shared<TouchStateChangedMsg>(touch_type, touchpad_bgr);
         break;
     case (N3dsTouchType::KEYBOARD):
         message =
-            std::make_unique<TouchStateChangedMsg>(touch_type, keyboard_bgr);
+            std::make_shared<TouchStateChangedMsg>(touch_type, keyboard_bgr);
         break;
     case (N3dsTouchType::DISABLED):
         // Signal to exit the stream
-        message = std::make_unique<GenericEventMsg>(MessageType::EXIT_STREAM);
+        message = std::make_shared<GenericEventMsg>(MessageType::EXIT_STREAM);
         break;
     default:
-        message = std::make_unique<TouchStateChangedMsg>(touch_type, nullptr);
+        message = std::make_shared<TouchStateChangedMsg>(touch_type, nullptr);
         break;
     }
 }

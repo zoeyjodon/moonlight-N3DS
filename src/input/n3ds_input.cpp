@@ -30,7 +30,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define MENU_BUTTONS (PLAY_FLAG | BACK_FLAG | LB_FLAG | RB_FLAG)
 #define TOUCH_GAMEPAD_BUTTONS (SPECIAL_FLAG | LS_CLK_FLAG | RS_CLK_FLAG)
 #define TOUCH_MOUSEPAD_BUTTONS (BUTTON_LEFT | BUTTON_RIGHT)
 #define SUPPORTED_BUTTONS                                                      \
@@ -67,6 +66,7 @@ N3dsInput::N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
     CUSTOM_KEY_ZL = swap_triggers_and_shoulders ? KEY_L : KEY_ZL;
     CUSTOM_KEY_ZR = swap_triggers_and_shoulders ? KEY_R : KEY_ZR;
 
+    aptSetHomeAllowed(false);
     touch_handler = std::make_unique<N3dsTouchscreenInput>(&gamepad_state);
 
     auto pDispatcher = MessageDispatcher::get_instance();
@@ -84,6 +84,7 @@ N3dsInput::~N3dsInput() {
     gamepad_state = GAMEPAD_STATE();
     previous_state = GAMEPAD_STATE();
     touch_handler = nullptr;
+    aptSetHomeAllowed(true);
     printf("Input handler shutdown successfully\n");
 }
 
@@ -175,8 +176,9 @@ bool N3dsInput::_gyroscope_state_changed() {
 
 void N3dsInput::force_touchscreen_menu() {
     ThreadLock(lock.get());
-    auto message = TouchStateChangedMsg(N3dsTouchType::MENU_TOUCH, menu_bgr);
-    MessageDispatcher::get_instance()->post_immediate(&message);
+    auto message = std::make_shared<TouchStateChangedMsg>(
+        N3dsTouchType::MENU_TOUCH, menu_bgr);
+    MessageDispatcher::get_instance()->post(message);
 }
 
 void N3dsInput::n3dsinput_handle_event() {
@@ -199,7 +201,8 @@ void N3dsInput::n3dsinput_handle_event() {
         gamepad_state.rightTrigger &= ~n3ds_to_li_trigger(kUp, CUSTOM_KEY_ZR);
     }
 
-    if ((gamepad_state.buttons & MENU_BUTTONS) == MENU_BUTTONS) {
+    // Use the HOME button to open the menu
+    if (aptCheckHomePressRejected()) {
         if (!menu_active) {
             force_touchscreen_menu();
             menu_active = true;

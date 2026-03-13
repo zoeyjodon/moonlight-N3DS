@@ -19,18 +19,22 @@
 
 #include "TouchHandler.hpp"
 #include <Limelight.h>
+#include <cstdio>
 #include <cstring>
-
-#define N3DS_MOUSEPAD_SENSITIVITY 3
 
 PrintConsole DebugTouchHandler::topScreen;
 
 DebugTouchHandler::DebugTouchHandler() {
     consoleInit(GFX_BOTTOM, &bottomConsole);
     consoleSelect(&bottomConsole);
+    consoleDebugInit(debugDevice_CONSOLE);
+    printf("Debug Logs will now appear on the bottom screen\n");
 }
 
-DebugTouchHandler::~DebugTouchHandler() { consoleSelect(&topScreen); }
+DebugTouchHandler::~DebugTouchHandler() {
+    consoleDebugInit(debugDevice_NULL);
+    consoleSelect(&topScreen);
+}
 
 void DebugTouchHandler::_handle_touch_down(touchPosition touch) {}
 

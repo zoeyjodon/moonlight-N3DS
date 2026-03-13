@@ -14,6 +14,7 @@ enum MessageType {
 
 class IMessage {
   public:
+    virtual ~IMessage() = default;
     virtual MessageType getMessageType() = 0;
 };
 
@@ -24,7 +25,9 @@ class TouchscreenEventMsg : public IMessage {
                         touchPosition touch_in)
         : event(event_in), touch(touch_in){};
     ~TouchscreenEventMsg() = default;
-    MessageType getMessageType() { return MessageType::TOUCHSCREEN_EVENT; };
+    MessageType getMessageType() override {
+        return MessageType::TOUCHSCREEN_EVENT;
+    };
     TouchscreenEventMsgType event;
     touchPosition touch;
 };
@@ -46,7 +49,9 @@ class TouchStateChangedMsg : public IMessage {
                          const uint8_t *static_image_in = nullptr)
         : ttype(ttype_in), static_image(static_image_in){};
     ~TouchStateChangedMsg() = default;
-    MessageType getMessageType() { return MessageType::TOUCH_STATE_CHANGED; };
+    MessageType getMessageType() override {
+        return MessageType::TOUCH_STATE_CHANGED;
+    };
     N3dsTouchType ttype;
     const uint8_t *static_image = nullptr;
 };
@@ -58,7 +63,7 @@ class KeyboardStateChangedMsg : public IMessage {
         : keyboard_image(keyboard_image_in), key_offset(key_offset_in),
           key_size(key_size_in){};
     ~KeyboardStateChangedMsg() = default;
-    MessageType getMessageType() {
+    MessageType getMessageType() override {
         return MessageType::KEYBOARD_STATE_CHANGED;
     };
     const uint8_t *keyboard_image;
@@ -70,6 +75,6 @@ class GenericEventMsg : public IMessage {
   public:
     GenericEventMsg(MessageType event_in) : event(event_in){};
     ~GenericEventMsg() = default;
-    MessageType getMessageType() { return event; };
+    MessageType getMessageType() override { return event; };
     MessageType event;
 };

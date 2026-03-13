@@ -34,6 +34,7 @@ typedef struct _GAMEPAD_STATE {
 
 class TouchHandlerBase {
   public:
+    virtual ~TouchHandlerBase() = default;
     void handle_touch_down(touchPosition touch);
     void handle_touch_up(touchPosition touch);
     void handle_touch_hold(touchPosition touch);
@@ -53,9 +54,9 @@ class DebugTouchHandler : public TouchHandlerBase {
     ~DebugTouchHandler();
 
   private:
-    void _handle_touch_down(touchPosition touch);
-    void _handle_touch_up(touchPosition touch);
-    void _handle_touch_hold(touchPosition touch);
+    void _handle_touch_down(touchPosition touch) override;
+    void _handle_touch_up(touchPosition touch) override;
+    void _handle_touch_hold(touchPosition touch) override;
 
   public:
     static PrintConsole topScreen;
@@ -67,24 +68,26 @@ class DebugTouchHandler : public TouchHandlerBase {
 class MenuTouchHandler : public TouchHandlerBase {
   public:
     MenuTouchHandler();
+    ~MenuTouchHandler();
 
   private:
-    void _handle_touch_down(touchPosition touch);
-    void _handle_touch_up(touchPosition touch);
-    void _handle_touch_hold(touchPosition touch);
+    void _handle_touch_down(touchPosition touch) override;
+    void _handle_touch_up(touchPosition touch) override;
+    void _handle_touch_hold(touchPosition touch) override;
 
   private:
-    std::unique_ptr<IMessage> message = nullptr;
+    std::shared_ptr<IMessage> message = nullptr;
 };
 
 class GamepadTouchHandler : public TouchHandlerBase {
   public:
     GamepadTouchHandler(GAMEPAD_STATE *gamepad_in);
+    ~GamepadTouchHandler() = default;
 
   private:
-    void _handle_touch_down(touchPosition touch);
-    void _handle_touch_up(touchPosition touch);
-    void _handle_touch_hold(touchPosition touch);
+    void _handle_touch_down(touchPosition touch) override;
+    void _handle_touch_up(touchPosition touch) override;
+    void _handle_touch_hold(touchPosition touch) override;
 
   private:
     GAMEPAD_STATE *gamepad_state;
@@ -93,11 +96,12 @@ class GamepadTouchHandler : public TouchHandlerBase {
 class MouseTouchHandler : public TouchHandlerBase {
   public:
     MouseTouchHandler();
+    ~MouseTouchHandler() = default;
 
   private:
-    void _handle_touch_down(touchPosition touch);
-    void _handle_touch_up(touchPosition touch);
-    void _handle_touch_hold(touchPosition touch);
+    void _handle_touch_down(touchPosition touch) override;
+    void _handle_touch_up(touchPosition touch) override;
+    void _handle_touch_hold(touchPosition touch) override;
 
   private:
     int mouse_button = -1;
@@ -119,11 +123,12 @@ struct KeyInfo {
 class KeyboardTouchHandler : public TouchHandlerBase {
   public:
     KeyboardTouchHandler();
+    ~KeyboardTouchHandler() = default;
 
   private:
-    void _handle_touch_down(touchPosition touch);
-    void _handle_touch_up(touchPosition touch);
-    void _handle_touch_hold(touchPosition touch);
+    void _handle_touch_down(touchPosition touch) override;
+    void _handle_touch_up(touchPosition touch) override;
+    void _handle_touch_hold(touchPosition touch) override;
 
     keycode_info get_keycode(touchPosition touch);
     void set_screen(const uint8_t *bgr_buffer, int bgr_size);
@@ -148,11 +153,12 @@ class KeyboardTouchHandler : public TouchHandlerBase {
 class AbsoluteTouchHandler : public TouchHandlerBase {
   public:
     AbsoluteTouchHandler(int y_offset_in, int y_scale_in);
+    ~AbsoluteTouchHandler() = default;
 
   private:
-    void _handle_touch_down(touchPosition touch);
-    void _handle_touch_up(touchPosition touch);
-    void _handle_touch_hold(touchPosition touch);
+    void _handle_touch_down(touchPosition touch) override;
+    void _handle_touch_up(touchPosition touch) override;
+    void _handle_touch_hold(touchPosition touch) override;
 
   private:
     int y_offset = 0;
@@ -164,9 +170,10 @@ class AbsoluteTouchHandler : public TouchHandlerBase {
 class MagnifyTouchHandler : public TouchHandlerBase {
   public:
     MagnifyTouchHandler();
+    ~MagnifyTouchHandler() = default;
 
   private:
-    void _handle_touch_down(touchPosition touch);
-    void _handle_touch_up(touchPosition touch);
-    void _handle_touch_hold(touchPosition touch);
+    void _handle_touch_down(touchPosition touch) override;
+    void _handle_touch_up(touchPosition touch) override;
+    void _handle_touch_hold(touchPosition touch) override;
 };

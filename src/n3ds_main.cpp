@@ -17,18 +17,15 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "audio/audio.h"
 #include "config.h"
-
+#include "input/n3ds_input.hpp"
 #include "n3ds/n3ds_connection.hpp"
 #include "n3ds/pair_record.hpp"
-
-#include "audio/audio.h"
+#include "system/dispatcher.hpp"
 #include "video/video.hpp"
 
-#include "input/n3ds_input.hpp"
-
 #include <3ds.h>
-
 #include <Limelight.h>
 
 #include <client.h>
@@ -78,9 +75,6 @@ static inline void wait_for_button(std::string prompt = "") {
 }
 
 static void n3ds_exit_handler(void) {
-    // Allow users to decide when to exit
-    wait_for_button("Press any button to quit");
-
     NDMU_UnlockState();
     NDMU_LeaveExclusiveState();
     ndmuExit();
@@ -366,11 +360,13 @@ static inline void stream_loop(PCONFIGURATION config,
                                N3dsConnectionListener *connection_listener,
                                std::shared_ptr<N3dsInput> input_handler) {
     bool done = false;
+    auto pDispatcher = MessageDispatcher::get_instance();
     input_handler->force_touchscreen_menu();
-    while (!done && aptMainLoop()) {
+    while (!done && aptMainLoop() && !aptShouldClose()) {
         if (!config->viewonly) {
             input_handler->n3dsinput_handle_event();
         }
+        pDispatcher->dispatch_all();
         done = connection_listener->is_connection_closed();
         hidWaitForAnyEvent(true, 0, 1000000000);
     }

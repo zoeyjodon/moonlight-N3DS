@@ -25,14 +25,16 @@ MagnifyTouchHandler::MagnifyTouchHandler() {}
 
 void MagnifyTouchHandler::_handle_touch_down(touchPosition touch) {
     auto pDispatcher = MessageDispatcher::get_instance();
-    auto msg = TouchscreenEventMsg(TouchscreenEventMsgType::DOWN, touch);
-    pDispatcher->post_immediate(&msg);
+    auto msg = std::make_shared<TouchscreenEventMsg>(
+        TouchscreenEventMsgType::DOWN, touch);
+    pDispatcher->post_immediate(msg);
 }
 
 void MagnifyTouchHandler::_handle_touch_up(touchPosition touch) {}
 
 void MagnifyTouchHandler::_handle_touch_hold(touchPosition touch) {
     auto pDispatcher = MessageDispatcher::get_instance();
-    auto msg = TouchscreenEventMsg(TouchscreenEventMsgType::HOLD, touch);
-    pDispatcher->post_immediate(&msg);
+    auto msg = std::make_shared<TouchscreenEventMsg>(
+        TouchscreenEventMsgType::HOLD, touch);
+    pDispatcher->post_immediate(msg);
 }

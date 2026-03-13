@@ -35,13 +35,27 @@ void MessageDispatcher::unsubscribe(MessageType type, ISubscriber *sub) {
     }
 }
 
-void MessageDispatcher::post_immediate(IMessage *m) {
+void MessageDispatcher::post_immediate(std::shared_ptr<IMessage> m) {
     ThreadLock(lock.get());
     std::vector<ISubscriber *> &sub_list = subscribers[m->getMessageType()];
     for (ISubscriber *sub : sub_list) {
         if (sub == nullptr) {
             continue;
         }
-        sub->accept(m);
+        sub->accept(m.get());
+    }
+}
+
+void MessageDispatcher::post(std::shared_ptr<IMessage> m) {
+    ThreadLock(lock.get());
+    message_queue.push(m);
+}
+
+void MessageDispatcher::dispatch_all() {
+    ThreadLock(lock.get());
+    while (!message_queue.empty()) {
+        auto m = message_queue.front();
+        message_queue.pop();
+        post_immediate(m);
     }
 }

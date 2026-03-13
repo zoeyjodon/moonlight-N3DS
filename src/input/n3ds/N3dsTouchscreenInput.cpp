@@ -70,6 +70,9 @@ void N3dsTouchscreenInput::n3dsinput_set_touch(N3dsTouchType touch_type) {
     case MENU_TOUCH:
         handler = std::make_unique<MenuTouchHandler>();
         break;
+    case DEBUG_TOUCH:
+        handler = std::make_unique<DebugTouchHandler>();
+        break;
     default:
         handler = nullptr;
         break;
