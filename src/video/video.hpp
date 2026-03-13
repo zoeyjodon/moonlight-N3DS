@@ -40,7 +40,7 @@
 #include "../system/ThreadLock.hpp"
 #include "../system/subscriber.hpp"
 #include "../util.h"
-#include "n3ds/N3dsRenderer.hpp"
+#include "renderer/N3dsRenderer.hpp"
 #include <3ds/types.h>
 
 enum DecodeReturnStatus { SUCCESS, NO_FRAME_PRODUCED, ERROR };

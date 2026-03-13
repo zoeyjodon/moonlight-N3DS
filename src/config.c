@@ -18,10 +18,9 @@
  */
 
 #include "config.h"
-#include "util.h"
-
 #include "audio/audio.h"
-#include "n3ds/pair_record.hpp"
+#include "system/pair_record.hpp"
+#include "util.h"
 
 #include <getopt.h>
 #include <limits.h>

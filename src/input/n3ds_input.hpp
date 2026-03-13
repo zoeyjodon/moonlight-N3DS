@@ -21,7 +21,7 @@
 
 #include "../system/ThreadLock.hpp"
 #include "../system/subscriber.hpp"
-#include "n3ds/N3dsTouchscreenInput.hpp"
+#include "touch/N3dsTouchscreenInput.hpp"
 #include <stdbool.h>
 
 class N3dsInput : public ISubscriber {

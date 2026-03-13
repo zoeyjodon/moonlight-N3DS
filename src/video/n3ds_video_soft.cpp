@@ -18,7 +18,6 @@
  */
 
 #include "ffmpeg.h"
-#include "n3ds/N3dsRenderer.hpp"
 #include "video.hpp"
 
 #include "../util.h"

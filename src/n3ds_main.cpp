@@ -20,9 +20,9 @@
 #include "audio/audio.h"
 #include "config.h"
 #include "input/n3ds_input.hpp"
-#include "n3ds/n3ds_connection.hpp"
-#include "n3ds/pair_record.hpp"
 #include "system/dispatcher.hpp"
+#include "system/n3ds_connection.hpp"
+#include "system/pair_record.hpp"
 #include "video/video.hpp"
 
 #include <3ds.h>

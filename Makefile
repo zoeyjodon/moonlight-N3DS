@@ -36,13 +36,12 @@ include $(DEVKITARM)/3ds_rules
 TARGET		:=	moonlight
 BUILD		:=	build
 SOURCES		:=	src \
-				src/n3ds/ \
 				src/system/ \
 				src/audio/ \
 				src/input/ \
-				src/input/n3ds \
+				src/input/touch \
 				src/video/ \
-				src/video/n3ds \
+				src/video/renderer \
 				libgamestream \
 				third_party/h264bitstream \
 				third_party/libuuid \

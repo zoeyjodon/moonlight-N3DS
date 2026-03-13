@@ -21,7 +21,7 @@
 #include "../system/ThreadLock.hpp"
 #include "../system/dispatcher.hpp"
 #include "menu_bgr.h"
-#include "n3ds/TouchHandler.hpp"
+#include "touch/TouchHandler.hpp"
 
 #include <3ds.h>
 #include <Limelight.h>
