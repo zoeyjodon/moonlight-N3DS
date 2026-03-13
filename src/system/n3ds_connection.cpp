@@ -65,16 +65,13 @@ void N3dsConnectionListener::connection_terminated(int errorCode) {
     connection_closed = true;
 }
 
-void N3dsConnectionListener::connection_log_message(const char *format, ...) {
+void N3dsConnectionListener::connection_log_message(const char *format,
+                                                    va_list arglist) {
     ThreadLock(lock.get());
     if (!debug) {
         return;
     }
-
-    va_list arglist;
-    va_start(arglist, format);
     vprintf(format, arglist);
-    va_end(arglist);
 }
 
 void N3dsConnectionListener::connection_status_update(int status) {
@@ -149,7 +146,7 @@ void N3dsConnectionListener::accept(IMessage *msg) {
     switch (msg->getMessageType()) {
     case MessageType::TOUCH_STATE_CHANGED: {
         auto ttype = static_cast<TouchStateChangedMsg *>(msg)->ttype;
-        debug = ttype == N3dsTouchType::DISABLED;
+        debug = ttype == N3dsTouchType::DEBUG_TOUCH;
     } break;
     case MessageType::EXIT_STREAM: {
         connection_terminated(ML_ERROR_GRACEFUL_TERMINATION);
@@ -175,7 +172,9 @@ static void local_connection_log_message(const char *format, ...) {
     auto instance = N3dsConnectionListener::get_instance();
     if (instance != nullptr) {
         va_list arglist;
+        va_start(arglist, format);
         instance->connection_log_message(format, arglist);
+        va_end(arglist);
     }
 }
 

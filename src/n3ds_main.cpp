@@ -363,12 +363,12 @@ static inline void stream_loop(PCONFIGURATION config,
     auto pDispatcher = MessageDispatcher::get_instance();
     input_handler->force_touchscreen_menu();
     while (!done && aptMainLoop() && !aptShouldClose()) {
+        gspWaitForAnyEvent();
         if (!config->viewonly) {
             input_handler->n3dsinput_handle_event();
         }
         pDispatcher->dispatch_all();
         done = connection_listener->is_connection_closed();
-        hidWaitForAnyEvent(true, 0, 1000000000);
     }
 }
 

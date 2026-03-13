@@ -43,7 +43,7 @@ class N3dsConnectionListener : public ISubscriber {
     static void destroy_instance() { instance = nullptr; }
 
     void connection_terminated(int errorCode);
-    void connection_log_message(const char *format, ...);
+    void connection_log_message(const char *format, va_list arglist);
     void connection_status_update(int status);
     void set_motion_event_state(unsigned short controllerNumber,
                                 unsigned char motionType,

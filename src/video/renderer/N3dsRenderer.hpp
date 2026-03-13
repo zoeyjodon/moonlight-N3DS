@@ -107,8 +107,10 @@ class N3dsRendererNormal : public IN3dsRenderer {
     void set_bottom_screen(const uint8_t *source, int offset = 0, int size = 0);
 
   private:
+    void _clear_bottom_screen();
+
+  private:
     N3dsRendererTop top_renderer;
-    N3dsRendererBottom bottom_renderer;
 };
 
 class N3dsRendererDualScreenStretch : public IN3dsRenderer {
