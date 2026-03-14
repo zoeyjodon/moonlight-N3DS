@@ -23,10 +23,10 @@
 #include <cstring>
 
 PrintConsole DebugTouchHandler::topScreen;
+PrintConsole DebugTouchHandler::bottomScreen;
 
 DebugTouchHandler::DebugTouchHandler() {
-    consoleInit(GFX_BOTTOM, &bottomConsole);
-    consoleSelect(&bottomConsole);
+    consoleSelect(&bottomScreen);
     consoleDebugInit(debugDevice_CONSOLE);
     printf("Debug Logs will now appear on the bottom screen\n");
 }
@@ -36,8 +36,14 @@ DebugTouchHandler::~DebugTouchHandler() {
     consoleSelect(&topScreen);
 }
 
-void DebugTouchHandler::_handle_touch_down(touchPosition touch) {}
+void DebugTouchHandler::_handle_touch_down(touchPosition touch) {
+    printf("_handle_touch_down ignored\n");
+}
 
-void DebugTouchHandler::_handle_touch_up(touchPosition touch) {}
+void DebugTouchHandler::_handle_touch_up(touchPosition touch) {
+    printf("_handle_touch_up ignored\n");
+}
 
-void DebugTouchHandler::_handle_touch_hold(touchPosition touch) {}
+void DebugTouchHandler::_handle_touch_hold(touchPosition touch) {
+    printf("_handle_touch_hold ignored\n");
+}

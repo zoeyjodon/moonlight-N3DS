@@ -60,9 +60,7 @@ class DebugTouchHandler : public TouchHandlerBase {
 
   public:
     static PrintConsole topScreen;
-
-  private:
-    PrintConsole bottomConsole;
+    static PrintConsole bottomScreen;
 };
 
 class MenuTouchHandler : public TouchHandlerBase {

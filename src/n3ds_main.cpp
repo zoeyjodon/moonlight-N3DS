@@ -310,6 +310,7 @@ static void init_3ds() {
     gfxSetDoubleBuffering(GFX_BOTTOM, false);
 
     consoleInit(GFX_TOP, &DebugTouchHandler::topScreen);
+    consoleInit(GFX_BOTTOM, &DebugTouchHandler::bottomScreen);
     consoleSelect(&DebugTouchHandler::topScreen);
     atexit(n3ds_exit_handler);
 
