@@ -2,14 +2,9 @@
 
 #include "ThreadLock.hpp"
 
-ThreadLock::ThreadLock(LockType *pLock_in) : pLock(pLock_in) {
-    RecursiveLock_Lock(pLock);
-};
+ThreadLock::ThreadLock() { RecursiveLock_Init(&_lock); };
 
-ThreadLock::~ThreadLock() { RecursiveLock_Unlock(pLock); };
+ThreadLock::~ThreadLock(){};
 
-PLockType ThreadLock::CreateLock() {
-    auto lock = std::make_shared<LockType>();
-    RecursiveLock_Init(lock.get());
-    return lock;
-};
+void ThreadLock::lock() { RecursiveLock_Lock(&_lock); }
+void ThreadLock::unlock() { RecursiveLock_Unlock(&_lock); }

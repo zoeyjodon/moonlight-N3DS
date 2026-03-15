@@ -27,8 +27,7 @@
 #include <3ds.h>
 #include <stdio.h>
 
-VideoDecoderBase::VideoDecoderBase(int width, int height)
-    : lock(ThreadLock::CreateLock()) {
+VideoDecoderBase::VideoDecoderBase(int width, int height) {
     surface_height = GSP_SCREEN_WIDTH;
     surface_width = width > GSP_SCREEN_HEIGHT_TOP ? GSP_SCREEN_HEIGHT_TOP_2X
                                                   : GSP_SCREEN_HEIGHT_TOP;
@@ -40,8 +39,7 @@ VideoDecoderBase::VideoDecoderBase(int width, int height)
     GSPGPU_FramebufferFormat px_fmt = gfxGetScreenFormat(GFX_TOP);
     pixel_size = gspGetBytesPerPixel(px_fmt);
 
-    renderer = std::make_unique<N3dsRendererNormal>(
-        surface_width, surface_height, image_width, image_height, pixel_size);
+    renderer = std::make_unique<N3dsRendererMock>();
 
     auto pDispatcher = MessageDispatcher::get_instance();
     pDispatcher->subscribe(MessageType::TOUCH_STATE_CHANGED, this);
@@ -57,7 +55,6 @@ VideoDecoderBase::~VideoDecoderBase() {
 }
 
 void VideoDecoderBase::accept(IMessage *msg) {
-    auto tmp_lock = ThreadLock(lock.get());
     switch (msg->getMessageType()) {
     case MessageType::TOUCH_STATE_CHANGED: {
         auto touch_msg = static_cast<TouchStateChangedMsg *>(msg);
@@ -78,6 +75,7 @@ void VideoDecoderBase::accept(IMessage *msg) {
 }
 
 void VideoDecoderBase::_accept_touch_state_changed(N3dsTouchType ttype) {
+    renderer_lock.lock();
     switch (ttype) {
     case (N3dsTouchType::DEBUG_TOUCH):
         renderer = std::make_unique<N3dsRendererNormal>(
@@ -131,14 +129,14 @@ void VideoDecoderBase::_accept_touch_state_changed(N3dsTouchType ttype) {
         renderer = std::make_unique<N3dsRendererMock>();
         break;
     }
+    renderer_lock.unlock();
 }
 
 void VideoDecoderBase::_accept_keyboard_state_changed(
     KeyboardStateChangedMsg *msg) {
-    if (renderer == nullptr) {
-        return;
-    }
+    renderer_lock.lock();
     (static_cast<N3dsRendererNormal *>(renderer.get()))
         ->set_bottom_screen(msg->keyboard_image, msg->key_offset,
                             msg->key_size);
+    renderer_lock.unlock();
 }

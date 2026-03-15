@@ -58,7 +58,7 @@ class VideoDecoderBase : public ISubscriber {
   protected:
     int image_width, image_height, surface_width, surface_height, pixel_size;
     std::unique_ptr<IN3dsRenderer> renderer = nullptr;
-    PLockType lock;
+    ThreadLock renderer_lock;
 };
 
 class SoftVideoDecoder : public VideoDecoderBase {

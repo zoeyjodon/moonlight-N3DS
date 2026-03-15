@@ -19,9 +19,9 @@
 
 #pragma once
 
+#include "../system/AtomicVar.hpp"
 #include "../system/subscriber.hpp"
 #include <Limelight.h>
-#include <atomic>
 #include <memory>
 
 class N3dsConnectionListener : public ISubscriber {
@@ -54,8 +54,8 @@ class N3dsConnectionListener : public ISubscriber {
   private:
     static std::unique_ptr<N3dsConnectionListener> instance;
     bool enable_motion;
-    std::atomic<bool> debug = false;
-    std::atomic<bool> connection_closed = false;
+    AtomicVar<bool> debug = false;
+    AtomicVar<bool> connection_closed = false;
 };
 
 extern CONNECTION_LISTENER_CALLBACKS n3ds_connection_callbacks;

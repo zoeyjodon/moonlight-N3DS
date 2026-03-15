@@ -19,9 +19,9 @@
 
 #pragma once
 
+#include "../system/AtomicVar.hpp"
 #include "../system/subscriber.hpp"
 #include "touch/N3dsTouchscreenInput.hpp"
-#include <atomic>
 #include <stdbool.h>
 
 class N3dsInput : public ISubscriber {
@@ -49,8 +49,8 @@ class N3dsInput : public ISubscriber {
     // Note: This was found experimentally and may need a calibration option in
     // settings
     float accel_coeff = 52.0;
-    std::atomic<bool> enable_gyro = false;
-    std::atomic<bool> enable_accel = false;
+    AtomicVar<bool> enable_gyro = false;
+    AtomicVar<bool> enable_accel = false;
     bool use_triggers_for_mouse = false;
     bool menu_active = false;
 

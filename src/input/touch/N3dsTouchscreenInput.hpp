@@ -18,10 +18,10 @@
  */
 #pragma once
 
+#include "../../system/AtomicVar.hpp"
 #include "../../system/subscriber.hpp"
 #include "TouchHandler.hpp"
 #include <3ds.h>
-#include <atomic>
 #include <memory>
 
 class N3dsTouchscreenInput : public ISubscriber {
@@ -38,7 +38,7 @@ class N3dsTouchscreenInput : public ISubscriber {
 
   private:
     GAMEPAD_STATE *gamepad_state;
-    std::atomic<N3dsTouchType> next_touch_type = N3dsTouchType::DISABLED;
+    AtomicVar<N3dsTouchType> next_touch_type = N3dsTouchType::DISABLED;
     N3dsTouchType touch_type = N3dsTouchType::DISABLED;
     std::unique_ptr<TouchHandlerBase> handler = nullptr;
 };

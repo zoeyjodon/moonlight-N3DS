@@ -18,10 +18,10 @@
  */
 #pragma once
 
+#include "../../system/AtomicVar.hpp"
 #include "../../system/subscriber.hpp"
 #include <3ds.h>
 #include <Limelight.h>
-#include <atomic>
 #include <memory>
 
 #define MOON_CTR_VIDEO_TEX_W 1024
@@ -155,5 +155,5 @@ class N3dsRendererDualScreenMagnify : public IN3dsRenderer, ISubscriber {
     int px_size;
     N3dsRendererTop top_renderer;
     N3dsRendererBottom bottom_renderer;
-    std::atomic<int> pixel_offset = 0;
+    AtomicVar<int> pixel_offset = 0;
 };

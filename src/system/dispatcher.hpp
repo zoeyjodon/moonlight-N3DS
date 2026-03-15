@@ -33,6 +33,6 @@ class MessageDispatcher {
     static std::shared_ptr<MessageDispatcher> instance;
     std::map<MessageType, std::vector<ISubscriber *>> subscribers{};
     std::queue<std::shared_ptr<IMessage>> message_queue{};
-    PLockType subscriber_lock;
-    PLockType message_lock;
+    ThreadLock subscriber_lock;
+    ThreadLock message_lock;
 };

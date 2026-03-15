@@ -4,15 +4,15 @@
 #include <memory>
 
 typedef RecursiveLock LockType;
-typedef std::shared_ptr<LockType> PLockType;
 
 class ThreadLock {
   public:
-    ThreadLock(LockType *pLock_in);
+    ThreadLock();
     ~ThreadLock();
 
-    static PLockType CreateLock();
+    void lock();
+    void unlock();
 
   private:
-    LockType *pLock;
+    LockType _lock;
 };

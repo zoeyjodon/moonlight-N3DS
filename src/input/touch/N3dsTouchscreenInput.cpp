@@ -75,7 +75,7 @@ void N3dsTouchscreenInput::_n3dsinput_set_touch(N3dsTouchType touch_type_in) {
 
 void N3dsTouchscreenInput::n3dsinput_handle_touch(u32 kDown, u32 kUp) {
     if (next_touch_type.load() != touch_type) {
-        _n3dsinput_set_touch(next_touch_type);
+        _n3dsinput_set_touch(next_touch_type.load());
     }
 
     if (handler == nullptr) {

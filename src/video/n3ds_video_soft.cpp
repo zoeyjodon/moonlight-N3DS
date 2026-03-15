@@ -126,13 +126,12 @@ inline int SoftVideoDecoder::_write_yuv_to_framebuffer(const u8 **source,
     svcWaitSynchronization(conversion_finish_event_handle,
                            10000000); // Wait up to 10ms.
     svcCloseHandle(conversion_finish_event_handle);
-    {
-        auto tmp_lock = ThreadLock(lock.get());
-        if (renderer != nullptr) {
-            renderer->set_perf_decode_ticks(svcGetSystemTick() - start_ticks);
-            renderer->write_px_to_framebuffer(rgb_img_buffer);
-        }
-    }
+
+    renderer_lock.lock();
+    renderer->set_perf_decode_ticks(svcGetSystemTick() - start_ticks);
+    renderer->write_px_to_framebuffer(rgb_img_buffer);
+    renderer_lock.unlock();
+
     return DR_OK;
 
 y2ru_failed:
