@@ -36,9 +36,6 @@ static std::unique_ptr<MvdDecoder> instance = nullptr;
 MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
                        void *context, int drFlags)
     : VideoDecoderBase(width, height) {
-
-    ThreadLock(lock.get());
-
     bool is_new_3ds;
     APT_CheckNew3DS(&is_new_3ds);
     if (!is_new_3ds) {
@@ -101,8 +98,6 @@ MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
 // This function must be called after
 // decoding is finished
 MvdDecoder::~MvdDecoder() {
-    ThreadLock(lock.get());
-
     y2rExit();
     mvdstdExit();
     linearFree(nal_unit_buffer);
@@ -129,7 +124,6 @@ DecodeReturnStatus MvdDecoder::_decode(unsigned char *indata, int inlen) {
 }
 
 int MvdDecoder::submit_decode_unit(PDECODE_UNIT decodeUnit) {
-    ThreadLock(lock.get());
     u64 start_ticks = svcGetSystemTick();
     PLENTRY entry = decodeUnit->bufferList;
     int length = 0;
@@ -149,9 +143,13 @@ int MvdDecoder::submit_decode_unit(PDECODE_UNIT decodeUnit) {
     GSPGPU_FlushDataCache(nal_unit_buffer, length);
 
     _decode((unsigned char *)nal_unit_buffer, length);
-    renderer->set_perf_decode_ticks(svcGetSystemTick() - start_ticks);
-    renderer->write_px_to_framebuffer(rgb_img_buffer);
-
+    {
+        auto tmp_lock = ThreadLock(lock.get());
+        if (renderer != nullptr) {
+            renderer->set_perf_decode_ticks(svcGetSystemTick() - start_ticks);
+            renderer->write_px_to_framebuffer(rgb_img_buffer);
+        }
+    }
     // If MVD never gets an IDR frame, everything shows up gray
     if (first_frame) {
         first_frame = false;

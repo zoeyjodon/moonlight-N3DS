@@ -18,6 +18,10 @@
  */
 
 #include "../system/dispatcher.hpp"
+#include "gamepad_bgr.h"
+#include "keyboard_bgr.h"
+#include "menu_bgr.h"
+#include "touchpad_bgr.h"
 #include "video.hpp"
 
 #include <3ds.h>
@@ -50,21 +54,22 @@ VideoDecoderBase::~VideoDecoderBase() {
     pDispatcher->unsubscribe(MessageType::TOUCH_STATE_CHANGED, this);
     pDispatcher->unsubscribe(MessageType::KEYBOARD_STATE_CHANGED, this);
     pDispatcher->unsubscribe(MessageType::EXIT_STREAM, this);
-    renderer = nullptr;
 }
 
 void VideoDecoderBase::accept(IMessage *msg) {
-    ThreadLock(lock.get());
+    auto tmp_lock = ThreadLock(lock.get());
     switch (msg->getMessageType()) {
-    case MessageType::TOUCH_STATE_CHANGED:
-        _accept_touch_state_changed(static_cast<TouchStateChangedMsg *>(msg));
+    case MessageType::TOUCH_STATE_CHANGED: {
+        auto touch_msg = static_cast<TouchStateChangedMsg *>(msg);
+        _accept_touch_state_changed(touch_msg->ttype);
         break;
+    }
     case MessageType::KEYBOARD_STATE_CHANGED:
         _accept_keyboard_state_changed(
             static_cast<KeyboardStateChangedMsg *>(msg));
         break;
     case MessageType::EXIT_STREAM: {
-        renderer = std::make_unique<N3dsRendererMock>();
+        _accept_touch_state_changed(N3dsTouchType::DISABLED);
         printf("Exiting stream...\n");
     } break;
     default:
@@ -72,8 +77,8 @@ void VideoDecoderBase::accept(IMessage *msg) {
     }
 }
 
-void VideoDecoderBase::_accept_touch_state_changed(TouchStateChangedMsg *msg) {
-    switch (msg->ttype) {
+void VideoDecoderBase::_accept_touch_state_changed(N3dsTouchType ttype) {
+    switch (ttype) {
     case (N3dsTouchType::DEBUG_TOUCH):
         renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
@@ -83,25 +88,22 @@ void VideoDecoderBase::_accept_touch_state_changed(TouchStateChangedMsg *msg) {
         renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
-        if (msg->static_image)
-            (static_cast<N3dsRendererNormal *>(renderer.get()))
-                ->set_bottom_screen(msg->static_image);
+        (static_cast<N3dsRendererNormal *>(renderer.get()))
+            ->set_bottom_screen(gamepad_bgr);
         break;
     case (N3dsTouchType::MOUSEPAD):
         renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
-        if (msg->static_image)
-            (static_cast<N3dsRendererNormal *>(renderer.get()))
-                ->set_bottom_screen(msg->static_image);
+        (static_cast<N3dsRendererNormal *>(renderer.get()))
+            ->set_bottom_screen(touchpad_bgr);
         break;
     case (N3dsTouchType::KEYBOARD):
         renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
-        if (msg->static_image)
-            (static_cast<N3dsRendererNormal *>(renderer.get()))
-                ->set_bottom_screen(msg->static_image);
+        (static_cast<N3dsRendererNormal *>(renderer.get()))
+            ->set_bottom_screen(keyboard_bgr);
         break;
     case (N3dsTouchType::ABSOLUTE_TOUCH):
         renderer = std::make_unique<N3dsRendererDualScreenMirror>(
@@ -122,14 +124,11 @@ void VideoDecoderBase::_accept_touch_state_changed(TouchStateChangedMsg *msg) {
         renderer = std::make_unique<N3dsRendererNormal>(
             surface_width, surface_height, image_width, image_height,
             pixel_size);
-        if (msg->static_image)
-            (static_cast<N3dsRendererNormal *>(renderer.get()))
-                ->set_bottom_screen(msg->static_image);
+        (static_cast<N3dsRendererNormal *>(renderer.get()))
+            ->set_bottom_screen(menu_bgr);
         break;
-    default:
-        renderer = std::make_unique<N3dsRendererNormal>(
-            surface_width, surface_height, image_width, image_height,
-            pixel_size);
+    default: // Disabled
+        renderer = std::make_unique<N3dsRendererMock>();
         break;
     }
 }

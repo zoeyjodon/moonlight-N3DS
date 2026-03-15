@@ -32,7 +32,7 @@ class TouchscreenEventMsg : public IMessage {
     touchPosition touch;
 };
 
-enum N3dsTouchType {
+enum class N3dsTouchType {
     DISABLED,
     GAMEPAD,
     MOUSEPAD,
@@ -45,15 +45,12 @@ enum N3dsTouchType {
 };
 class TouchStateChangedMsg : public IMessage {
   public:
-    TouchStateChangedMsg(N3dsTouchType ttype_in,
-                         const uint8_t *static_image_in = nullptr)
-        : ttype(ttype_in), static_image(static_image_in){};
+    TouchStateChangedMsg(N3dsTouchType ttype_in) : ttype(ttype_in){};
     ~TouchStateChangedMsg() = default;
     MessageType getMessageType() override {
         return MessageType::TOUCH_STATE_CHANGED;
     };
     N3dsTouchType ttype;
-    const uint8_t *static_image = nullptr;
 };
 
 class KeyboardStateChangedMsg : public IMessage {

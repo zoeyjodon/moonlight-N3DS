@@ -27,8 +27,12 @@ class MessageDispatcher {
     void dispatch_all();
 
   private:
+    bool _is_queue_empty();
+
+  private:
     static std::shared_ptr<MessageDispatcher> instance;
     std::map<MessageType, std::vector<ISubscriber *>> subscribers{};
     std::queue<std::shared_ptr<IMessage>> message_queue{};
-    PLockType lock;
+    PLockType subscriber_lock;
+    PLockType message_lock;
 };

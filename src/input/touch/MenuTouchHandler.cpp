@@ -18,9 +18,6 @@
  */
 #include "../../system/dispatcher.hpp"
 #include "TouchHandler.hpp"
-#include "gamepad_bgr.h"
-#include "keyboard_bgr.h"
-#include "touchpad_bgr.h"
 #include <Limelight.h>
 #include <memory>
 #include <vector>
@@ -59,23 +56,20 @@ void MenuTouchHandler::_handle_touch_hold(touchPosition touch) {
     N3dsTouchType touch_type = button_map[round_y][round_x];
     switch (touch_type) {
     case (N3dsTouchType::GAMEPAD):
-        message =
-            std::make_shared<TouchStateChangedMsg>(touch_type, gamepad_bgr);
+        message = std::make_shared<TouchStateChangedMsg>(touch_type);
         break;
     case (N3dsTouchType::MOUSEPAD):
-        message =
-            std::make_shared<TouchStateChangedMsg>(touch_type, touchpad_bgr);
+        message = std::make_shared<TouchStateChangedMsg>(touch_type);
         break;
     case (N3dsTouchType::KEYBOARD):
-        message =
-            std::make_shared<TouchStateChangedMsg>(touch_type, keyboard_bgr);
+        message = std::make_shared<TouchStateChangedMsg>(touch_type);
         break;
     case (N3dsTouchType::DISABLED):
         // Signal to exit the stream
         message = std::make_shared<GenericEventMsg>(MessageType::EXIT_STREAM);
         break;
     default:
-        message = std::make_shared<TouchStateChangedMsg>(touch_type, nullptr);
+        message = std::make_shared<TouchStateChangedMsg>(touch_type);
         break;
     }
 }

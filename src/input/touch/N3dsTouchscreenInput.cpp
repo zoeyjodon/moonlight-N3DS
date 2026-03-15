@@ -21,66 +21,63 @@
 #include "../../system/dispatcher.hpp"
 
 N3dsTouchscreenInput::N3dsTouchscreenInput(GAMEPAD_STATE *gamepad_in)
-    : gamepad_state(gamepad_in), lock(ThreadLock::CreateLock()) {
-    ThreadLock(lock.get());
+    : gamepad_state(gamepad_in) {
     MessageDispatcher::get_instance()->subscribe(
         MessageType::TOUCH_STATE_CHANGED, this);
 };
 
 N3dsTouchscreenInput::~N3dsTouchscreenInput() {
-    ThreadLock(lock.get());
-    handler = nullptr;
     MessageDispatcher::get_instance()->unsubscribe(
         MessageType::TOUCH_STATE_CHANGED, this);
 }
 
 void N3dsTouchscreenInput::accept(IMessage *msg) {
-    ThreadLock(lock.get());
     if (msg->getMessageType() != MessageType::TOUCH_STATE_CHANGED) {
         return;
     }
 
     auto touch_msg = static_cast<TouchStateChangedMsg *>(msg);
-    n3dsinput_set_touch(touch_msg->ttype);
+    next_touch_type.store(touch_msg->ttype);
 }
 
-void N3dsTouchscreenInput::n3dsinput_set_touch(N3dsTouchType touch_type) {
-    ThreadLock(lock.get());
-    switch (touch_type) {
-    case GAMEPAD:
+void N3dsTouchscreenInput::_n3dsinput_set_touch(N3dsTouchType touch_type_in) {
+    switch (touch_type_in) {
+    case N3dsTouchType::GAMEPAD:
         handler = std::make_unique<GamepadTouchHandler>(gamepad_state);
         break;
-    case MOUSEPAD:
+    case N3dsTouchType::MOUSEPAD:
         handler = std::make_unique<MouseTouchHandler>();
         break;
-    case KEYBOARD:
+    case N3dsTouchType::KEYBOARD:
         handler = std::make_unique<KeyboardTouchHandler>();
         break;
-    case ABSOLUTE_TOUCH:
+    case N3dsTouchType::ABSOLUTE_TOUCH:
         handler = std::make_unique<AbsoluteTouchHandler>(0, 1);
         break;
-    case DS_TOUCH:
-        // Not working? Shows up as mirror?
+    case N3dsTouchType::DS_TOUCH:
         handler = std::make_unique<AbsoluteTouchHandler>(GSP_SCREEN_WIDTH, 2);
         break;
-    case MAGNIFY_TOUCH:
-        // Causes crash, even when not accessed though the menu
+    case N3dsTouchType::MAGNIFY_TOUCH:
         handler = std::make_unique<MagnifyTouchHandler>();
         break;
-    case MENU_TOUCH:
+    case N3dsTouchType::MENU_TOUCH:
         handler = std::make_unique<MenuTouchHandler>();
         break;
-    case DEBUG_TOUCH:
+    case N3dsTouchType::DEBUG_TOUCH:
         handler = std::make_unique<DebugTouchHandler>();
         break;
     default:
         handler = nullptr;
         break;
     }
+    touch_type = touch_type_in;
 }
 
 void N3dsTouchscreenInput::n3dsinput_handle_touch(u32 kDown, u32 kUp) {
-    ThreadLock(lock.get());
+    if (next_touch_type.load() != touch_type) {
+        _n3dsinput_set_touch(next_touch_type);
+    }
+
     if (handler == nullptr) {
         return;
     }

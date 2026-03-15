@@ -357,19 +357,44 @@ static int prompt_for_app_id(PSERVER_DATA server) {
     return app_ids[id_idx];
 }
 
+static inline void dispatch_loop(void *_unused_) {
+    auto pDispatcher = MessageDispatcher::get_instance();
+    auto connection_listener = N3dsConnectionListener::get_instance();
+    while (!connection_listener->is_connection_closed()) {
+        gspWaitForAnyEvent();
+        pDispatcher->dispatch_all();
+    }
+}
+
+static inline void input_loop(void *input_handler_in) {
+    N3dsInput *input_handler = static_cast<N3dsInput *>(input_handler_in);
+    auto connection_listener = N3dsConnectionListener::get_instance();
+    input_handler->force_touchscreen_menu();
+    while (!connection_listener->is_connection_closed()) {
+        gspWaitForAnyEvent();
+        input_handler->n3dsinput_handle_event();
+    }
+}
+
 static inline void stream_loop(PCONFIGURATION config,
                                N3dsConnectionListener *connection_listener,
                                std::shared_ptr<N3dsInput> input_handler) {
-    bool done = false;
-    auto pDispatcher = MessageDispatcher::get_instance();
-    input_handler->force_touchscreen_menu();
-    while (!done && aptMainLoop() && !aptShouldClose()) {
+    // Spin off worker threads
+    size_t stack_size = 0x20000;
+    s32 priority = 0x30;
+    svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
+    if (!config->viewonly) {
+        threadCreate(input_loop, input_handler.get(), stack_size, priority, -1,
+                     true);
+    }
+    threadCreate(dispatch_loop, nullptr, stack_size, priority, -1, true);
+
+    // Run the main connection loop
+    while (!connection_listener->is_connection_closed() && aptMainLoop()) {
         gspWaitForAnyEvent();
-        if (!config->viewonly) {
-            input_handler->n3dsinput_handle_event();
+        if (aptShouldClose()) {
+            connection_listener->connection_terminated(0);
         }
-        pDispatcher->dispatch_all();
-        done = connection_listener->is_connection_closed();
     }
 }
 

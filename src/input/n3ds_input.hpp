@@ -19,9 +19,9 @@
 
 #pragma once
 
-#include "../system/ThreadLock.hpp"
 #include "../system/subscriber.hpp"
 #include "touch/N3dsTouchscreenInput.hpp"
+#include <atomic>
 #include <stdbool.h>
 
 class N3dsInput : public ISubscriber {
@@ -44,14 +44,13 @@ class N3dsInput : public ISubscriber {
   private:
     GAMEPAD_STATE gamepad_state, previous_state;
     std::unique_ptr<N3dsTouchscreenInput> touch_handler = nullptr;
-    PLockType lock;
 
     float gyro_coeff = 0;
     // Note: This was found experimentally and may need a calibration option in
     // settings
     float accel_coeff = 52.0;
-    bool enable_gyro = false;
-    bool enable_accel = false;
+    std::atomic<bool> enable_gyro = false;
+    std::atomic<bool> enable_accel = false;
     bool use_triggers_for_mouse = false;
     bool menu_active = false;
 

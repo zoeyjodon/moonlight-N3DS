@@ -36,9 +36,6 @@ static std::unique_ptr<SoftVideoDecoder> instance = nullptr;
 SoftVideoDecoder::SoftVideoDecoder(int videoFormat, int width, int height,
                                    int redrawRate, void *context, int drFlags)
     : VideoDecoderBase(width, height) {
-
-    ThreadLock(lock.get());
-
     if (ffmpeg_init(videoFormat, width, height, 0, N3DS_BUFFER_FRAMES,
                     SLICES_PER_FRAME) < 0) {
         fprintf(stderr, "Couldn't initialize video decoding\n");
@@ -76,9 +73,6 @@ SoftVideoDecoder::SoftVideoDecoder(int videoFormat, int width, int height,
 }
 
 SoftVideoDecoder::~SoftVideoDecoder() {
-
-    ThreadLock(lock.get());
-
     ffmpeg_destroy();
     y2rExit();
     linearFree(rgb_img_buffer);
@@ -87,11 +81,9 @@ SoftVideoDecoder::~SoftVideoDecoder() {
 inline int SoftVideoDecoder::_write_yuv_to_framebuffer(const u8 **source,
                                                        int width, int height,
                                                        int px_size) {
-
-    ThreadLock(lock.get());
-
     Handle conversion_finish_event_handle;
     int status = 0;
+    u64 start_ticks = svcGetSystemTick();
 
     status = Y2RU_SetSendingY(source[0], width * height, width, 0);
     if (status) {
@@ -134,7 +126,13 @@ inline int SoftVideoDecoder::_write_yuv_to_framebuffer(const u8 **source,
     svcWaitSynchronization(conversion_finish_event_handle,
                            10000000); // Wait up to 10ms.
     svcCloseHandle(conversion_finish_event_handle);
-    renderer->write_px_to_framebuffer(rgb_img_buffer);
+    {
+        auto tmp_lock = ThreadLock(lock.get());
+        if (renderer != nullptr) {
+            renderer->set_perf_decode_ticks(svcGetSystemTick() - start_ticks);
+            renderer->write_px_to_framebuffer(rgb_img_buffer);
+        }
+    }
     return DR_OK;
 
 y2ru_failed:
@@ -142,9 +140,6 @@ y2ru_failed:
 }
 
 int SoftVideoDecoder::submit_decode_unit(PDECODE_UNIT decodeUnit) {
-
-    ThreadLock(lock.get());
-
     PLENTRY entry = decodeUnit->bufferList;
     int length = 0;
 

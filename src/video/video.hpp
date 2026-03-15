@@ -52,7 +52,7 @@ class VideoDecoderBase : public ISubscriber {
     void accept(IMessage *msg) override;
 
   private:
-    void _accept_touch_state_changed(TouchStateChangedMsg *msg);
+    void _accept_touch_state_changed(N3dsTouchType ttype);
     void _accept_keyboard_state_changed(KeyboardStateChangedMsg *msg);
 
   protected:

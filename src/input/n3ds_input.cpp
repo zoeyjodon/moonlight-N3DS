@@ -18,9 +18,7 @@
  */
 
 #include "n3ds_input.hpp"
-#include "../system/ThreadLock.hpp"
 #include "../system/dispatcher.hpp"
-#include "menu_bgr.h"
 #include "touch/TouchHandler.hpp"
 
 #include <3ds.h>
@@ -46,9 +44,7 @@
 
 N3dsInput::N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
                      bool swap_triggers_and_shoulders,
-                     bool use_triggers_for_mouse_in)
-    : lock(ThreadLock::CreateLock()) {
-    ThreadLock(lock.get());
+                     bool use_triggers_for_mouse_in) {
     hidInit();
     HIDUSER_GetGyroscopeRawToDpsCoefficient(&gyro_coeff);
     _add_gamepad();
@@ -75,7 +71,6 @@ N3dsInput::N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
 }
 
 N3dsInput::~N3dsInput() {
-    ThreadLock(lock.get());
     auto pDispatcher = MessageDispatcher::get_instance();
     pDispatcher->unsubscribe(MessageType::ENABLE_ACCEL, this);
     pDispatcher->unsubscribe(MessageType::ENABLE_GYRO, this);
@@ -89,11 +84,10 @@ N3dsInput::~N3dsInput() {
 }
 
 void N3dsInput::accept(IMessage *msg) {
-    ThreadLock(lock.get());
     if (msg->getMessageType() == MessageType::ENABLE_ACCEL) {
-        enable_accel = true;
+        enable_accel.store(true);
     } else if (msg->getMessageType() == MessageType::ENABLE_GYRO) {
-        enable_gyro = true;
+        enable_gyro.store(true);
     }
 }
 
@@ -175,14 +169,12 @@ bool N3dsInput::_gyroscope_state_changed() {
 }
 
 void N3dsInput::force_touchscreen_menu() {
-    ThreadLock(lock.get());
-    auto message = std::make_shared<TouchStateChangedMsg>(
-        N3dsTouchType::MENU_TOUCH, menu_bgr);
+    auto message =
+        std::make_shared<TouchStateChangedMsg>(N3dsTouchType::MENU_TOUCH);
     MessageDispatcher::get_instance()->post(message);
 }
 
 void N3dsInput::n3dsinput_handle_event() {
-    ThreadLock(lock.get());
     hidScanInput();
     u32 kDown = hidKeysDown();
     u32 kUp = hidKeysUp();
@@ -251,7 +243,7 @@ void N3dsInput::n3dsinput_handle_event() {
         }
     }
 
-    if (enable_accel) {
+    if (enable_accel.load()) {
         accelVector accel_vector;
         hidAccelRead(&accel_vector);
         gamepad_state.accel_vector_x = trunc(accel_vector.x / accel_coeff);
@@ -265,7 +257,7 @@ void N3dsInput::n3dsinput_handle_event() {
         }
     }
 
-    if (enable_gyro) {
+    if (enable_gyro.load()) {
         angularRate gyro_rate;
         hidGyroRead(&gyro_rate);
         gamepad_state.gyro_rate_x = trunc(-1 * gyro_rate.x / gyro_coeff);

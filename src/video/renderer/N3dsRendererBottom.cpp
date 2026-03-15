@@ -33,3 +33,16 @@ N3dsRendererBottom::N3dsRendererBottom(int src_width, int src_height,
 void N3dsRendererBottom::write_px_to_framebuffer(uint8_t *source) {
     write_px_to_framebuffer_gpu(source);
 }
+
+void N3dsRendererBottom::write_px_to_framebuffer_raw(const uint8_t *source,
+                                                     int offset, int size) {
+    u8 *gfxbtmadr = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
+
+    if (size == 0) {
+        size = surface_width * surface_height * px_size;
+    }
+    memcpy(gfxbtmadr + offset, source, size);
+
+    gfxFlushBuffers();
+    gfxScreenSwapBuffers(GFX_BOTTOM, false);
+}

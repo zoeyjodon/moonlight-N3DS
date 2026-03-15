@@ -18,10 +18,10 @@
  */
 #pragma once
 
-#include "../../system/ThreadLock.hpp"
 #include "../../system/subscriber.hpp"
 #include <3ds.h>
 #include <Limelight.h>
+#include <atomic>
 #include <memory>
 
 #define MOON_CTR_VIDEO_TEX_W 1024
@@ -45,7 +45,6 @@ class N3dsRendererBase {
                      int image_height_in, int pixel_size,
                      bool debug_in = false);
     virtual ~N3dsRendererBase();
-    int get_px_size() const { return px_size; }
 
   protected:
     inline void draw_perf_counters();
@@ -87,6 +86,8 @@ class N3dsRendererBottom : public N3dsRendererBase {
                        bool debug_in = false);
     ~N3dsRendererBottom() = default;
     void write_px_to_framebuffer(uint8_t *source);
+    void write_px_to_framebuffer_raw(const uint8_t *source, int offset = 0,
+                                     int size = 0);
 };
 
 class N3dsRendererMock : public IN3dsRenderer {
@@ -107,10 +108,8 @@ class N3dsRendererNormal : public IN3dsRenderer {
     void set_bottom_screen(const uint8_t *source, int offset = 0, int size = 0);
 
   private:
-    void _clear_bottom_screen();
-
-  private:
     N3dsRendererTop top_renderer;
+    N3dsRendererBottom bottom_renderer;
 };
 
 class N3dsRendererDualScreenStretch : public IN3dsRenderer {
@@ -156,6 +155,5 @@ class N3dsRendererDualScreenMagnify : public IN3dsRenderer, ISubscriber {
     int px_size;
     N3dsRendererTop top_renderer;
     N3dsRendererBottom bottom_renderer;
-    int pixel_offset = 0;
-    PLockType lock;
+    std::atomic<int> pixel_offset = 0;
 };

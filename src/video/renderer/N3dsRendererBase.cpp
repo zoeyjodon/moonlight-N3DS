@@ -45,16 +45,10 @@ N3dsRendererBase::~N3dsRendererBase() {
     vramFree(vramFb);
     vramFree(vramTex);
 
-    // Clear both screens
-    u8 *top = gfxGetFramebuffer(GFX_TOP, GFX_LEFT, NULL, NULL);
-    memset(top, 0, surface_width * GSP_SCREEN_WIDTH * px_size);
-    gfxScreenSwapBuffers(GFX_TOP, true);
-
-    GSPGPU_FramebufferFormat px_fmt_btm = gfxGetScreenFormat(GFX_BOTTOM);
-    int px_size_btm = gspGetBytesPerPixel(px_fmt_btm);
-    u8 *btm = gfxGetFramebuffer(GFX_BOTTOM, GFX_LEFT, NULL, NULL);
-    memset(btm, 0, GSP_SCREEN_HEIGHT_BOTTOM * GSP_SCREEN_WIDTH * px_size_btm);
-    gfxScreenSwapBuffers(GFX_BOTTOM, true);
+    // Clear target screen
+    u8 *framebuf = gfxGetFramebuffer(screen, GFX_LEFT, NULL, NULL);
+    memset(framebuf, 0, surface_width * surface_height * px_size);
+    gfxScreenSwapBuffers(screen, true);
 
     // Return to the default display width before exiting
     if (surface_width == GSP_SCREEN_HEIGHT_TOP_2X) {
