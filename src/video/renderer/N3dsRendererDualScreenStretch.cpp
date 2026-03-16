@@ -27,11 +27,13 @@
 
 N3dsRendererDualScreenStretch::N3dsRendererDualScreenStretch(
     int dest_width, int dest_height, int src_width, int src_height, int px_size)
-    : source_offset(MOON_CTR_VIDEO_TEX_W *
-                    (MOON_CTR_VIDEO_TEX_H - MOON_CTR_VIDEO_TEX_H_OFFSET) *
-                    px_size / 2),
-      top_renderer(dest_width, dest_height, src_width, src_height / 2, px_size),
-      bottom_renderer(src_width, src_height / 2, px_size) {}
+    : top_renderer(dest_width, dest_height, src_width, src_height / 2, px_size),
+      bottom_renderer(src_width, src_height / 2, px_size) {
+
+    int px_offset_y = src_height / 2;
+    int line_stride = MOON_CTR_VIDEO_TEX_W * px_size;
+    source_offset = px_offset_y * line_stride;
+}
 
 N3dsRendererDualScreenStretch::~N3dsRendererDualScreenStretch() = default;
 

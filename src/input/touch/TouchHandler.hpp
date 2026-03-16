@@ -148,19 +148,26 @@ class KeyboardTouchHandler : public TouchHandlerBase {
     std::map<int, keycode_info> *selected_keycodes = nullptr;
 };
 
-class AbsoluteTouchHandler : public TouchHandlerBase {
+class MirrorTouchHandler : public TouchHandlerBase {
   public:
-    AbsoluteTouchHandler(int y_offset_in, int y_scale_in);
-    ~AbsoluteTouchHandler() = default;
+    MirrorTouchHandler();
+    ~MirrorTouchHandler() = default;
 
   private:
     void _handle_touch_down(touchPosition touch) override;
     void _handle_touch_up(touchPosition touch) override;
     void _handle_touch_hold(touchPosition touch) override;
+};
+
+class StretchTouchHandler : public TouchHandlerBase {
+  public:
+    StretchTouchHandler();
+    ~StretchTouchHandler() = default;
 
   private:
-    int y_offset = 0;
-    int y_scale = 1;
+    void _handle_touch_down(touchPosition touch) override;
+    void _handle_touch_up(touchPosition touch) override;
+    void _handle_touch_hold(touchPosition touch) override;
 };
 
 class MagnifyTouchHandler : public TouchHandlerBase {

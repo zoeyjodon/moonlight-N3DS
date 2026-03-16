@@ -19,22 +19,19 @@
 #include "TouchHandler.hpp"
 #include <Limelight.h>
 
-AbsoluteTouchHandler::AbsoluteTouchHandler(int y_offset_in, int y_scale_in)
-    : y_offset(y_offset_in), y_scale(y_scale_in) {}
+StretchTouchHandler::StretchTouchHandler() {}
 
-void AbsoluteTouchHandler::_handle_touch_down(touchPosition touch) {
-    LiSendMousePositionEvent(touch.px, touch.py + y_offset,
-                             GSP_SCREEN_HEIGHT_BOTTOM,
-                             y_scale * GSP_SCREEN_WIDTH);
+void StretchTouchHandler::_handle_touch_down(touchPosition touch) {
+    LiSendMousePositionEvent(touch.px, touch.py + GSP_SCREEN_WIDTH,
+                             GSP_SCREEN_HEIGHT_BOTTOM, 2 * GSP_SCREEN_WIDTH);
     LiSendMouseButtonEvent(BUTTON_ACTION_PRESS, BUTTON_LEFT);
 }
 
-void AbsoluteTouchHandler::_handle_touch_up(touchPosition touch) {
+void StretchTouchHandler::_handle_touch_up(touchPosition touch) {
     LiSendMouseButtonEvent(BUTTON_ACTION_RELEASE, BUTTON_LEFT);
 }
 
-void AbsoluteTouchHandler::_handle_touch_hold(touchPosition touch) {
-    LiSendMousePositionEvent(touch.px, touch.py + y_offset,
-                             GSP_SCREEN_HEIGHT_BOTTOM,
-                             y_scale * GSP_SCREEN_WIDTH);
+void StretchTouchHandler::_handle_touch_hold(touchPosition touch) {
+    LiSendMousePositionEvent(touch.px, touch.py + GSP_SCREEN_WIDTH,
+                             GSP_SCREEN_HEIGHT_BOTTOM, 2 * GSP_SCREEN_WIDTH);
 }

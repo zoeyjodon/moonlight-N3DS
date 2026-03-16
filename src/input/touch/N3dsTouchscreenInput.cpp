@@ -55,10 +55,10 @@ void N3dsTouchscreenInput::_n3dsinput_set_touch(N3dsTouchType touch_type_in) {
         handler = std::make_unique<KeyboardTouchHandler>();
         break;
     case N3dsTouchType::ABSOLUTE_TOUCH:
-        handler = std::make_unique<AbsoluteTouchHandler>(0, 1);
+        handler = std::make_unique<MirrorTouchHandler>();
         break;
     case N3dsTouchType::DS_TOUCH:
-        handler = std::make_unique<AbsoluteTouchHandler>(GSP_SCREEN_WIDTH, 2);
+        handler = std::make_unique<StretchTouchHandler>();
         break;
     case N3dsTouchType::MAGNIFY_TOUCH:
         handler = std::make_unique<MagnifyTouchHandler>(
