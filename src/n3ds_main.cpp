@@ -18,7 +18,7 @@
  */
 
 #include "audio/audio.h"
-#include "config.h"
+#include "config.hpp"
 #include "input/n3ds_input.hpp"
 #include "system/dispatcher.hpp"
 #include "system/n3ds_connection.hpp"
@@ -188,6 +188,21 @@ static std::string prompt_for_address() {
     return addr_string;
 }
 
+static VIDEO_DECODER_TYPE
+prompt_for_video_decoder(VIDEO_DECODER_TYPE default_val) {
+    std::vector<std::string> decoders = {
+        "hardware (fast, *new* 3DS only)",
+        "software (slow)",
+        "disable video",
+    };
+    int idx = console_selection_prompt("Select a video option", decoders,
+                                       (int)default_val);
+    if (idx < 0) {
+        return default_val;
+    }
+    return (VIDEO_DECODER_TYPE)idx;
+}
+
 static bool prompt_for_boolean(std::string prompt, bool default_val) {
     std::vector<std::string> options = {
         "true",
@@ -227,7 +242,7 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         "localaudio",
         "quitappafter",
         "viewonly",
-        "hwdecode",
+        "video_decoder",
         "swapfacebuttons",
         "swaptriggersandshoulders",
         "usetriggersformouse",
@@ -279,9 +294,9 @@ static void prompt_for_stream_settings(PCONFIGURATION config) {
         } else if ("viewonly" == setting_names[idx]) {
             config->viewonly = prompt_for_boolean("Disable controller input",
                                                   config->viewonly);
-        } else if ("hwdecode" == setting_names[idx]) {
-            config->hwdecode = prompt_for_boolean("Use hardware video decoder",
-                                                  config->hwdecode);
+        } else if ("video_decoder" == setting_names[idx]) {
+            config->video_decoder =
+                prompt_for_video_decoder(config->video_decoder);
         } else if ("swapfacebuttons" == setting_names[idx]) {
             config->swap_face_buttons = prompt_for_boolean(
                 "Swaps A/B and X/Y to match Xbox controller layout",
@@ -426,18 +441,27 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
 
     AUDIO_RENDERER_CALLBACKS *audio_callbacks =
         config->localaudio ? &audio_callbacks_mock : &audio_callbacks_n3ds;
-    PDECODER_RENDERER_CALLBACKS video_callbacks =
-        config->hwdecode ? &decoder_callbacks_n3ds_mvd
-                         : &decoder_callbacks_n3ds;
+
+    PDECODER_RENDERER_CALLBACKS video_callbacks = &decoder_callbacks_mock;
+    switch (config->video_decoder) {
+    case (VIDEO_DECODER_TYPE::HARDWARE_VIDEO_DECODER):
+        video_callbacks = &decoder_callbacks_n3ds_mvd;
+        break;
+    case (VIDEO_DECODER_TYPE::SOFTWARE_VIDEO_DECODER):
+        video_callbacks = &decoder_callbacks_n3ds;
+        break;
+    default:
+        break;
+    }
 
     printf(
         "Loading...\nStream %dx%d, %dfps, %dkbps, sops=%d, localaudio=%d, quitappafter=%d,\
- viewonly=%d, encryption=%x, hwdecode=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d,\
+ viewonly=%d, encryption=%x, video_decoder=%d, swapfacebuttons=%d, swaptriggersandshoulders=%d,\
  usetriggersformouse=%d, motion_controls=%d\n",
         config->stream.width, config->stream.height, config->stream.fps,
         config->stream.bitrate, config->sops, config->localaudio,
         config->quitappafter, config->viewonly, config->stream.encryptionFlags,
-        config->hwdecode, config->swap_face_buttons,
+        config->video_decoder, config->swap_face_buttons,
         config->swap_triggers_and_shoulders, config->use_triggers_for_mouse,
         config->motion_controls);
 

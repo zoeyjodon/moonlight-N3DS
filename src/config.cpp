@@ -17,21 +17,14 @@
  * along with Moonlight; if not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "config.h"
+#include "config.hpp"
 #include "audio/audio.h"
 #include "system/pair_record.hpp"
 #include "util.h"
 
+#include <cstring>
+#include <fstream>
 #include <getopt.h>
-#include <limits.h>
-#include <pwd.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/types.h>
-#include <unistd.h>
-
-extern ssize_t getline(char **buf, size_t *bufsiz, FILE *fp);
 
 #define MOONLIGHT_PATH "/moonlight"
 #define USER_PATHS "."
@@ -55,7 +48,7 @@ static struct option long_options[] = {
     {"quitappafter", required_argument, NULL, '1'},
     {"viewonly", required_argument, NULL, '2'},
     {"port", required_argument, NULL, '6'},
-    {"hwdecode", required_argument, NULL, '8'},
+    {"video_decoder", required_argument, NULL, '8'},
     {"motion_controls", required_argument, NULL, 'e'},
     {"swapfacebuttons", required_argument, NULL, 'A'},
     {"swaptriggersandshoulders", required_argument, NULL, 'B'},
@@ -104,7 +97,11 @@ void parse_argument(int c, char *value, PCONFIGURATION config) {
         config->port = atoi(value);
         break;
     case '8':
-        config->hwdecode = ((value != NULL) && (strcmp(value, "true") == 0));
+        if (value == NULL) {
+            config->video_decoder = VIDEO_DECODER_TYPE::HARDWARE_VIDEO_DECODER;
+        } else {
+            config->video_decoder = (VIDEO_DECODER_TYPE)atoi(value);
+        }
         break;
     case 'A':
         config->swap_face_buttons =
@@ -131,19 +128,12 @@ void parse_argument(int c, char *value, PCONFIGURATION config) {
     }
 }
 
-bool config_file_parse(char *filename, PCONFIGURATION config) {
-    FILE *fd = fopen(filename, "r");
-    if (fd == NULL) {
-        fprintf(stderr, "Can't open configuration file: %s\n", filename);
-        return false;
-    }
-
-    char *line = NULL;
-    size_t len = 0;
-
-    while (getline(&line, &len, fd) != -1) {
+bool config_file_parse(PCONFIGURATION config) {
+    std::ifstream config_file(MOONLIGHT_3DS_PATH "/moonlight.conf");
+    std::string line;
+    while (std::getline(config_file, line)) {
         char *key = NULL, *value = NULL;
-        if (sscanf(line, "%ms = %m[^\n]", &key, &value) == 2) {
+        if (sscanf(line.c_str(), "%ms = %m[^\n]", &key, &value) == 2) {
             if (strcmp(key, "address") == 0) {
                 config->address = value;
             } else {
@@ -177,7 +167,7 @@ void config_save(char *filename, PCONFIGURATION config) {
     write_config_bool(fd, "localaudio", config->localaudio);
     write_config_bool(fd, "quitappafter", config->quitappafter);
     write_config_bool(fd, "viewonly", config->viewonly);
-    write_config_bool(fd, "hwdecode", config->hwdecode);
+    write_config_int(fd, "video_decoder", config->video_decoder);
     write_config_bool(fd, "swapfacebuttons", config->swap_face_buttons);
     write_config_bool(fd, "swaptriggersandshoulders",
                       config->swap_triggers_and_shoulders);
@@ -219,15 +209,13 @@ void config_parse(int argc, char *argv[], PCONFIGURATION config) {
     config->stream.height = 480;
     config->stream.fps = 60;
     config->stream.encryptionFlags = ENCFLG_NONE;
-    config->hwdecode = true;
+    config->video_decoder = VIDEO_DECODER_TYPE::HARDWARE_VIDEO_DECODER;
     config->motion_controls = false;
     config->swap_face_buttons = false;
     config->swap_triggers_and_shoulders = false;
     config->use_triggers_for_mouse = false;
 
-    char *config_file = (char *)MOONLIGHT_3DS_PATH "/moonlight.conf";
-    if (config_file)
-        config_file_parse(config_file, config);
+    config_file_parse(config);
 
     if (config->stream.bitrate == -1) {
         // This table prefers 16:10 resolutions because they are

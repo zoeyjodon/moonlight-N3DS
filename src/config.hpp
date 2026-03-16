@@ -25,9 +25,11 @@
 
 #define MAX_INPUTS 6
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+enum VIDEO_DECODER_TYPE {
+    HARDWARE_VIDEO_DECODER = 0,
+    SOFTWARE_VIDEO_DECODER,
+    DISABLE_VIDEO_DECODER
+};
 
 typedef struct _CONFIGURATION {
     STREAM_CONFIGURATION stream;
@@ -50,7 +52,7 @@ typedef struct _CONFIGURATION {
     bool hdr;
     int pin;
     unsigned short port;
-    bool hwdecode;
+    VIDEO_DECODER_TYPE video_decoder;
     bool motion_controls;
     bool swap_face_buttons;
     bool swap_triggers_and_shoulders;
@@ -61,7 +63,3 @@ bool config_file_parse(char *filename, PCONFIGURATION config);
 void config_parse(int argc, char *argv[], PCONFIGURATION config);
 void parse_argument(int c, char *value, PCONFIGURATION config);
 void config_save(char *filename, PCONFIGURATION config);
-
-#ifdef __cplusplus
-}
-#endif

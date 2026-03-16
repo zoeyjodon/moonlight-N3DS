@@ -61,6 +61,13 @@ class VideoDecoderBase : public ISubscriber {
     ThreadLock renderer_lock;
 };
 
+class MockVideoDecoder : public VideoDecoderBase {
+  public:
+    MockVideoDecoder(int videoFormat, int width, int height, int redrawRate,
+                     void *context, int drFlags);
+    ~MockVideoDecoder();
+};
+
 class SoftVideoDecoder : public VideoDecoderBase {
   public:
     SoftVideoDecoder(int videoFormat, int width, int height, int redrawRate,
@@ -98,3 +105,4 @@ class MvdDecoder : public VideoDecoderBase {
 
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds;
 extern DECODER_RENDERER_CALLBACKS decoder_callbacks_n3ds_mvd;
+extern DECODER_RENDERER_CALLBACKS decoder_callbacks_mock;
