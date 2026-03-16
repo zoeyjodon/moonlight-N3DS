@@ -52,23 +52,28 @@ void N3dsRendererDualScreenMagnify::accept(IMessage *msg) {
 
 void N3dsRendererDualScreenMagnify::set_crop_region(int center_x,
                                                     int center_y) {
-    int crop_width = GSP_SCREEN_HEIGHT_BOTTOM;
-    int crop_height = GSP_SCREEN_WIDTH;
 
-    int crop_offset_x =
-        ((image_width - crop_width) * center_x) / GSP_SCREEN_HEIGHT_BOTTOM;
+    int x_center_image = (center_x * image_width) / GSP_SCREEN_HEIGHT_BOTTOM;
+    int y_center_image = (center_y * image_height) / GSP_SCREEN_WIDTH;
 
-    if (crop_offset_x < 0)
+    int y_offset_image = y_center_image - (GSP_SCREEN_WIDTH / 2);
+
+    int crop_offset_x = x_center_image - (GSP_SCREEN_HEIGHT_BOTTOM / 2);
+    int crop_offset_y = y_center_image - (GSP_SCREEN_WIDTH / 2);
+
+    int max_offset_x = image_width - GSP_SCREEN_HEIGHT_BOTTOM;
+    if (crop_offset_x < 0) {
         crop_offset_x = 0;
-    else if (crop_offset_x + crop_width > image_width)
-        crop_offset_x = image_width - crop_width;
+    } else if (crop_offset_x > max_offset_x) {
+        crop_offset_x = max_offset_x;
+    }
 
-    int crop_offset_y =
-        ((image_height - crop_height) * center_y) / GSP_SCREEN_WIDTH;
-    if (crop_offset_y < 0)
+    int max_offset_y = image_height - GSP_SCREEN_WIDTH;
+    if (crop_offset_y < 0) {
         crop_offset_y = 0;
-    else if (crop_offset_y + crop_height > image_height)
-        crop_offset_y = image_height - crop_height;
+    } else if (crop_offset_y > max_offset_y) {
+        crop_offset_y = max_offset_y;
+    }
 
     int line_stride = MOON_CTR_VIDEO_TEX_W * px_size;
 

@@ -161,17 +161,25 @@ class AbsoluteTouchHandler : public TouchHandlerBase {
   private:
     int y_offset = 0;
     int y_scale = 1;
-    int previous_x = 0;
-    int previous_y = 0;
 };
 
 class MagnifyTouchHandler : public TouchHandlerBase {
   public:
-    MagnifyTouchHandler();
+    MagnifyTouchHandler(GAMEPAD_STATE *gamepad_state, int image_width,
+                        int image_height);
     ~MagnifyTouchHandler() = default;
 
   private:
     void _handle_touch_down(touchPosition touch) override;
     void _handle_touch_up(touchPosition touch) override;
     void _handle_touch_hold(touchPosition touch) override;
+    void _set_touch_offsets(int center_x, int center_y);
+    bool _lock_view();
+
+  private:
+    GAMEPAD_STATE *gamepad_state;
+    int image_width;
+    int image_height;
+    int x_touch_offset = 0;
+    int y_touch_offset = 0;
 };

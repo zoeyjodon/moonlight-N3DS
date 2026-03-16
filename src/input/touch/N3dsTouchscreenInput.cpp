@@ -20,8 +20,11 @@
 #include "N3dsTouchscreenInput.hpp"
 #include "../../system/dispatcher.hpp"
 
-N3dsTouchscreenInput::N3dsTouchscreenInput(GAMEPAD_STATE *gamepad_in)
-    : gamepad_state(gamepad_in) {
+N3dsTouchscreenInput::N3dsTouchscreenInput(GAMEPAD_STATE *gamepad_in,
+                                           int image_width_in,
+                                           int image_height_in)
+    : gamepad_state(gamepad_in), image_width(image_width_in),
+      image_height(image_height_in) {
     MessageDispatcher::get_instance()->subscribe(
         MessageType::TOUCH_STATE_CHANGED, this);
 };
@@ -58,7 +61,8 @@ void N3dsTouchscreenInput::_n3dsinput_set_touch(N3dsTouchType touch_type_in) {
         handler = std::make_unique<AbsoluteTouchHandler>(GSP_SCREEN_WIDTH, 2);
         break;
     case N3dsTouchType::MAGNIFY_TOUCH:
-        handler = std::make_unique<MagnifyTouchHandler>();
+        handler = std::make_unique<MagnifyTouchHandler>(
+            gamepad_state, image_width, image_height);
         break;
     case N3dsTouchType::MENU_TOUCH:
         handler = std::make_unique<MenuTouchHandler>();

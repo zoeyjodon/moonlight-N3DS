@@ -42,7 +42,7 @@
 #define CONTROLLER_NUMBER 0
 #define ACTIVE_GAMEPAD_MASK 1
 
-N3dsInput::N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
+N3dsInput::N3dsInput(int image_width, int image_height, bool swap_face_buttons,
                      bool swap_triggers_and_shoulders,
                      bool use_triggers_for_mouse_in) {
     hidInit();
@@ -63,7 +63,8 @@ N3dsInput::N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
     CUSTOM_KEY_ZR = swap_triggers_and_shoulders ? KEY_R : KEY_ZR;
 
     aptSetHomeAllowed(false);
-    touch_handler = std::make_unique<N3dsTouchscreenInput>(&gamepad_state);
+    touch_handler = std::make_unique<N3dsTouchscreenInput>(
+        &gamepad_state, image_width, image_height);
 
     auto pDispatcher = MessageDispatcher::get_instance();
     pDispatcher->subscribe(MessageType::ENABLE_ACCEL, this);

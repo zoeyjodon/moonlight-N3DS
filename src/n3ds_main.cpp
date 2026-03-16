@@ -520,8 +520,8 @@ static void action_stream(CONFIGURATION *config, SERVER_DATA *server) {
                "to the host computer\n");
     } else {
         input_handler = std::make_shared<N3dsInput>(
-            N3dsTouchType::MENU_TOUCH, config->swap_face_buttons,
-            config->swap_triggers_and_shoulders,
+            config->stream.width, config->stream.height,
+            config->swap_face_buttons, config->swap_triggers_and_shoulders,
             config->use_triggers_for_mouse);
     }
     stream(server, config, appId, input_handler);

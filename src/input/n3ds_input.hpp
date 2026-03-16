@@ -26,7 +26,7 @@
 
 class N3dsInput : public ISubscriber {
   public:
-    N3dsInput(N3dsTouchType touch_type, bool swap_face_buttons,
+    N3dsInput(int image_width, int image_height, bool swap_face_buttons,
               bool swap_triggers_and_shoulders, bool use_triggers_for_mouse_in);
     ~N3dsInput();
     void accept(IMessage *msg) override;

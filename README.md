@@ -27,6 +27,8 @@ After modding your 3DS and installing the Moonlight CIA, open the moonlight appl
 - NOTE: You can re-open the streaming menu any time during the stream by pressing the 3DS's HOME button.
     - Pressing the HOME button from the menu will return you to the 3DS's home menu.
     - The stream will remain active while you are in the 3DS home menu, but closing the app will close the stream.
+- NOTE: When the Magnify view is active, you can lock the region you are magnifying by holding either of the shoulder buttons (L or R).
+    - When the view is locked, you can use the touchscreen to click, drag, and release items in the selected region of the screen (similar to the Mirror and Stretch views)
 
 ## Configuration
 
