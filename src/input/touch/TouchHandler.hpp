@@ -24,12 +24,19 @@
 #include <memory>
 
 typedef struct _GAMEPAD_STATE {
-    unsigned char leftTrigger, rightTrigger;
-    short leftStickX, leftStickY;
-    short rightStickX, rightStickY;
-    int buttons;
-    float accel_vector_x, accel_vector_y, accel_vector_z;
-    float gyro_rate_x, gyro_rate_y, gyro_rate_z;
+    unsigned char leftTrigger = 0;
+    unsigned char rightTrigger = 0;
+    short leftStickX = 0;
+    short leftStickY = 0;
+    short rightStickX = 0;
+    short rightStickY = 0;
+    int buttons = 0;
+    float accel_vector_x = 0;
+    float accel_vector_y = 0;
+    float accel_vector_z = 0;
+    float gyro_rate_x = 0;
+    float gyro_rate_y = 0;
+    float gyro_rate_z = 0;
 } GAMEPAD_STATE;
 
 class TouchHandlerBase {

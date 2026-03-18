@@ -30,6 +30,7 @@
 
 #include <client.h>
 #include <discover.h>
+#include <http.h>
 
 #include <arpa/inet.h>
 #include <exception>
@@ -495,7 +496,7 @@ static int init_server(CONFIGURATION *config, SERVER_DATA *server) {
     printf("Connecting to %s:%d...\n", config->address, config->port);
     gs_cleanup();
     int status = gs_init(server, config->address, config->port, config->key_dir,
-                         2, config->unsupported);
+                         0, config->unsupported);
     if (status == GS_OUT_OF_MEMORY) {
         printf("Not enough memory\n");
         return 1;
@@ -552,14 +553,12 @@ static void action_stream(CONFIGURATION *config, SERVER_DATA *server) {
 }
 
 static void action_pair(CONFIGURATION *config, SERVER_DATA *server) {
+    // Extend the timeout to 5 minutes for pairing
+    http_set_timeout_s(5 * 60);
+
     char pin[5];
-    if (config->pin > 0 && config->pin <= 9999) {
-        sprintf(pin, "%04d", config->pin);
-    } else {
-        sprintf(pin, "%d%d%d%d", (unsigned)random() % 10,
-                (unsigned)random() % 10, (unsigned)random() % 10,
-                (unsigned)random() % 10);
-    }
+    sprintf(pin, "%d%d%d%d", (unsigned)random() % 10, (unsigned)random() % 10,
+            (unsigned)random() % 10, (unsigned)random() % 10);
     printf("Please enter the following PIN on the target PC:\n%s\n", pin);
 
     // Actually display the PIN on screen by swapping buffers
@@ -577,6 +576,9 @@ static void action_pair(CONFIGURATION *config, SERVER_DATA *server) {
         gspWaitForVBlank();
         add_pair_address(config->address, config->port);
     }
+
+    // Revert to default HTTP timeout
+    http_set_timeout_s(60);
 }
 
 static void action_unpair(CONFIGURATION *config, SERVER_DATA *server) {

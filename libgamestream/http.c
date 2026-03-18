@@ -25,7 +25,8 @@
 #include <string.h>
 
 static CURL *curl;
-static const uint32_t CONNECTION_TIMEOUT_S = 3 * 60;
+static uint32_t connection_timeout_s = 60;
+static int log_level = 0;
 
 static size_t _write_curl(void *contents, size_t size, size_t nmemb,
                           void *userp) {
@@ -56,6 +57,8 @@ int http_init(const char *keyDirectory, int logLevel) {
     snprintf(keyFilePath, sizeof(keyFilePath), "%s/%s", keyDirectory,
              KEY_FILE_NAME);
 
+    log_level = logLevel;
+
     curl_easy_setopt(curl, CURLOPT_SSL_VERIFYHOST, 0L);
     curl_easy_setopt(curl, CURLOPT_SSLENGINE_DEFAULT, 1L);
     curl_easy_setopt(curl, CURLOPT_SSLCERTTYPE, "PEM");
@@ -66,19 +69,30 @@ int http_init(const char *keyDirectory, int logLevel) {
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, _write_curl);
     curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
     curl_easy_setopt(curl, CURLOPT_SSL_SESSIONID_CACHE, 0L);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, connection_timeout_s);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, log_level > 0 ? 1L : 0);
 
     return GS_OK;
 }
 
+void http_set_timeout_s(uint32_t connection_timeout_in) {
+    connection_timeout_s = connection_timeout_in;
+}
+
+void http_set_log_level(int log_level_in) { log_level = log_level_in; }
+
 int http_request(char *url, PHTTP_DATA data) {
     curl_easy_setopt(curl, CURLOPT_WRITEDATA, data);
     curl_easy_setopt(curl, CURLOPT_URL, url);
-    curl_easy_setopt(curl, CURLOPT_TIMEOUT, CONNECTION_TIMEOUT_S);
+    curl_easy_setopt(curl, CURLOPT_TIMEOUT, connection_timeout_s);
+    curl_easy_setopt(curl, CURLOPT_VERBOSE, log_level > 0 ? 1L : 0);
 #ifdef __FreeBSD__
     curl_easy_setopt(curl, CURLOPT_FORBID_REUSE, 1);
 #endif
 
-    printf("Request %s\n", url);
+    if (log_level) {
+        printf("Request %s\n", url);
+    }
 
     if (data->size > 0) {
         free(data->memory);
@@ -97,7 +111,9 @@ int http_request(char *url, PHTTP_DATA data) {
         return GS_OUT_OF_MEMORY;
     }
 
-    printf("Response:\n%s\n\n", data->memory);
+    if (log_level) {
+        printf("Response:\n%s\n\n", data->memory);
+    }
 
     return GS_OK;
 }

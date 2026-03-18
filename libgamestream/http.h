@@ -24,13 +24,23 @@
 #define CERTIFICATE_FILE_NAME "client.pem"
 #define KEY_FILE_NAME "key.pem"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct _HTTP_DATA {
-  char *memory;
-  size_t size;
+    char *memory;
+    size_t size;
 } HTTP_DATA, *PHTTP_DATA;
 
-int http_init(const char* keyDirectory, int logLevel);
+int http_init(const char *keyDirectory, int logLevel);
 PHTTP_DATA http_create_data();
-int http_request(char* url, PHTTP_DATA data);
+int http_request(char *url, PHTTP_DATA data);
 void http_cleanup();
 void http_free_data(PHTTP_DATA data);
+void http_set_timeout_s(uint32_t connection_timeout_in);
+void http_set_log_level(int log_level_in);
+
+#ifdef __cplusplus
+}
+#endif

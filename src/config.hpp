@@ -50,7 +50,6 @@ typedef struct _CONFIGURATION {
     char *inputs[MAX_INPUTS];
     int inputsCount;
     bool hdr;
-    int pin;
     unsigned short port;
     VIDEO_DECODER_TYPE video_decoder;
     bool motion_controls;
