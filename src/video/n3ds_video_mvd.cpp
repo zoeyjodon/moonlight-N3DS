@@ -32,6 +32,7 @@
 #include <stdlib.h>
 
 static std::unique_ptr<MvdDecoder> instance = nullptr;
+static bool mvd_service_initialized = false;
 
 MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
                        void *context, int drFlags)
@@ -55,20 +56,25 @@ MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
     config.width = width;
     config.height = height;
     uint32_t size = 0;
-    int status = mvdstdCalculateBufferSize(&config, &size);
-    if (status) {
-        fprintf(stderr, "mvdstdCalculateBufferSize failed: %d\n", status);
-        throw std::runtime_error("mvdstdCalculateBufferSize failed");
+    int status = 0;
+
+    if (!mvd_service_initialized) {
+        status = mvdstdCalculateBufferSize(&config, &size);
+        if (status) {
+            fprintf(stderr, "mvdstdCalculateBufferSize failed: %d\n", status);
+            throw std::runtime_error("mvdstdCalculateBufferSize failed");
+        }
+
+        status = mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264,
+                            MVD_OUTPUT_BGR565, size, NULL);
+        if (status) {
+            fprintf(stderr, "mvdstdInit failed: %d\n", status);
+            throw std::runtime_error("mvdstdInit failed");
+        }
+        mvd_service_initialized = true;
     }
 
     first_frame = true;
-    status = mvdstdInit(MVDMODE_VIDEOPROCESSING, MVD_INPUT_H264,
-                        MVD_OUTPUT_BGR565, size, NULL);
-    if (status) {
-        fprintf(stderr, "mvdstdInit failed: %d\n", status);
-        mvdstdExit();
-        throw std::runtime_error("mvdstdInit failed");
-    }
 
     rgb_img_buffer = (u8 *)linearAlloc(MOON_CTR_VIDEO_TEX_W *
                                        MOON_CTR_VIDEO_TEX_H * pixel_size);
@@ -99,10 +105,16 @@ MvdDecoder::MvdDecoder(int videoFormat, int width, int height, int redrawRate,
 // decoding is finished
 MvdDecoder::~MvdDecoder() {
     y2rExit();
-    mvdstdExit();
+
+    // Do not call mvdstdExit() here. On affected New 2DS XL hardware the
+    // libctru shutdown path can remain BUSY for roughly a minute. Keeping the
+    // MVD service alive avoids that stall and is safe for these per-stream
+    // buffers because each new decoder submits a fresh MVDSTD configuration.
+    // The service/work buffer live until Moonlight's process is closed.
     linearFree(nal_unit_buffer);
+    nal_unit_buffer = nullptr;
     linearFree(rgb_img_buffer);
-    printf("Video decoder shutdown successfully\n");
+    rgb_img_buffer = nullptr;
 }
 
 // packets must be decoded in order
