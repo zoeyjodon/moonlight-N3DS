@@ -49,13 +49,11 @@ int http_init(const char *keyDirectory, int logLevel) {
     if (!curl)
         return GS_FAILED;
 
-    char certificateFilePath[4096];
-    snprintf(certificateFilePath, sizeof(certificateFilePath), "%s/%s",
-             keyDirectory, CERTIFICATE_FILE_NAME);
+  char certificateFilePath[4096];
+  snprintf(certificateFilePath, sizeof(certificateFilePath), "%s/%s", keyDirectory, CERTIFICATE_FILE_NAME);
 
-    char keyFilePath[4096];
-    snprintf(keyFilePath, sizeof(keyFilePath), "%s/%s", keyDirectory,
-             KEY_FILE_NAME);
+  char keyFilePath[4096];
+  snprintf(keyFilePath, sizeof(keyFilePath), "%s/%s", keyDirectory, KEY_FILE_NAME);
 
     log_level = logLevel;
 
