@@ -37,7 +37,7 @@ The default settings are recommended for \*New\* 3DS users.
 
 ## Documentation
 
-More information about installing and runnning Moonlight Embedded is available on the [wiki](https://github.com/moonlight-stream/moonlight-embedded/wiki).
+More information about installing and running Moonlight Embedded is available on the [wiki](https://github.com/moonlight-stream/moonlight-embedded/wiki).
 
 ## Build
 
