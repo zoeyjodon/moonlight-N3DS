@@ -18,7 +18,10 @@
  */
 
 #include "ffmpeg.h"
+#include "h263_compat.h"
+#if N3DS_H263_AVAILABLE
 #include "h263_util.h"
+#endif
 #include "video.hpp"
 
 #include "../util.h"
@@ -92,6 +95,14 @@ SoftVideoDecoder::~SoftVideoDecoder() {
 // picture header. Bad units are not handed to FFmpeg.
 SoftVideoDecoder::H263Check SoftVideoDecoder::_check_h263_unit(
     PDECODE_UNIT decodeUnit, const u8 *data, int length) {
+#if !N3DS_H263_AVAILABLE
+    // H.263+ support is not part of this build, so there is nothing to check.
+    // This is never reached: VIDEO_FORMAT_MASK_H263 is 0 without H.263+.
+    (void)decodeUnit;
+    (void)data;
+    (void)length;
+    return H263Check::PROCEED;
+#else
     H263PictureInfo info;
     H263Status status = h263_parse_picture_header(data, length, &info);
     if (status != H263_OK) {
@@ -120,6 +131,7 @@ SoftVideoDecoder::H263Check SoftVideoDecoder::_check_h263_unit(
         return H263Check::SKIP;
     }
     return H263Check::PROCEED;
+#endif
 }
 
 // The Y2R transfers in _write_yuv_to_framebuffer assume the planes have no

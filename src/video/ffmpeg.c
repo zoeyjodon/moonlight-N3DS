@@ -24,6 +24,7 @@
 #endif
 
 #include <Limelight.h>
+#include "h263_compat.h"
 #include <libavcodec/avcodec.h>
 
 #include <stdlib.h>

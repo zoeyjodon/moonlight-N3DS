@@ -37,6 +37,7 @@
 
 #define INITIAL_DECODER_BUFFER_SIZE (256 * 1024)
 
+#include "h263_compat.h"
 #include "../system/ThreadLock.hpp"
 #include "../system/subscriber.hpp"
 #include "../util.h"

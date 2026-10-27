@@ -14,7 +14,12 @@ jobs:
         with:
           submodules: recursive
       - name: Apply third_party patches
-        run: ./3ds/apply-patches.sh
+        run: |
+          if [ -x ./3ds/apply-patches.sh ]; then
+            ./3ds/apply-patches.sh
+          else
+            echo "::warning::3ds/apply-patches.sh not found, building without H.263+ support"
+          fi
       - name: Build Dockerfile
         run: docker build --network=host -t moonlight-n3ds .
       - name: Build CIA

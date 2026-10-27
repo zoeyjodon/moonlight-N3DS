@@ -207,7 +207,9 @@ prompt_for_video_decoder(VIDEO_DECODER_TYPE default_val) {
 static VIDEO_CODEC_TYPE prompt_for_video_codec(VIDEO_CODEC_TYPE default_val) {
     std::vector<std::string> codecs = {
         "h264 (default)",
+#if N3DS_H263_AVAILABLE
         "h263+ (experimental, software decode, needs H.263+ capable host)",
+#endif
     };
     int idx = console_selection_prompt("Select a video codec", codecs,
                                        (int)default_val);
@@ -461,7 +463,8 @@ static void stream(PSERVER_DATA server, PCONFIGURATION config, int appId,
 
     PDECODER_RENDERER_CALLBACKS video_callbacks = &decoder_callbacks_mock;
     VIDEO_DECODER_TYPE video_decoder = config->video_decoder;
-    if (config->video_codec == VIDEO_CODEC_TYPE::H263_VIDEO_CODEC &&
+    if (N3DS_H263_AVAILABLE &&
+        config->video_codec == VIDEO_CODEC_TYPE::H263_VIDEO_CODEC &&
         video_decoder == VIDEO_DECODER_TYPE::HARDWARE_VIDEO_DECODER) {
         // The MVD hardware decoder only handles H.264
         printf("H.263+ is decoded in software, ignoring the hardware decoder "
@@ -561,8 +564,10 @@ static void action_stream(CONFIGURATION *config, SERVER_DATA *server) {
 
     // H.263+ is offered first, but the host can still answer with H.264 if it
     // has no H.263+ encoder, so the stream starts either way.
+    // Builds without H.263+ support always ask for H.264.
     config->stream.supportedVideoFormats =
-        config->video_codec == VIDEO_CODEC_TYPE::H263_VIDEO_CODEC
+        (N3DS_H263_AVAILABLE &&
+         config->video_codec == VIDEO_CODEC_TYPE::H263_VIDEO_CODEC)
             ? (VIDEO_FORMAT_H263 | VIDEO_FORMAT_H264)
             : VIDEO_FORMAT_H264;
 
